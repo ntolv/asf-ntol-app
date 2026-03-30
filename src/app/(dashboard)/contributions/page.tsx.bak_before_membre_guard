@@ -1,0 +1,429 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { withTimeout } from "@/lib/withTimeout";
+import { getCurrentMembreId } from "@/lib/getCurrentMembreId";
+
+type ContributionData = {
+  id: string;
+  periode: string;
+  montant_total: number;
+  mode_paiement: string | null;
+  statut: string;
+  date_paiement: string | null;
+};
+
+type MontantAttenteData = {
+  id: string;
+  montant_initial: number;
+  montant_restant: number;
+  statut: string;
+  date: string | null;
+};
+
+type RetardData = {
+  id: string;
+  rubrique: string;
+  periode: string;
+  montant_attendu: number;
+  montant_paye: number;
+  reste_a_payer: number;
+  statut: string;
+};
+
+type ResumeData = {
+  total_contributions: number;
+  total_montants_attente: number;
+  total_retards: number;
+  nombre_contributions: number;
+};
+
+export default function ContributionsPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [contributions, setContributions] = useState<ContributionData[]>([]);
+  const [montantsAttente, setMontantsAttente] = useState<MontantAttenteData[]>([]);
+  const [retards, setRetards] = useState<RetardData[]>([]);
+  const [resume, setResume] = useState<ResumeData | null>(null);
+
+  useEffect(() => {
+    async function loadContributionsData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Utiliser le helper partagé avec timeout
+        const membreId = await getCurrentMembreId();
+
+        const [
+          contributionsResult,
+          montantsResult,
+          retardsResult,
+        ] = await Promise.all([
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_contributions")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("periode", { ascending: false })
+            ),
+            5000
+          ),
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_montants_attente")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("date", { ascending: false })
+            ),
+            5000
+          ),
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_retards")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("periode", { ascending: false })
+            ),
+            5000
+          ),
+        ]);
+
+        const { data: contributionsData, error: contributionsError } = contributionsResult;
+        const { data: montantsData, error: montantsError } = montantsResult;
+        const { data: retardsData, error: retardsError } = retardsResult;
+
+        if (contributionsError) throw contributionsError;
+        if (montantsError) throw montantsError;
+        if (retardsError) throw retardsError;
+
+        const safeContributions = contributionsData || [];
+        const safeMontants = montantsData || [];
+        const safeRetards = retardsData || [];
+
+        setContributions(safeContributions);
+        setMontantsAttente(safeMontants);
+        setRetards(safeRetards);
+
+        const totalContributions = safeContributions.reduce(
+          (sum: number, c: ContributionData) => sum + (c.montant_total || 0),
+          0
+        );
+        const totalMontantsAttente = safeMontants.reduce(
+          (sum: number, m: MontantAttenteData) => sum + (m.montant_restant || 0),
+          0
+        );
+        const totalRetards = safeRetards.reduce(
+          (sum: number, r: RetardData) => sum + (r.reste_a_payer || 0),
+          0
+        );
+
+        setResume({
+          total_contributions: totalContributions,
+          total_montants_attente: totalMontantsAttente,
+          total_retards: totalRetards,
+          nombre_contributions: safeContributions.length,
+        });
+
+      } catch (err: any) {
+        console.error("Erreur contributions:", err);
+        setError(err?.message || "Erreur lors du chargement des données");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadContributionsData();
+  }, []);
+
+  const formatMontant = (montant: number) =>
+    new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "XOF",
+    }).format(montant);
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Non définie";
+    return new Date(dateString).toLocaleDateString("fr-FR");
+  };
+
+  const getStatutColor = (statut: string) => {
+    switch ((statut || "").toLowerCase()) {
+      case "payé":
+      case "payee":
+      case "payée":
+        return "text-green-700 bg-green-50";
+      case "en attente":
+      case "en_attente":
+        return "text-yellow-700 bg-yellow-50";
+      case "retard":
+      case "en retard":
+      case "en_retard":
+        return "text-red-700 bg-red-50";
+      default:
+        return "text-slate-700 bg-slate-100";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <section>
+          <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
+          <p className="mt-2 text-slate-600">
+            Gérez vos contributions, montants en attente et retards.
+          </p>
+        </section>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+              <div className="animate-pulse">
+                <div className="h-4 bg-slate-200 rounded w-20 mb-3"></div>
+                <div className="h-8 bg-slate-200 rounded w-24 mb-2"></div>
+                <div className="h-3 bg-slate-200 rounded w-16"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+          <div className="animate-pulse">
+            <div className="h-6 bg-slate-200 rounded w-32 mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="border-b border-slate-100 pb-3">
+                  <div className="grid grid-cols-5 gap-4">
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <section>
+          <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
+          <p className="mt-2 text-slate-600">
+            Gérez vos contributions, montants en attente et retards.
+          </p>
+        </section>
+        
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+          <p className="font-semibold">Erreur lors du chargement des données</p>
+          <p className="mt-2 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
+        <p className="mt-2 text-slate-600">
+          Gérez vos contributions, montants en attente et retards.
+        </p>
+      </section>
+
+      {resume && (
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <p className="text-sm font-medium text-slate-500">Contributions</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {formatMontant(resume.total_contributions)}
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {resume.nombre_contributions} contribution{resume.nombre_contributions > 1 ? "s" : ""}
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <p className="text-sm font-medium text-slate-500">Montants en attente</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {formatMontant(resume.total_montants_attente)}
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {montantsAttente.length} montant{montantsAttente.length > 1 ? "s" : ""} en attente
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <p className="text-sm font-medium text-slate-500">Retards</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {formatMontant(resume.total_retards)}
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {retards.length} retard{retards.length > 1 ? "s" : ""}
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <p className="text-sm font-medium text-slate-500">Situation globale</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {formatMontant(
+                resume.total_contributions +
+                  resume.total_montants_attente +
+                  resume.total_retards
+              )}
+            </p>
+            <p className="mt-2 text-sm text-slate-500">Total des engagements visibles</p>
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <h2 className="mb-4 text-xl font-semibold text-slate-900">Contributions</h2>
+
+        {contributions.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            Aucune contribution enregistrée.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Période</th>
+                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Montant</th>
+                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Mode de paiement</th>
+                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Statut</th>
+                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Date de paiement</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {contributions.map((contribution) => (
+                  <tr key={contribution.id} className="transition-colors hover:bg-slate-50">
+                    <td className="py-4 text-sm font-medium text-slate-900">{contribution.periode}</td>
+                    <td className="py-4 text-sm font-semibold text-slate-900">
+                      {formatMontant(contribution.montant_total)}
+                    </td>
+                    <td className="py-4 text-sm text-slate-600">
+                      {contribution.mode_paiement || "Non spécifié"}
+                    </td>
+                    <td className="py-4">
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(contribution.statut)}`}>
+                        {contribution.statut}
+                      </span>
+                    </td>
+                    <td className="py-4 text-sm text-slate-600">
+                      {formatDate(contribution.date_paiement)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <h2 className="mb-4 text-xl font-semibold text-slate-900">Montants en attente</h2>
+
+        {montantsAttente.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            Aucun montant en attente.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {montantsAttente.map((montant) => (
+              <div key={montant.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Montant initial</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {formatMontant(montant.montant_initial)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Montant restant</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {formatMontant(montant.montant_restant)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(montant.statut)}`}>
+                      {montant.statut}
+                    </span>
+                    <span className="text-xs text-slate-500">{formatDate(montant.date)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <h2 className="mb-4 text-xl font-semibold text-slate-900">Retards</h2>
+
+        {retards.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            Aucun retard enregistré.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {retards.map((retard) => (
+              <div key={retard.id} className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex-1">
+                    <div className="mb-2">
+                      <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                        {retard.rubrique}
+                      </span>
+                      <span className="ml-2 text-sm font-medium text-slate-900">{retard.periode}</span>
+                    </div>
+
+                    <div className="grid gap-2 md:grid-cols-3">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">Attendu</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {formatMontant(retard.montant_attendu)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">Payé</p>
+                        <p className="text-sm font-semibold text-green-700">
+                          {formatMontant(retard.montant_paye)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">Reste à payer</p>
+                        <p className="text-sm font-semibold text-red-700">
+                          {formatMontant(retard.reste_a_payer)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(retard.statut)}`}>
+                      {retard.statut}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
