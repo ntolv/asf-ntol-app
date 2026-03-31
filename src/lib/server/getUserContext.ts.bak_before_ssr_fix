@@ -1,0 +1,66 @@
+import { createSupabaseServerClient } from "./supabaseServer";
+
+export type UserContext = {
+  authUserId: string;
+  membreId: string | null;
+  role: string;
+  email: string | null;
+};
+
+export async function getUserContext(): Promise<UserContext> {
+  // 1. Créer le client Supabase côté serveur avec cookies
+  const supabase = createSupabaseServerClient();
+
+  // 2. Récupérer la session utilisateur authentifié
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !sessionData?.session?.user) {
+    throw new Error("Utilisateur non authentifié");
+  }
+
+  const authUserId = sessionData.session.user.id;
+  const email = sessionData.session.user.email || null;
+
+  // 3. Récupérer l'utilisateur lié dans la table utilisateurs
+  const { data: utilisateurData, error: utilisateurError } = await supabase
+    .from("utilisateurs")
+    .select("membre_id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (utilisateurError) {
+    throw new Error(`Erreur récupération utilisateur: ${utilisateurError.message}`);
+  }
+
+  const membreId = utilisateurData?.membre_id || null;
+
+  // 4. Déterminer le rôle (par défaut: membre)
+  let role = "membre";
+  
+  if (membreId) {
+    // NOTE TEMPORAIRE: Utilisation des RPC existantes fn_is_role
+    // LIMITATION: Ces RPC sont optimisées pour un usage spécifique et peuvent être remplacées par une vue unifiée
+    const { data: isAdmin } = await supabase.rpc("fn_is_role", { p_code: "admin" });
+    if (isAdmin) {
+      role = "admin";
+    } else {
+      const { data: isTresorier } = await supabase.rpc("fn_is_role", { p_code: "tresorier" });
+      if (isTresorier) {
+        role = "tresorier";
+      } else {
+        const { data: isPresident } = await supabase.rpc("fn_is_role", { p_code: "president" });
+        if (isPresident) {
+          role = "president";
+        }
+      }
+    }
+  }
+
+  // 5. Retourner l'objet contexte utilisateur
+  return {
+    authUserId,
+    membreId,
+    role,
+    email,
+  };
+}

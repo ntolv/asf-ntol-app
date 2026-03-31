@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
 type DocumentData = {
   id: string;
@@ -15,56 +14,75 @@ type DocumentData = {
   membre_id: string | null;
 };
 
+type ResumeData = {
+  totalDocuments: number;
+  totalDocumentsGeneraux: number;
+  totalDocumentsMembre: number;
+};
+
+type DocumentsApiResponse = {
+  documents: DocumentData[];
+  resume: ResumeData;
+};
+
 export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<DocumentData[]>([]);
+  const [resume, setResume] = useState<ResumeData>({
+    totalDocuments: 0,
+    totalDocumentsGeneraux: 0,
+    totalDocumentsMembre: 0
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadDocumentsData() {
       try {
         setLoading(true);
         setError(null);
 
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        const response = await fetch("/api/documents", {
+          method: "GET",
+          cache: "no-store"
+        });
 
-        if (sessionError) throw sessionError;
-        if (!session?.user?.id) throw new Error("Session utilisateur introuvable");
+        const payload = await response.json();
 
-        const authUserId = session.user.id;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Erreur lors du chargement des documents");
+        }
 
-        const { data: utilisateur, error: utilisateurError } = await supabase
-          .from("utilisateurs")
-          .select("id, membre_id")
-          .eq("auth_user_id", authUserId)
-          .maybeSingle();
-
-        if (utilisateurError) throw utilisateurError;
-        if (!utilisateur?.membre_id) throw new Error("Membre non trouvé");
-
-        const membreId = utilisateur.membre_id;
-
-        const { data: documentsData, error: documentsError } = await supabase
-          .from("v_documents")
-          .select("*")
-          .or(`dossier_general.eq.true,membre_id.eq.${membreId}`)
-          .order("date_creation", { ascending: false });
-
-        if (documentsError) throw documentsError;
-
-        setDocuments(documentsData || []);
+        if (!cancelled) {
+          const typedPayload = payload as DocumentsApiResponse;
+          setDocuments(typedPayload.documents || []);
+          setResume(
+            typedPayload.resume || {
+              totalDocuments: 0,
+              totalDocumentsGeneraux: 0,
+              totalDocumentsMembre: 0
+            }
+          );
+        }
       } catch (err: any) {
-        console.error("Erreur documents:", JSON.stringify(err, null, 2), err);
-        setError(err?.message || "Erreur lors du chargement des données");
+        console.error("Erreur documents:", err);
+
+        if (!cancelled) {
+          setError(err?.message || "Erreur lors du chargement des données");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadDocumentsData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatDate = (dateString: string | null) => {
@@ -172,17 +190,17 @@ export default function DocumentsPage() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Total documents</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{documents.length}</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{resume.totalDocuments}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Dossier général</p>
-            <p className="mt-2 text-2xl font-bold text-purple-700">{documentsGeneraux.length}</p>
+            <p className="mt-2 text-2xl font-bold text-purple-700">{resume.totalDocumentsGeneraux}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Dossier membre</p>
-            <p className="mt-2 text-2xl font-bold text-green-700">{documentsMembre.length}</p>
+            <p className="mt-2 text-2xl font-bold text-green-700">{resume.totalDocumentsMembre}</p>
           </div>
         </section>
 

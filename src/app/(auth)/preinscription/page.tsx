@@ -85,7 +85,7 @@ export default function PreinscriptionPage() {
     }
 
     try {
-      // Créer le compte Supabase Auth
+      // Créer le compte Supabase Auth avec le client SSR officiel
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -114,7 +114,7 @@ export default function PreinscriptionPage() {
       if (authData.user) {
         console.log('✅ signUp réussi:', authData.user)
         
-        // Tenter la connexion avec les mêmes identifiants
+        // Tenter la connexion avec les mêmes identifiants via le client SSR
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password

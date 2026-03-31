@@ -1,109 +1,76 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
 type AuthState = {
   user: any | null;
-  member: any | null;
+  member: {
+    id: string | null;
+    email: string | null;
+    role: string | null;
+    membreId?: string | null;
+  } | null;
   loading: boolean;
 };
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<any | null>(null);
-  const [member, setMember] = useState<any | null>(null);
+  const [member, setMember] = useState<AuthState["member"]>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    async function loadRole() {
-      const roles = {
-        admin: false,
-        tresorier: false,
-        president: false,
-      };
-
-      for (const role of Object.keys(roles)) {
-        const { data } = await supabase.rpc("fn_is_role", {
-          p_code: role,
-        });
-        roles[role] = data === true;
-      }
-
-      if (roles.admin) return "admin";
-      if (roles.tresorier) return "tresorier";
-      if (roles.president) return "president";
-
-      return "membre";
-    }
-
-    async function initializeAuth() {
+    async function loadAuth() {
       try {
-        if (!supabase?.auth) {
+        setLoading(true);
+
+        const res = await fetch("/api/auth/context", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const result = await res.json();
+
+        if (!mounted) return;
+
+        if (!res.ok || !result.success) {
+          console.error("Auth context error:", result);
           setUser(null);
           setMember(null);
           setLoading(false);
           return;
         }
 
-        const { data } = await supabase.auth.getSession();
-        const sessionUser = data?.session?.user ?? null;
+        const data = result.data;
 
-        if (!isMounted) return;
+        setUser({
+          id: data.authUserId,
+          email: data.email,
+        });
 
-        setUser(sessionUser);
-
-        if (sessionUser) {
-          const role = await loadRole();
-
-          setMember({
-            id: sessionUser.id,
-            email: sessionUser.email ?? null,
-            role,
-          });
-        } else {
-          setMember(null);
-        }
+        setMember({
+          id: data.authUserId,
+          email: data.email,
+          role: data.role,
+          membreId: data.membreId,
+        });
 
         setLoading(false);
-      } catch (error: any) {
-        console.error("Erreur auth:", error);
+
+      } catch (err) {
+        console.error("Auth load error:", err);
+        if (!mounted) return;
         setUser(null);
         setMember(null);
         setLoading(false);
       }
     }
 
-    initializeAuth();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const sessionUser = session?.user ?? null;
-
-        if (!isMounted) return;
-
-        setUser(sessionUser);
-
-        if (sessionUser) {
-          const role = await loadRole();
-
-          setMember({
-            id: sessionUser.id,
-            email: sessionUser.email ?? null,
-            role,
-          });
-        } else {
-          setMember(null);
-        }
-
-        setLoading(false);
-      }
-    );
+    loadAuth();
 
     return () => {
-      isMounted = false;
-      listener?.subscription?.unsubscribe();
+      mounted = false;
     };
   }, []);
 

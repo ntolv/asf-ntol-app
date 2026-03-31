@@ -1,0 +1,145 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+type AuthState = {
+  user: any | null;
+  member: any | null;
+  loading: boolean;
+};
+
+export function useAuth(): AuthState {
+  const [user, setUser] = useState<any | null>(null);
+  const [member, setMember] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRole() {
+      const roles = {
+        admin: false,
+        tresorier: false,
+        president: false,
+      };
+
+      try {
+        for (const role of Object.keys(roles)) {
+          const { data, error } = await supabase.rpc("fn_is_role", {
+            p_code: role,
+          });
+          
+          if (error) {
+            console.error(`Erreur RPC fn_is_role(${role}):`, error);
+            // Si erreur RPC, on ne peut pas déterminer le rôle
+            return null;
+          }
+          
+          roles[role] = data === true;
+        }
+
+        if (roles.admin) return "admin";
+        if (roles.tresorier) return "tresorier";
+        if (roles.president) return "president";
+
+        return "membre";
+      } catch (error) {
+        console.error("Erreur lors de la récupération des rôles:", error);
+        // Erreur générale → impossible de déterminer le rôle
+        return null;
+      }
+    }
+
+    async function initializeAuth() {
+      try {
+        if (!supabase?.auth) {
+          setUser(null);
+          setMember(null);
+          setLoading(false);
+          return;
+        }
+
+        // Utiliser le nouveau client SSR pour la lecture de session
+        const { data } = await supabase.auth.getSession();
+        const sessionUser = data?.session?.user ?? null;
+
+        if (!isMounted) return;
+
+        setUser(sessionUser);
+
+        if (sessionUser) {
+          const role = await loadRole();
+
+          // Si le rôle n'a pas pu être déterminé (null), on garde l'utilisateur sans rôle
+          if (role !== null) {
+            setMember({
+              id: sessionUser.id,
+              email: sessionUser.email ?? null,
+              role,
+            });
+          } else {
+            // Utilisateur connecté mais rôle indéterminé
+            setMember({
+              id: sessionUser.id,
+              email: sessionUser.email ?? null,
+              role: null, // Rôle null = indéterminé
+            });
+          }
+        } else {
+          setMember(null);
+        }
+
+        setLoading(false);
+      } catch (error: any) {
+        console.error("Erreur auth:", error);
+        setUser(null);
+        setMember(null);
+        setLoading(false);
+      }
+    }
+
+    initializeAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const sessionUser = session?.user ?? null;
+
+        if (!isMounted) return;
+
+        setUser(sessionUser);
+
+        if (sessionUser) {
+          const role = await loadRole();
+
+          // Si le rôle n'a pas pu être déterminé (null), on garde l'utilisateur sans rôle
+          if (role !== null) {
+            setMember({
+              id: sessionUser.id,
+              email: sessionUser.email ?? null,
+              role,
+            });
+          } else {
+            // Utilisateur connecté mais rôle indéterminé
+            setMember({
+              id: sessionUser.id,
+              email: sessionUser.email ?? null,
+              role: null, // Rôle null = indéterminé
+            });
+          }
+        } else {
+          setMember(null);
+        }
+
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  return { user, member, loading };
+}

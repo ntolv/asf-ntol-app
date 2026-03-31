@@ -1,0 +1,139 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+type AuthState = {
+  user: any | null;
+  member: {
+    id: string | null;
+    email: string | null;
+    role: string | null;
+    membreId?: string | null;
+  } | null;
+  loading: boolean;
+};
+
+type AuthContextApiResponse = {
+  success: boolean;
+  data?: {
+    authUserId: string;
+    membreId: string | null;
+    role: string;
+    email: string | null;
+  };
+  error?: string;
+};
+
+export function useAuth(): AuthState {
+  const [user, setUser] = useState<any | null>(null);
+  const [member, setMember] = useState<AuthState["member"]>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadServerContext() {
+      try {
+        const response = await fetch("/api/auth/context", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const result: AuthContextApiResponse = await response.json();
+
+        if (!response.ok || !result?.success || !result?.data) {
+          console.error("Erreur contexte auth serveur:", result?.error || "Réponse invalide");
+          return null;
+        }
+
+        return result.data;
+      } catch (error) {
+        console.error("Erreur fetch /api/auth/context:", error);
+        return null;
+      }
+    }
+
+    async function syncAuthState(sessionUser: any | null) {
+      if (!isMounted) return;
+
+      setUser(sessionUser);
+
+      if (!sessionUser) {
+        setMember(null);
+        setLoading(false);
+        return;
+      }
+
+      const serverContext = await loadServerContext();
+
+      if (!isMounted) return;
+
+      if (serverContext) {
+        setMember({
+          id: serverContext.authUserId,
+          email: serverContext.email ?? sessionUser.email ?? null,
+          role: serverContext.role ?? null,
+          membreId: serverContext.membreId ?? null,
+        });
+      } else {
+        setMember({
+          id: sessionUser.id ?? null,
+          email: sessionUser.email ?? null,
+          role: null,
+          membreId: null,
+        });
+      }
+
+      setLoading(false);
+    }
+
+    async function initializeAuth() {
+      try {
+        if (!supabase?.auth) {
+          setUser(null);
+          setMember(null);
+          setLoading(false);
+          return;
+        }
+
+        const {
+          data: { user: currentUser },
+          error,
+        } = await supabase.auth.getUser();
+
+        if (error) {
+          console.error("Erreur auth.getUser:", error);
+          if (!isMounted) return;
+          setUser(null);
+          setMember(null);
+          setLoading(false);
+          return;
+        }
+
+        await syncAuthState(currentUser ?? null);
+      } catch (error) {
+        console.error("Erreur initializeAuth:", error);
+        if (!isMounted) return;
+        setUser(null);
+        setMember(null);
+        setLoading(false);
+      }
+    }
+
+    initializeAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      await syncAuthState(session?.user ?? null);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return { user, member, loading };
+}

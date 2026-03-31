@@ -1,6 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { withTimeout } from "@/lib/withTimeout";
+import { getCurrentMembreId } from "@/lib/getCurrentMembreId";
 
 type ContributionData = {
   id: string;
@@ -36,17 +39,6 @@ type ResumeData = {
   nombre_contributions: number;
 };
 
-type ContributionsApiResponse = {
-  success: boolean;
-  data?: {
-    contributions: ContributionData[];
-    montantsAttente: MontantAttenteData[];
-    retards: RetardData[];
-    resume: ResumeData;
-  };
-  error?: string;
-};
-
 export default function ContributionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,21 +53,86 @@ export default function ContributionsPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/contributions", {
-          method: "GET",
-          cache: "no-store",
-        });
+        // Utiliser le helper partagé avec timeout
+        const membreId = await getCurrentMembreId();
 
-        const result: ContributionsApiResponse = await response.json();
-
-        if (!response.ok || !result?.success || !result?.data) {
-          throw new Error(result?.error || "Erreur lors du chargement des données");
+        if (!membreId || membreId === "null") {
+          throw new Error("Aucun membre lié à l'utilisateur connecté");
         }
 
-        setContributions(result.data.contributions || []);
-        setMontantsAttente(result.data.montantsAttente || []);
-        setRetards(result.data.retards || []);
-        setResume(result.data.resume || null);
+        const [
+          contributionsResult,
+          montantsResult,
+          retardsResult,
+        ] = await Promise.all([
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_contributions")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("periode", { ascending: false })
+            ),
+            5000
+          ),
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_montants_attente")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("date", { ascending: false })
+            ),
+            5000
+          ),
+          withTimeout(
+            Promise.resolve(
+              supabase
+                .from("v_retards")
+                .select("*")
+                .eq("membre_id", membreId)
+                .order("periode", { ascending: false })
+            ),
+            5000
+          ),
+        ]);
+
+        const { data: contributionsData, error: contributionsError } = contributionsResult;
+        const { data: montantsData, error: montantsError } = montantsResult;
+        const { data: retardsData, error: retardsError } = retardsResult;
+
+        if (contributionsError) throw contributionsError;
+        if (montantsError) throw montantsError;
+        if (retardsError) throw retardsError;
+
+        const safeContributions = contributionsData || [];
+        const safeMontants = montantsData || [];
+        const safeRetards = retardsData || [];
+
+        setContributions(safeContributions);
+        setMontantsAttente(safeMontants);
+        setRetards(safeRetards);
+
+        const totalContributions = safeContributions.reduce(
+          (sum: number, c: ContributionData) => sum + (c.montant_total || 0),
+          0
+        );
+        const totalMontantsAttente = safeMontants.reduce(
+          (sum: number, m: MontantAttenteData) => sum + (m.montant_restant || 0),
+          0
+        );
+        const totalRetards = safeRetards.reduce(
+          (sum: number, r: RetardData) => sum + (r.reste_a_payer || 0),
+          0
+        );
+
+        setResume({
+          total_contributions: totalContributions,
+          total_montants_attente: totalMontantsAttente,
+          total_retards: totalRetards,
+          nombre_contributions: safeContributions.length,
+        });
+
       } catch (err: any) {
         console.error("Erreur contributions:", err);
         setError(err?.message || "Erreur lors du chargement des données");
@@ -125,31 +182,31 @@ export default function ContributionsPage() {
             Gérez vos contributions, montants en attente et retards.
           </p>
         </section>
-
+        
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
               <div className="animate-pulse">
-                <div className="mb-3 h-4 w-20 rounded bg-slate-200"></div>
-                <div className="mb-2 h-8 w-24 rounded bg-slate-200"></div>
-                <div className="h-3 w-16 rounded bg-slate-200"></div>
+                <div className="h-4 bg-slate-200 rounded w-20 mb-3"></div>
+                <div className="h-8 bg-slate-200 rounded w-24 mb-2"></div>
+                <div className="h-3 bg-slate-200 rounded w-16"></div>
               </div>
             </div>
           ))}
         </div>
-
+        
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
           <div className="animate-pulse">
-            <div className="mb-4 h-6 w-32 rounded bg-slate-200"></div>
+            <div className="h-6 bg-slate-200 rounded w-32 mb-4"></div>
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="border-b border-slate-100 pb-3">
                   <div className="grid grid-cols-5 gap-4">
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded"></div>
                   </div>
                 </div>
               ))}
@@ -169,7 +226,7 @@ export default function ContributionsPage() {
             Gérez vos contributions, montants en attente et retards.
           </p>
         </section>
-
+        
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
           <p className="font-semibold">Erreur lors du chargement des données</p>
           <p className="mt-2 text-sm">{error}</p>
@@ -257,7 +314,7 @@ export default function ContributionsPage() {
                   <tr key={contribution.id} className="transition-colors hover:bg-slate-50">
                     <td className="py-4 text-sm font-medium text-slate-900">{contribution.periode}</td>
                     <td className="py-4 text-sm font-semibold text-slate-900">
-                      {formatMontant(Number(contribution.montant_total || 0))}
+                      {formatMontant(contribution.montant_total)}
                     </td>
                     <td className="py-4 text-sm text-slate-600">
                       {contribution.mode_paiement || "Non spécifié"}
@@ -294,13 +351,13 @@ export default function ContributionsPage() {
                     <div>
                       <p className="text-xs font-medium text-slate-500">Montant initial</p>
                       <p className="text-sm font-semibold text-slate-900">
-                        {formatMontant(Number(montant.montant_initial || 0))}
+                        {formatMontant(montant.montant_initial)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs font-medium text-slate-500">Montant restant</p>
                       <p className="text-sm font-semibold text-slate-900">
-                        {formatMontant(Number(montant.montant_restant || 0))}
+                        {formatMontant(montant.montant_restant)}
                       </p>
                     </div>
                   </div>
@@ -342,19 +399,19 @@ export default function ContributionsPage() {
                       <div>
                         <p className="text-xs font-medium text-slate-500">Attendu</p>
                         <p className="text-sm font-semibold text-slate-900">
-                          {formatMontant(Number(retard.montant_attendu || 0))}
+                          {formatMontant(retard.montant_attendu)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-slate-500">Payé</p>
                         <p className="text-sm font-semibold text-green-700">
-                          {formatMontant(Number(retard.montant_paye || 0))}
+                          {formatMontant(retard.montant_paye)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-slate-500">Reste à payer</p>
                         <p className="text-sm font-semibold text-red-700">
-                          {formatMontant(Number(retard.reste_a_payer || 0))}
+                          {formatMontant(retard.reste_a_payer)}
                         </p>
                       </div>
                     </div>
@@ -374,3 +431,4 @@ export default function ContributionsPage() {
     </div>
   );
 }
+

@@ -24,6 +24,7 @@ export default function LoginPage() {
         return
       }
 
+      // Utiliser le client SSR officiel pour la connexion
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

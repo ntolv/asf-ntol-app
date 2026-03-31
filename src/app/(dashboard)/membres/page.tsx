@@ -2,8 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { withTimeout } from "@/lib/withTimeout";
-import { getCurrentMembreId } from "@/lib/getCurrentMembreId";
 
 type MembreData = {
   id: string;
@@ -33,46 +31,17 @@ export default function MembresPage() {
         setLoading(true);
         setError(null);
 
-                const membreId = await withTimeout(
-          getCurrentMembreId(),
-          5000
-        );
+        // 1. Appel API route (modèle API-first)
+        const response = await fetch("/api/membres");
+        const result = await response.json();
 
-        if (!membreId || membreId === "null") {
-          throw new Error("Aucun membre lié à l'utilisateur connecté");
+        if (!result.success) {
+          throw new Error(result.error);
         }
 
-        const membresResult = await withTimeout(
-          Promise.resolve(
-            supabase
-              .from("v_membres")
-              .select(`
-                id,
-                nom_complet,
-                email,
-                categorie,
-                telephone,
-                statut_associatif,
-                est_tontineur_defaut,
-                actif,
-                created_at,
-                date_adhesion,
-                photo_url,
-                photo_storage_path
-              `)
-              .order("nom_complet", { ascending: true })
-          ),
-          5000
-        );
-
-        const { data: membresData, error: membresError } = membresResult;
-
-        if (membresError) throw membresError;
+        console.log("API MEMBRES RESULT:", result);
         
-        console.log('📊 DIAGNOSTIC: Membres chargés:', membresData?.length || 0);
-        console.log('📊 DIAGNOSTIC: Détail membres avec photos:', membresData?.filter(m => m.photo_url).map(m => ({ id: m.id, nom: m.nom_complet, photo_url: m.photo_url })));
-        
-        setMembres(membresData || []);
+        setMembres(result.data || []);
 
       } catch (err: any) {
         console.error("Erreur membres:", JSON.stringify(err, null, 2), err);

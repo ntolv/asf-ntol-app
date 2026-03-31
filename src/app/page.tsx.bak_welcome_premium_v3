@@ -1,0 +1,203 @@
+﻿"use client";
+
+import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+import InstallAppButton from "@/components/app/InstallAppButton";
+import AppNotificationsCenter from "@/components/app/AppNotificationsCenter";
+
+type QuickLink = {
+  href: string;
+  title: string;
+  description: string;
+  icon: string;
+};
+
+const quickLinks: QuickLink[] = [
+  {
+    href: "/dashboard",
+    title: "Dashboard",
+    description: "Vue analytique et lecture globale du système.",
+    icon: "📊"
+  },
+  {
+    href: "/tontine",
+    title: "Tontine",
+    description: "Cycle, sessions et pilotage de la tontine.",
+    icon: "💚"
+  },
+  {
+    href: "/encheres",
+    title: "Enchères",
+    description: "Salle d’enchères, lots actifs et participation live.",
+    icon: "🔥"
+  },
+  {
+    href: "/membres",
+    title: "Membres",
+    description: "Consultation et gestion des profils membres.",
+    icon: "👥"
+  },
+  {
+    href: "/contributions",
+    title: "Contributions",
+    description: "Suivi des versements et situations de contributions.",
+    icon: "💰"
+  },
+  {
+    href: "/imputations",
+    title: "Imputations",
+    description: "Répartition et lecture des opérations d’imputation.",
+    icon: "🧾"
+  },
+  {
+    href: "/caisse",
+    title: "Caisse",
+    description: "Lecture et suivi des éléments de caisse.",
+    icon: "🏦"
+  },
+  {
+    href: "/aides",
+    title: "Aides / Secours",
+    description: "Aides, secours et accompagnement associatif.",
+    icon: "🤝"
+  },
+  {
+    href: "/investissements",
+    title: "Investissements / Prêts",
+    description: "Investissements, prêts et remboursements.",
+    icon: "📈"
+  },
+  {
+    href: "/documents",
+    title: "Documents",
+    description: "Espace documentaire de l’application.",
+    icon: "📂"
+  },
+  {
+    href: "/admin/roles",
+    title: "Administration",
+    description: "Gestion des rôles et paramétrage d’accès.",
+    icon: "⚙️"
+  }
+];
+
+function getDisplayedRoleLabel(role: unknown) {
+  const value = String(role || "").trim();
+  return value ? value : "Rôle backend";
+}
+
+function getWelcomeMessage(role: unknown) {
+  const value = String(role || "").trim().toLowerCase();
+
+  if (value === "admin") {
+    return "Pilotez l’association, suivez les opérations clés et accédez rapidement à tous les espaces stratégiques.";
+  }
+
+  if (value === "president") {
+    return "Retrouvez votre espace central de coordination pour suivre la vie associative, les membres et les décisions importantes.";
+  }
+
+  if (value === "tresorier") {
+    return "Accédez à votre espace de suivi financier pour consulter les contributions, la caisse, les aides et les opérations sensibles.";
+  }
+
+  return "Retrouvez ici votre espace principal pour consulter les activités de l’association, suivre les membres et accéder rapidement à toutes les pages utiles.";
+}
+
+export default function HomePage() {
+  const auth: any = useAuth?.() ?? {};
+  const role = auth?.member?.role ?? null;
+  const userEmail = auth?.member?.email ?? auth?.user?.email ?? null;
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white pb-28">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 md:px-6 md:py-6">
+        <section className="mt-2 overflow-hidden rounded-[36px] border border-emerald-100 bg-white shadow-sm">
+          <div className="relative p-6 md:p-8 lg:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.08),transparent_30%)]" />
+
+            <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                  Association Famille NTOL
+                </div>
+
+                <h1 className="mt-5 text-4xl font-black tracking-tight text-emerald-950 md:text-5xl lg:text-6xl">
+                  Bienvenue sur ASF-NTOL
+                </h1>
+
+                <p className="mt-4 max-w-2xl text-base leading-7 text-emerald-900/75 md:text-lg">
+                  {getWelcomeMessage(role)}
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm">
+                    {getDisplayedRoleLabel(role)}
+                  </span>
+
+                  {userEmail ? (
+                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 shadow-sm">
+                      {userEmail}
+                    </span>
+                  ) : null}
+
+                  <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50/70 px-4 py-2 text-sm text-emerald-800 shadow-sm">
+                    Navigation rapide vers toutes les pages
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full max-w-md">
+                <AppNotificationsCenter />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-emerald-950 md:text-xl">
+                Accès rapides
+              </h2>
+              <p className="text-sm text-emerald-900/65">
+                Toutes les pages de l’application sont accessibles depuis cet accueil.
+              </p>
+            </div>
+
+            <div className="hidden rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm md:inline-flex">
+              Navigation centrale
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {quickLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/30"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-2xl shadow-sm">
+                    {item.icon}
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-bold text-emerald-950">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-emerald-900/70">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <InstallAppButton />
+    </main>
+  );
+}

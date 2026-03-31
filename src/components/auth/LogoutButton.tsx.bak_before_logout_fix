@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Props = {
@@ -9,38 +10,22 @@ type Props = {
 };
 
 export default function LogoutButton({ compact = false, className = "" }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
     try {
       setLoading(true);
 
-      if (!supabase?.auth) {
-        throw new Error("Client Supabase indisponible");
+      if (supabase?.auth) {
+        await supabase.auth.signOut({ scope: "local" });
       }
 
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
-
-      // Nettoyer les storages locaux (compatibilité)
-      try {
-        localStorage.clear();
-      } catch {}
-
-      try {
-        sessionStorage.clear();
-      } catch {}
-
-      // Redirection immédiate vers login
-      window.location.replace("/login");
+      router.push("/login");
+      router.refresh();
     } catch (error) {
       console.error("Erreur logout:", error);
-      alert("La déconnexion a échoué. Veuillez réessayer.");
     } finally {
-      // S'assurer que le loading est toujours relâché
       setLoading(false);
     }
   }
