@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
 type DemandeAideData = {
   id: string;
@@ -25,76 +24,85 @@ type AideSolidariteData = {
   commentaire: string | null;
 };
 
+type ResumeData = {
+  totalDemandesAide: number;
+  totalAidesAccordees: number;
+  montantTotalAccorde: number;
+};
+
+type AidesApiResponse = {
+  demandesAide: DemandeAideData[];
+  aidesSolidarite: AideSolidariteData[];
+  resume: ResumeData;
+};
+
 export default function AidesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [demandesAide, setDemandesAide] = useState<DemandeAideData[]>([]);
   const [aidesSolidarite, setAidesSolidarite] = useState<AideSolidariteData[]>([]);
+  const [resume, setResume] = useState<ResumeData>({
+    totalDemandesAide: 0,
+    totalAidesAccordees: 0,
+    montantTotalAccorde: 0
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadAidesData() {
       try {
         setLoading(true);
         setError(null);
 
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        const response = await fetch("/api/aides", {
+          method: "GET",
+          cache: "no-store"
+        });
 
-        if (sessionError) throw sessionError;
-        if (!session?.user?.id) throw new Error("Session utilisateur introuvable");
+        const payload = await response.json();
 
-        const authUserId = session.user.id;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Erreur lors du chargement des aides");
+        }
 
-        const { data: utilisateur, error: utilisateurError } = await supabase
-          .from("utilisateurs")
-          .select("id, membre_id")
-          .eq("auth_user_id", authUserId)
-          .maybeSingle();
-
-        if (utilisateurError) throw utilisateurError;
-        if (!utilisateur?.membre_id) throw new Error("Membre non trouvé");
-
-        const membreId = utilisateur.membre_id;
-
-        const [
-          { data: demandesData, error: demandesError },
-          { data: aidesData, error: aidesError },
-        ] = await Promise.all([
-          supabase
-            .from("v_demandes_aide")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_demande", { ascending: false }),
-          supabase
-            .from("v_aides_solidarite")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_aide", { ascending: false }),
-        ]);
-
-        if (demandesError) throw demandesError;
-        if (aidesError) throw aidesError;
-
-        setDemandesAide(demandesData || []);
-        setAidesSolidarite(aidesData || []);
+        if (!cancelled) {
+          const typedPayload = payload as AidesApiResponse;
+          setDemandesAide(typedPayload.demandesAide || []);
+          setAidesSolidarite(typedPayload.aidesSolidarite || []);
+          setResume(
+            typedPayload.resume || {
+              totalDemandesAide: 0,
+              totalAidesAccordees: 0,
+              montantTotalAccorde: 0
+            }
+          );
+        }
       } catch (err: any) {
-        console.error("Erreur aides:", JSON.stringify(err, null, 2), err);
-        setError(err?.message || "Erreur lors du chargement des données");
+        console.error("Erreur aides:", err);
+
+        if (!cancelled) {
+          setError(err?.message || "Erreur lors du chargement des données");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadAidesData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatMontant = (montant: number) =>
     new Intl.NumberFormat("fr-FR", {
       style: "currency",
-      currency: "XOF",
-    }).format(montant);
+      currency: "XOF"
+    }).format(montant || 0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non définie";
@@ -142,10 +150,6 @@ export default function AidesPage() {
     );
   }
 
-  const totalDemandesAide = demandesAide.length;
-  const totalAidesAccordees = aidesSolidarite.length;
-  const montantTotalAccorde = aidesSolidarite.reduce((sum, aide) => sum + aide.montant_accorde, 0);
-
   return (
     <main className="bg-green-50/20 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -166,7 +170,7 @@ export default function AidesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500">Demandes d'aide</p>
-                <p className="text-2xl font-bold text-slate-900">{totalDemandesAide}</p>
+                <p className="text-2xl font-bold text-slate-900">{resume.totalDemandesAide}</p>
               </div>
             </div>
           </div>
@@ -180,7 +184,7 @@ export default function AidesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500">Aides accordées</p>
-                <p className="text-2xl font-bold text-green-700">{totalAidesAccordees}</p>
+                <p className="text-2xl font-bold text-green-700">{resume.totalAidesAccordees}</p>
               </div>
             </div>
           </div>
@@ -194,7 +198,7 @@ export default function AidesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500">Montant total</p>
-                <p className="text-2xl font-bold text-emerald-700">{formatMontant(montantTotalAccorde)}</p>
+                <p className="text-2xl font-bold text-emerald-700">{formatMontant(resume.montantTotalAccorde)}</p>
               </div>
             </div>
           </div>
