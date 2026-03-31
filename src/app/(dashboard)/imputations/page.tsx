@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
 type MontantAttenteData = {
   id: string;
@@ -29,6 +28,12 @@ type ResumeData = {
   nombre_imputations: number;
 };
 
+type ImputationsApiResponse = {
+  montantsAttente: MontantAttenteData[];
+  imputations: ImputationData[];
+  resume: ResumeData;
+};
+
 export default function ImputationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,92 +42,60 @@ export default function ImputationsPage() {
   const [resume, setResume] = useState<ResumeData | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadImputationsData() {
       try {
         setLoading(true);
         setError(null);
 
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          throw sessionError;
-        }
-
-        if (!session?.user?.id) {
-          throw new Error("Session utilisateur introuvable");
-        }
-
-        const authUserId = session.user.id;
-
-        const { data: utilisateur, error: utilisateurError } = await supabase
-          .from("utilisateurs")
-          .select("id, membre_id")
-          .eq("auth_user_id", authUserId)
-          .maybeSingle();
-
-        if (utilisateurError) {
-          throw utilisateurError;
-        }
-
-        if (!utilisateur?.membre_id) {
-          throw new Error("Membre non trouvé");
-        }
-
-        const membreId = utilisateur.membre_id;
-
-        const { data: montantsData, error: montantsError } = await supabase
-          .from("v_montants_attente")
-          .select("*")
-          .eq("membre_id", membreId)
-          .order("date", { ascending: false });
-
-        if (montantsError) {
-          throw montantsError;
-        }
-
-        const { data: imputationsData, error: imputationsError } = await supabase
-          .from("v_imputations")
-          .select("*")
-          .eq("membre_id", membreId)
-          .order("date", { ascending: false });
-
-        if (imputationsError) {
-          throw imputationsError;
-        }
-
-        const safeMontants = montantsData || [];
-        const safeImputations = imputationsData || [];
-
-        setMontantsAttente(safeMontants);
-        setImputations(safeImputations);
-
-        setResume({
-          total_montants_attente: safeMontants.reduce(
-            (sum, m) => sum + (m.montant_restant || 0),
-            0
-          ),
-          total_impute: safeImputations.reduce((sum, i) => sum + (i.montant || 0), 0),
-          nombre_imputations: safeImputations.length,
+        const response = await fetch("/api/imputations", {
+          method: "GET",
+          cache: "no-store"
         });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "Erreur lors du chargement des imputations");
+        }
+
+        if (!cancelled) {
+          const typedPayload = payload as ImputationsApiResponse;
+          setMontantsAttente(typedPayload.montantsAttente || []);
+          setImputations(typedPayload.imputations || []);
+          setResume(
+            typedPayload.resume || {
+              total_montants_attente: 0,
+              total_impute: 0,
+              nombre_imputations: 0
+            }
+          );
+        }
       } catch (err: any) {
-        console.error("Erreur imputations:", JSON.stringify(err, null, 2), err);
-        setError(err?.message || "Erreur lors du chargement des données");
+        console.error("Erreur imputations:", err);
+        if (!cancelled) {
+          setError(err?.message || "Erreur lors du chargement des données");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadImputationsData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatMontant = (montant: number) =>
     new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: "XOF",
-    }).format(montant);
+    }).format(montant || 0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non définie";
@@ -207,7 +180,7 @@ export default function ImputationsPage() {
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
               <p className="text-sm font-medium text-slate-500">Situation globale</p>
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMontant(resume.total_montants_attente + resume.total_impute)}
+                {formatMontant((resume.total_montants_attente || 0) + (resume.total_impute || 0))}
               </p>
               <p className="mt-2 text-sm text-slate-500">Total des montants visibles</p>
             </div>
@@ -241,11 +214,7 @@ export default function ImputationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(
-                          montant.statut
-                        )}`}
-                      >
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(montant.statut)}`}>
                         {montant.statut}
                       </span>
                       <span className="text-xs text-slate-500">{formatDate(montant.date)}</span>
