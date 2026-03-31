@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
 type DemandePretData = {
   id: string;
@@ -35,85 +34,91 @@ type RemboursementData = {
   reference_paiement: string | null;
 };
 
+type ResumeData = {
+  totalPrets: number;
+  soldeRestantCumule: number;
+  totalRembourse: number;
+  totalDemandesPret: number;
+};
+
+type PretsApiResponse = {
+  demandesPret: DemandePretData[];
+  prets: PretData[];
+  remboursements: RemboursementData[];
+  resume: ResumeData;
+};
+
 export default function PretsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [demandesPret, setDemandesPret] = useState<DemandePretData[]>([]);
   const [prets, setPrets] = useState<PretData[]>([]);
   const [remboursements, setRemboursements] = useState<RemboursementData[]>([]);
+  const [resume, setResume] = useState<ResumeData>({
+    totalPrets: 0,
+    soldeRestantCumule: 0,
+    totalRembourse: 0,
+    totalDemandesPret: 0
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadPretsData() {
       try {
         setLoading(true);
         setError(null);
 
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        const response = await fetch("/api/prets", {
+          method: "GET",
+          cache: "no-store"
+        });
 
-        if (sessionError) throw sessionError;
-        if (!session?.user?.id) throw new Error("Session utilisateur introuvable");
+        const payload = await response.json();
 
-        const authUserId = session.user.id;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Erreur lors du chargement des prêts");
+        }
 
-        const { data: utilisateur, error: utilisateurError } = await supabase
-          .from("utilisateurs")
-          .select("id, membre_id")
-          .eq("auth_user_id", authUserId)
-          .maybeSingle();
-
-        if (utilisateurError) throw utilisateurError;
-        if (!utilisateur?.membre_id) throw new Error("Membre non trouvé");
-
-        const membreId = utilisateur.membre_id;
-
-        const [
-          { data: demandesData, error: demandesError },
-          { data: pretsData, error: pretsError },
-          { data: remboursementsData, error: remboursementsError },
-        ] = await Promise.all([
-          supabase
-            .from("v_demandes_prets")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_demande", { ascending: false }),
-          supabase
-            .from("v_prets_detail")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_octroi", { ascending: false }),
-          supabase
-            .from("v_remboursements_detail")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_remboursement", { ascending: false }),
-        ]);
-
-        if (demandesError) throw demandesError;
-        if (pretsError) throw pretsError;
-        if (remboursementsError) throw remboursementsError;
-
-        setDemandesPret(demandesData || []);
-        setPrets(pretsData || []);
-        setRemboursements(remboursementsData || []);
+        if (!cancelled) {
+          const typedPayload = payload as PretsApiResponse;
+          setDemandesPret(typedPayload.demandesPret || []);
+          setPrets(typedPayload.prets || []);
+          setRemboursements(typedPayload.remboursements || []);
+          setResume(
+            typedPayload.resume || {
+              totalPrets: 0,
+              soldeRestantCumule: 0,
+              totalRembourse: 0,
+              totalDemandesPret: 0
+            }
+          );
+        }
       } catch (err: any) {
-        console.error("Erreur prêts:", JSON.stringify(err, null, 2), err);
-        setError(err?.message || "Erreur lors du chargement des données");
+        console.error("Erreur prêts:", err);
+
+        if (!cancelled) {
+          setError(err?.message || "Erreur lors du chargement des données");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadPretsData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatMontant = (montant: number) =>
     new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: "XOF",
-    }).format(montant);
+    }).format(montant || 0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non définie";
@@ -167,11 +172,6 @@ export default function PretsPage() {
     );
   }
 
-  const totalPrets = prets.length;
-  const soldeRestantCumule = prets.reduce((sum, pret) => sum + pret.solde_restant, 0);
-  const totalRembourse = remboursements.reduce((sum, r) => sum + r.montant_rembourse, 0);
-  const totalDemandesPret = demandesPret.length;
-
   return (
     <main className="bg-green-50/20 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -185,22 +185,22 @@ export default function PretsPage() {
         <section className="grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Total prêts</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{totalPrets}</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{resume.totalPrets}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Solde restant</p>
-            <p className="mt-2 text-2xl font-bold text-orange-700">{formatMontant(soldeRestantCumule)}</p>
+            <p className="mt-2 text-2xl font-bold text-orange-700">{formatMontant(resume.soldeRestantCumule)}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Total remboursé</p>
-            <p className="mt-2 text-2xl font-bold text-green-700">{formatMontant(totalRembourse)}</p>
+            <p className="mt-2 text-2xl font-bold text-green-700">{formatMontant(resume.totalRembourse)}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Demandes de prêt</p>
-            <p className="mt-2 text-2xl font-bold text-purple-700">{totalDemandesPret}</p>
+            <p className="mt-2 text-2xl font-bold text-purple-700">{resume.totalDemandesPret}</p>
           </div>
         </section>
 
