@@ -24,10 +24,6 @@ type Gagnant = {
 };
 
 type CycleParams = {
-  mise_brute_unitaire?: number;
-  contribution_globale_mensuelle?: number;
-  contribution_globale_cycle?: number;
-  calcul_detail?: string | null;
   configured: boolean;
   libelle_cycle?: string;
   montant_fixe_par_tontineur?: number;
@@ -608,7 +604,6 @@ export default function TontinePage() {
     </main>
   );
 }
-
 
 
 
