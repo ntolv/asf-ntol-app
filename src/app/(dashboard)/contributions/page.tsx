@@ -35,7 +35,7 @@ type LigneState = {
 };
 
 function formatFcfa(value: number) {
-  return new Intl.NumberFormat("fr-FR").format(value) + " FCFA";
+  return `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 }
 
 function getTodayIsoDate() {
@@ -49,8 +49,8 @@ function getTodayIsoDate() {
 export default function ContributionsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [membres, setMembres] = useState<MembreOption[]>([]);
   const [rubriques, setRubriques] = useState<RubriqueOption[]>([]);
@@ -75,7 +75,7 @@ export default function ContributionsPage() {
         const result = (await response.json()) as FormDataResponse;
 
         if (!response.ok || !result?.success) {
-          throw new Error(result?.message || "Impossible de charger les données");
+          throw new Error(result?.message || "Impossible de charger les donnÃ©es");
         }
 
         if (!mounted) return;
@@ -152,7 +152,7 @@ export default function ContributionsPage() {
     setSuccess("");
 
     if (!membreId) {
-      setError("Sélectionne un membre");
+      setError("SÃ©lectionne un membre");
       return;
     }
 
@@ -183,7 +183,7 @@ export default function ContributionsPage() {
       }
 
       setSuccess(
-        `Contribution enregistrée avec succès. Total : ${formatFcfa(Number(result.montant_total ?? total))}`
+        `Contribution enregistrÃ©e avec succÃ¨s. Total : ${formatFcfa(Number(result.montant_total ?? total))}`
       );
       resetFormMontants();
     } catch (err: any) {
@@ -203,8 +203,8 @@ export default function ContributionsPage() {
           Contributions
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
-          Saisie d'une participation financière par membre, ventilée sur plusieurs rubriques.
-          La logique métier reste côté backend.
+          Saisie d&apos;une participation financiÃ¨re par membre, ventilÃ©e sur plusieurs rubriques.
+          La logique mÃ©tier reste cÃ´tÃ© backend.
         </p>
       </div>
 
@@ -228,9 +228,9 @@ export default function ContributionsPage() {
                   <select
                     value={membreId}
                     onChange={(e) => setMembreId(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                   >
-                    <option value="">Sélectionner un membre</option>
+                    <option value="">SÃ©lectionner un membre</option>
                     {membres.map((membre) => (
                       <option key={membre.id} value={membre.id}>
                         {membre.nom_complet}
@@ -247,19 +247,17 @@ export default function ContributionsPage() {
                     type="date"
                     value={dateContribution}
                     onChange={(e) => setDateContribution(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                   />
                 </label>
               </div>
 
               <div className="mt-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
-                    <p className="text-sm text-slate-500">
-                      Saisis les montants par rubrique puis enregistre l'opération.
-                    </p>
-                  </div>
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
+                  <p className="text-sm text-slate-500">
+                    Saisis les montants par rubrique puis enregistre l&apos;opÃ©ration.
+                  </p>
                 </div>
 
                 <div className="space-y-4">
@@ -310,7 +308,7 @@ export default function ContributionsPage() {
                               onClick={() => setLigneMontant(ligne.rubrique_id, 0)}
                               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
                             >
-                              Réinitialiser
+                              RÃ©initialiser
                             </button>
                           </div>
                         </div>
@@ -332,15 +330,16 @@ export default function ContributionsPage() {
             <div className="space-y-4">
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Résumé
+                  RÃ©sumÃ©
                 </p>
+
                 <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+                  <div className="rounded-2xl border border-white bg-white p-4">
                     <p className="text-sm text-slate-500">Nombre de lignes actives</p>
                     <p className="mt-1 text-2xl font-bold text-slate-900">{lignesActives.length}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+                  <div className="rounded-2xl border border-white bg-white p-4">
                     <p className="text-sm text-slate-500">Montant total saisi</p>
                     <p className="mt-1 text-2xl font-bold text-emerald-700">
                       {formatFcfa(total)}
@@ -361,7 +360,7 @@ export default function ContributionsPage() {
                     disabled={submitting}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Réinitialiser tous les montants
+                    RÃ©initialiser tous les montants
                   </button>
                 </div>
               </div>
@@ -379,7 +378,8 @@ export default function ContributionsPage() {
               ) : null}
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Aperçu des lignes actives</h3>
+                <h3 className="text-base font-semibold text-slate-900">AperÃ§u des lignes actives</h3>
+
                 <div className="mt-4 space-y-3">
                   {lignesActives.length === 0 ? (
                     <p className="text-sm text-slate-500">Aucune ligne saisie pour le moment.</p>

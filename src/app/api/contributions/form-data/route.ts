@@ -73,7 +73,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Impossible de charger les données du formulaire de contribution",
+        message: error?.message || "Impossible de charger les donnÃ©es du formulaire de contribution",
       },
       { status: 500 }
     );

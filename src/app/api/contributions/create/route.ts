@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: result?.message || "Création de la contribution impossible",
+          message: result?.message || "CrÃ©ation de la contribution impossible",
         },
         { status: 400 }
       );
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: result.message || "Contribution enregistrée avec succès",
+      message: result.message || "Contribution enregistrÃ©e avec succÃ¨s",
       contribution_id: result.contribution_id,
       membre_id: result.membre_id,
       montant_total: result.montant_total,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Erreur serveur lors de la création de la contribution",
+        message: error?.message || "Erreur serveur lors de la crÃ©ation de la contribution",
       },
       { status: 500 }
     );
