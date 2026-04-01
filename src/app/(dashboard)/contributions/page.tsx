@@ -1,376 +1,411 @@
-ï»¿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type ContributionData = {
+type MembreOption = {
   id: string;
-  periode: string;
-  montant_total: number;
-  mode_paiement: string | null;
-  statut: string;
-  date_paiement: string | null;
+  nom_complet: string;
 };
 
-type MontantAttenteData = {
+type RubriqueOption = {
   id: string;
-  montant_initial: number;
-  montant_restant: number;
-  statut: string;
-  date: string | null;
+  nom: string;
 };
 
-type RetardData = {
-  id: string;
-  rubrique: string;
-  periode: string;
-  montant_attendu: number;
-  montant_paye: number;
-  reste_a_payer: number;
-  statut: string;
-};
-
-type ResumeData = {
-  total_contributions: number;
-  total_montants_attente: number;
-  total_retards: number;
-  nombre_contributions: number;
-};
-
-type ContributionsApiResponse = {
+type FormDataResponse = {
   success: boolean;
-  data?: {
-    contributions: ContributionData[];
-    montantsAttente: MontantAttenteData[];
-    retards: RetardData[];
-    resume: ResumeData;
-  };
-  error?: string;
+  membres?: MembreOption[];
+  rubriques?: RubriqueOption[];
+  message?: string;
 };
+
+type CreateResponse = {
+  success: boolean;
+  message?: string;
+  contribution_id?: string;
+  membre_id?: string;
+  montant_total?: number;
+  date_contribution?: string;
+};
+
+type LigneState = {
+  rubrique_id: string;
+  rubrique_nom: string;
+  montant: number;
+};
+
+function formatFcfa(value: number) {
+  return new Intl.NumberFormat("fr-FR").format(value) + " FCFA";
+}
+
+function getTodayIsoDate() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export default function ContributionsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [contributions, setContributions] = useState<ContributionData[]>([]);
-  const [montantsAttente, setMontantsAttente] = useState<MontantAttenteData[]>([]);
-  const [retards, setRetards] = useState<RetardData[]>([]);
-  const [resume, setResume] = useState<ResumeData | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+
+  const [membres, setMembres] = useState<MembreOption[]>([]);
+  const [rubriques, setRubriques] = useState<RubriqueOption[]>([]);
+
+  const [membreId, setMembreId] = useState("");
+  const [dateContribution, setDateContribution] = useState(getTodayIsoDate());
+  const [lignes, setLignes] = useState<LigneState[]>([]);
 
   useEffect(() => {
-    async function loadContributionsData() {
-      try {
-        setLoading(true);
-        setError(null);
+    let mounted = true;
 
-        const response = await fetch("/api/contributions", {
+    async function loadFormData() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("/api/contributions/form-data", {
           method: "GET",
           cache: "no-store",
         });
 
-        const result: ContributionsApiResponse = await response.json();
+        const result = (await response.json()) as FormDataResponse;
 
-        if (!response.ok || !result?.success || !result?.data) {
-          throw new Error(result?.error || "Erreur lors du chargement des donnÃ©es");
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.message || "Impossible de charger les données");
         }
 
-        setContributions(result.data.contributions || []);
-        setMontantsAttente(result.data.montantsAttente || []);
-        setRetards(result.data.retards || []);
-        setResume(result.data.resume || null);
+        if (!mounted) return;
+
+        const membresData = result.membres ?? [];
+        const rubriquesData = result.rubriques ?? [];
+
+        setMembres(membresData);
+        setRubriques(rubriquesData);
+        setLignes(
+          rubriquesData.map((rubrique) => ({
+            rubrique_id: rubrique.id,
+            rubrique_nom: rubrique.nom,
+            montant: 0,
+          }))
+        );
       } catch (err: any) {
-        console.error("Erreur contributions:", err);
-        setError(err?.message || "Erreur lors du chargement des donnÃ©es");
+        if (!mounted) return;
+        setError(err?.message || "Erreur de chargement");
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
-    loadContributionsData();
+    loadFormData();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const formatMontant = (montant: number) =>
-    new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "XOF",
-    }).format(montant);
+  const total = useMemo(() => {
+    return lignes.reduce((sum, ligne) => sum + (Number.isFinite(ligne.montant) ? ligne.montant : 0), 0);
+  }, [lignes]);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Non dÃ©finie";
-    return new Date(dateString).toLocaleDateString("fr-FR");
-  };
+  const lignesActives = useMemo(() => {
+    return lignes
+      .filter((ligne) => ligne.montant > 0)
+      .map((ligne) => ({
+        rubrique_id: ligne.rubrique_id,
+        montant: ligne.montant,
+      }));
+  }, [lignes]);
 
-  const getStatutColor = (statut: string) => {
-    switch ((statut || "").toLowerCase()) {
-      case "payÃ©":
-      case "payee":
-      case "payÃ©e":
-        return "text-green-700 bg-green-50";
-      case "en attente":
-      case "en_attente":
-        return "text-yellow-700 bg-yellow-50";
-      case "retard":
-      case "en retard":
-      case "en_retard":
-        return "text-red-700 bg-red-50";
-      default:
-        return "text-slate-700 bg-slate-100";
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <section>
-          <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
-          <p className="mt-2 text-slate-600">
-            GÃ©rez vos contributions, montants en attente et retards.
-          </p>
-        </section>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-              <div className="animate-pulse">
-                <div className="mb-3 h-4 w-20 rounded bg-slate-200"></div>
-                <div className="mb-2 h-8 w-24 rounded bg-slate-200"></div>
-                <div className="h-3 w-16 rounded bg-slate-200"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <div className="animate-pulse">
-            <div className="mb-4 h-6 w-32 rounded bg-slate-200"></div>
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="border-b border-slate-100 pb-3">
-                  <div className="grid grid-cols-5 gap-4">
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                    <div className="h-4 rounded bg-slate-200"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+  function setLigneMontant(rubriqueId: string, nextValue: number) {
+    setLignes((prev) =>
+      prev.map((ligne) =>
+        ligne.rubrique_id === rubriqueId
+          ? { ...ligne, montant: nextValue < 0 ? 0 : nextValue }
+          : ligne
+      )
     );
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <section>
-          <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
-          <p className="mt-2 text-slate-600">
-            GÃ©rez vos contributions, montants en attente et retards.
-          </p>
-        </section>
-
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-          <p className="font-semibold">Erreur lors du chargement des donnÃ©es</p>
-          <p className="mt-2 text-sm">{error}</p>
-        </div>
-      </div>
+  function incrementLigne(rubriqueId: string, increment: number) {
+    setLignes((prev) =>
+      prev.map((ligne) =>
+        ligne.rubrique_id === rubriqueId
+          ? { ...ligne, montant: Math.max(0, ligne.montant + increment) }
+          : ligne
+      )
     );
+  }
+
+  function resetFormMontants() {
+    setLignes((prev) => prev.map((ligne) => ({ ...ligne, montant: 0 })));
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!membreId) {
+      setError("Sélectionne un membre");
+      return;
+    }
+
+    if (lignesActives.length === 0) {
+      setError("Saisis au moins un montant sur une rubrique");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/contributions/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          membre_id: membreId,
+          date_contribution: dateContribution,
+          lignes: lignesActives,
+        }),
+      });
+
+      const result = (await response.json()) as CreateResponse;
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Erreur lors de l'enregistrement");
+      }
+
+      setSuccess(
+        `Contribution enregistrée avec succès. Total : ${formatFcfa(Number(result.montant_total ?? total))}`
+      );
+      resetFormMontants();
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors de l'enregistrement");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h1 className="text-3xl font-bold text-slate-900">Contributions</h1>
-        <p className="mt-2 text-slate-600">
-          GÃ©rez vos contributions, montants en attente et retards.
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          ASF-NTOL
         </p>
-      </section>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+          Contributions
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
+          Saisie d'une participation financière par membre, ventilée sur plusieurs rubriques.
+          La logique métier reste côté backend.
+        </p>
+      </div>
 
-      {resume && (
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <p className="text-sm font-medium text-slate-500">Contributions</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatMontant(resume.total_contributions)}
-            </p>
-            <p className="mt-2 text-sm text-slate-500">
-              {resume.nombre_contributions} contribution{resume.nombre_contributions > 1 ? "s" : ""}
-            </p>
-          </div>
+      {loading ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-600">Chargement du formulaire...</p>
+        </div>
+      ) : error && membres.length === 0 && rubriques.length === 0 ? (
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
+          <p className="text-sm font-medium text-red-700">{error}</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">
+                    Membre
+                  </span>
+                  <select
+                    value={membreId}
+                    onChange={(e) => setMembreId(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                  >
+                    <option value="">Sélectionner un membre</option>
+                    {membres.map((membre) => (
+                      <option key={membre.id} value={membre.id}>
+                        {membre.nom_complet}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <p className="text-sm font-medium text-slate-500">Montants en attente</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatMontant(resume.total_montants_attente)}
-            </p>
-            <p className="mt-2 text-sm text-slate-500">
-              {montantsAttente.length} montant{montantsAttente.length > 1 ? "s" : ""} en attente
-            </p>
-          </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">
+                    Date de contribution
+                  </span>
+                  <input
+                    type="date"
+                    value={dateContribution}
+                    onChange={(e) => setDateContribution(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                  />
+                </label>
+              </div>
 
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <p className="text-sm font-medium text-slate-500">Retards</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatMontant(resume.total_retards)}
-            </p>
-            <p className="mt-2 text-sm text-slate-500">
-              {retards.length} retard{retards.length > 1 ? "s" : ""}
-            </p>
-          </div>
+              <div className="mt-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
+                    <p className="text-sm text-slate-500">
+                      Saisis les montants par rubrique puis enregistre l'opération.
+                    </p>
+                  </div>
+                </div>
 
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <p className="text-sm font-medium text-slate-500">Situation globale</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatMontant(
-                resume.total_contributions +
-                  resume.total_montants_attente +
-                  resume.total_retards
-              )}
-            </p>
-            <p className="mt-2 text-sm text-slate-500">Total des engagements visibles</p>
+                <div className="space-y-4">
+                  {lignes.map((ligne) => (
+                    <div
+                      key={ligne.rubrique_id}
+                      className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold text-slate-900">
+                            {ligne.rubrique_nom}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <input
+                            type="number"
+                            min="0"
+                            step="100"
+                            value={ligne.montant}
+                            onChange={(e) =>
+                              setLigneMontant(
+                                ligne.rubrique_id,
+                                Math.max(0, Number(e.target.value || 0))
+                              )
+                            }
+                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 sm:w-[180px]"
+                          />
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => incrementLigne(ligne.rubrique_id, 1000)}
+                              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400"
+                            >
+                              +1000 FCFA
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => incrementLigne(ligne.rubrique_id, 5000)}
+                              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400"
+                            >
+                              +5000 FCFA
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLigneMontant(ligne.rubrique_id, 0)}
+                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
+                            >
+                              Réinitialiser
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {rubriques.length === 0 ? (
+                    <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-sm font-medium text-amber-700">
+                        Aucune rubrique active disponible.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Résumé
+                </p>
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+                    <p className="text-sm text-slate-500">Nombre de lignes actives</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900">{lignesActives.length}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+                    <p className="text-sm text-slate-500">Montant total saisi</p>
+                    <p className="mt-1 text-2xl font-bold text-emerald-700">
+                      {formatFcfa(total)}
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || rubriques.length === 0}
+                    className="w-full rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitting ? "Enregistrement..." : "Enregistrer"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={resetFormMontants}
+                    disabled={submitting}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Réinitialiser tous les montants
+                  </button>
+                </div>
+              </div>
+
+              {success ? (
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                  <p className="text-sm font-medium text-emerald-700">{success}</p>
+                </div>
+              ) : null}
+
+              {error ? (
+                <div className="rounded-3xl border border-red-200 bg-red-50 p-4 shadow-sm">
+                  <p className="text-sm font-medium text-red-700">{error}</p>
+                </div>
+              ) : null}
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">Aperçu des lignes actives</h3>
+                <div className="mt-4 space-y-3">
+                  {lignesActives.length === 0 ? (
+                    <p className="text-sm text-slate-500">Aucune ligne saisie pour le moment.</p>
+                  ) : (
+                    lignes
+                      .filter((ligne) => ligne.montant > 0)
+                      .map((ligne) => (
+                        <div
+                          key={ligne.rubrique_id}
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                        >
+                          <span className="text-sm font-medium text-slate-700">
+                            {ligne.rubrique_nom}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-900">
+                            {formatFcfa(ligne.montant)}
+                          </span>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
+        </form>
       )}
-
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <h2 className="mb-4 text-xl font-semibold text-slate-900">Contributions</h2>
-
-        {contributions.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-            Aucune contribution enregistrÃ©e.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="pb-3 text-left text-sm font-medium text-slate-500">PÃ©riode</th>
-                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Montant</th>
-                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Mode de paiement</th>
-                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Statut</th>
-                  <th className="pb-3 text-left text-sm font-medium text-slate-500">Date de paiement</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {contributions.map((contribution) => (
-                  <tr key={contribution.id} className="transition-colors hover:bg-slate-50">
-                    <td className="py-4 text-sm font-medium text-slate-900">{contribution.periode}</td>
-                    <td className="py-4 text-sm font-semibold text-slate-900">
-                      {formatMontant(Number(contribution.montant_total || 0))}
-                    </td>
-                    <td className="py-4 text-sm text-slate-600">
-                      {contribution.mode_paiement || "Non spÃ©cifiÃ©"}
-                    </td>
-                    <td className="py-4">
-                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(contribution.statut)}`}>
-                        {contribution.statut}
-                      </span>
-                    </td>
-                    <td className="py-4 text-sm text-slate-600">
-                      {formatDate(contribution.date_paiement)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <h2 className="mb-4 text-xl font-semibold text-slate-900">Montants en attente</h2>
-
-        {montantsAttente.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-            Aucun montant en attente.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {montantsAttente.map((montant) => (
-              <div key={montant.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500">Montant initial</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {formatMontant(Number(montant.montant_initial || 0))}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-slate-500">Montant restant</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {formatMontant(Number(montant.montant_restant || 0))}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(montant.statut)}`}>
-                      {montant.statut}
-                    </span>
-                    <span className="text-xs text-slate-500">{formatDate(montant.date)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <h2 className="mb-4 text-xl font-semibold text-slate-900">Retards</h2>
-
-        {retards.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-            Aucun retard enregistrÃ©.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {retards.map((retard) => (
-              <div key={retard.id} className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1">
-                    <div className="mb-2">
-                      <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                        {retard.rubrique}
-                      </span>
-                      <span className="ml-2 text-sm font-medium text-slate-900">{retard.periode}</span>
-                    </div>
-
-                    <div className="grid gap-2 md:grid-cols-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Attendu</p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {formatMontant(Number(retard.montant_attendu || 0))}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">PayÃ©</p>
-                        <p className="text-sm font-semibold text-green-700">
-                          {formatMontant(Number(retard.montant_paye || 0))}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Reste Ã  payer</p>
-                        <p className="text-sm font-semibold text-red-700">
-                          {formatMontant(Number(retard.reste_a_payer || 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(retard.statut)}`}>
-                      {retard.statut}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
