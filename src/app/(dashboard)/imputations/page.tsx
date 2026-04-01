@@ -1,133 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type MontantAttenteData = {
-  id: string;
-  membre_id: string;
-  nom_complet: string;
-  montant_initial: number;
-  montant_restant: number;
-  statut: string;
-  date: string | null;
-};
-
-type ImputationData = {
-  id: string;
-  membre_id: string;
-  nom_complet: string;
-  rubrique: string;
-  periode: string;
-  montant: number;
-  date: string;
-};
-
-type ResumeData = {
-  total_montants_attente: number;
-  total_impute: number;
-  nombre_imputations: number;
-};
-
-type ImputationsApiResponse = {
-  montantsAttente: MontantAttenteData[];
-  imputations: ImputationData[];
-  resume: ResumeData;
-};
-
 export default function ImputationsPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [montantsAttente, setMontantsAttente] = useState<MontantAttenteData[]>([]);
-  const [imputations, setImputations] = useState<ImputationData[]>([]);
-  const [resume, setResume] = useState<ResumeData | null>(null);
+  return (
+    <main className="space-y-6 p-4 md:p-6">
+      <section className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          ASF-NTOL
+        </p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+          Imputations
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
+          Cette page sera dédiée à la lecture des imputations générées automatiquement
+          par le backend à partir des contributions enregistrées.
+        </p>
+      </section>
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadImputationsData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch("/api/imputations", {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "Erreur lors du chargement des imputations");
-        }
-
-        if (!cancelled) {
-          const typedPayload = payload as ImputationsApiResponse;
-          setMontantsAttente(typedPayload.montantsAttente || []);
-          setImputations(typedPayload.imputations || []);
-          setResume(
-            typedPayload.resume || {
-              total_montants_attente: 0,
-              total_impute: 0,
-              nombre_imputations: 0
-            }
-          );
-        }
-      } catch (err: any) {
-        console.error("Erreur imputations:", err);
-        if (!cancelled) {
-          setError(err?.message || "Erreur lors du chargement des données");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadImputationsData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const formatMontant = (montant: number) =>
-    new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "XOF",
-    }).format(montant || 0);
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Non définie";
-    return new Date(dateString).toLocaleDateString("fr-FR");
-  };
-
-  const getStatutColor = (statut: string) => {
-    switch ((statut || "").toLowerCase()) {
-      case "payé":
-      case "payee":
-      case "valide":
-      case "validée":
-        return "text-green-700 bg-green-50";
-      case "en attente":
-      case "en_attente":
-      case "partiellement_impute":
-        return "text-yellow-700 bg-yellow-50";
-      case "retard":
-      case "en retard":
-      case "en_retard":
-        return "text-red-700 bg-red-50";
-      default:
-        return "text-slate-700 bg-slate-100";
-    }
-  };
-
-  if (loading) {
-    return (
-      <main className="p-6">
-        
-        </section>
-      </div>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Historique des imputations
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Le bloc de saisie manuelle a été supprimé. L&apos;imputation est désormais
+            réalisée automatiquement lors de l&apos;enregistrement d&apos;une contribution.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
