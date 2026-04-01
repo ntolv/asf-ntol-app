@@ -228,7 +228,7 @@ export default function TontinePage() {
       }
 
       if (!cycleParams.mise_brute_cycle || cycleParams.mise_brute_cycle <= 0) {
-        alert("La Mise brute du cycle est invalide.");
+        alert("La Contribution globale mensuelle des tontineurs est invalide.");
         return;
       }
 
@@ -389,9 +389,9 @@ export default function TontinePage() {
               </div>
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Mise brute du cycle</p>
+                <p className="text-sm text-emerald-900/65">Contribution globale mensuelle des tontineurs</p>
                 <p className="mt-2 text-xl font-bold text-emerald-950">
-                  {formatMontant(cycleParams?.mise_brute_cycle ?? cycleParams?.mise_brute_unitaire ?? 0)}
+                  {formatMontant(cycleParams?.contribution_globale_mensuelle ?? 0)}
                 </p>
               </div>
 
@@ -426,13 +426,6 @@ export default function TontinePage() {
               >
                 Consulter le tableau de suivi du cycle
               </a>
-
-            <div className="rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
-              <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
-              <p className="mt-3 text-sm font-semibold text-slate-900">
-                {cycleParams?.calcul_detail || "Calcul non disponible"}
-              </p>
-            </div>
             </div>
           </section>
 
@@ -604,7 +597,5 @@ export default function TontinePage() {
     </main>
   );
 }
-
-
 
 
