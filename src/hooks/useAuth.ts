@@ -49,16 +49,23 @@ export function useAuth(): AuthState {
         }
 
         if (!res.ok || result?.success !== true) {
-          console.error("Auth context error:", {
+          console.warn("Auth context warning:", {
             status: res.status,
             statusText: res.statusText,
             result,
             rawText,
           });
+          try {
+            console.warn("Auth context debug JSON:", JSON.stringify({
+              status: res.status,
+              statusText: res.statusText,
+              result,
+              rawText,
+            }, null, 2));
+          } catch {}
           setUser(null);
           setMember(null);
-          setLoading(false);
-          return;
+          setLoading(false); return;
         }
 
         const data = result.data;
