@@ -129,16 +129,55 @@ export async function POST(request: NextRequest) {
       authUserId = createUserResult.data.user?.id ?? null;
     }
 
-    const { data: rpcData, error: finalError } = await supabase.rpc(
-      "fn_finaliser_preinscription",
+    if (authAlreadyExists) {
+      const listUsersResult = await supabase.auth.admin.listUsers();
+
+      if (listUsersResult.error) {
+        throw listUsersResult.error;
+      }
+
+      const existingUser = (listUsersResult.data.users || []).find(
+        (u) => (u.email || "").toLowerCase() === email.toLowerCase()
+      );
+
+      authUserId = existingUser?.id ?? null;
+
+      if (!authUserId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Utilisateur Auth existant introuvable pour finalisation.",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    const finalisationRpc = await supabase.rpc(
+      "fn_finaliser_preinscription_admin",
       {
         p_telephone: telephone,
         p_email_connexion: email,
+        p_auth_user_id: authUserId,
       }
     );
 
-    if (finalError) {
-      throw finalError;
+    if (finalisationRpc.error) {
+      throw finalisationRpc.error;
+    }
+
+    const finalisationRow = Array.isArray(finalisationRpc.data)
+      ? finalisationRpc.data[0]
+      : null;
+
+    if (!finalisationRow?.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: finalisationRow?.message || "La finalisation métier a échoué.",
+        },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
@@ -149,7 +188,7 @@ export async function POST(request: NextRequest) {
       auth_user_created: authUserCreated,
       auth_user_already_exists: authAlreadyExists,
       auth_user_id: authUserId,
-      finalisation: rpcData ?? null,
+      finalisation: finalisationRow,
       redirect_to: "/login",
       email,
     });
