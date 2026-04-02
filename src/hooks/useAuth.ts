@@ -28,19 +28,33 @@ export function useAuth(): AuthState {
         const res = await fetch("/api/auth/context", {
           method: "GET",
           cache: "no-store",
+          credentials: "include",
+          headers: {
+            "Accept": "application/json",
+          },
         });
 
-        let result: any = {};
-try {
-  result = await res.json();
-} catch {
-  result = {};
-}
+        const rawText = await res.text();
 
-        if (!mounted) return;
+        let result: any = null;
+        try {
+          result = rawText ? JSON.parse(rawText) : null;
+        } catch {
+          result = {
+            success: false,
+            message: "Réponse auth invalide (non JSON)",
+            raw: rawText,
+            status: res.status,
+          };
+        }
 
         if (!res.ok || result?.success !== true) {
-          console.error("Auth context error:", result);
+          console.error("Auth context error:", {
+            status: res.status,
+            statusText: res.statusText,
+            result,
+            rawText,
+          });
           setUser(null);
           setMember(null);
           setLoading(false);

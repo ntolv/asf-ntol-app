@@ -67,13 +67,16 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Contexte utilisateur chargé",
-      user,
-      member: context.member ?? null,
-      utilisateur: context.utilisateur ?? null,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Contexte utilisateur chargé",
+        user,
+        member: context.member ?? null,
+        utilisateur: context.utilisateur ?? null,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     return NextResponse.json(
       {
