@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LogoutButton() {
   const router = useRouter();
-  const auth: any = useAuth?.() ?? {};
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
@@ -15,19 +14,12 @@ export default function LogoutButton() {
     setLoading(true);
 
     try {
-      if (typeof auth?.logout === "function") {
-        await auth.logout();
-      } else if (typeof auth?.signOut === "function") {
-        await auth.signOut();
-      }
-
-      router.replace("/login");
-      router.refresh();
+      await supabase.auth.signOut();
     } catch (error) {
       console.error("Erreur de déconnexion :", error);
+    } finally {
       router.replace("/login");
       router.refresh();
-    } finally {
       setLoading(false);
     }
   }
