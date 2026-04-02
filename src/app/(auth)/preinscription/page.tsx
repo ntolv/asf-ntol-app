@@ -1,392 +1,286 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
-import { Phone, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Phone, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
 
 interface MemberData {
-  nom_complet: string
-  compte_active: boolean
-  telephone: string
+  nom_complet: string;
+  compte_active: boolean;
+  telephone: string;
 }
 
+type FinalizeResponse = {
+  success: boolean;
+  message?: string;
+  redirect_to?: string;
+  email?: string;
+};
+
 export default function PreinscriptionPage() {
-  const [telephone, setTelephone] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [step, setStep] = useState<'lookup' | 'register' | 'exists'>('lookup')
-  const [memberData, setMemberData] = useState<MemberData | null>(null)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const router = useRouter()
+  const [telephone, setTelephone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"lookup" | "register" | "exists">("lookup");
+  const [memberData, setMemberData] = useState<MemberData | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const router = useRouter();
 
   const handleLookup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
-      const { data, error } = await supabase.rpc('fn_preinscription_lookup_telephone', {
-        p_telephone: telephone
-      })
+      const { data, error } = await supabase.rpc("fn_preinscription_lookup_telephone", {
+        p_telephone: telephone,
+      });
 
       if (error) {
-        setError('Numéro non reconnu. Veuillez contacter l\'administrateur.')
-        return
+        setError("Numéro non reconnu. Veuillez contacter l'administrateur.");
+        return;
       }
 
       if (data && data.length > 0) {
-        const member = data[0]
+        const member = data[0];
         setMemberData({
           nom_complet: member.nom_complet,
           compte_active: member.compte_active,
-          telephone: member.telephone
-        })
+          telephone: member.telephone,
+        });
 
         if (member.compte_active) {
-          setStep('exists')
-          setSuccess('Votre compte est déjà activé. Veuillez vous connecter.')
+          setStep("exists");
+          setError("Ce compte est déjà activé. Connecte-toi directement.");
         } else {
-          setStep('register')
-          setSuccess(`Bienvenue ${member.nom_complet} ! Veuillez créer votre compte.`)
+          setStep("register");
+          setSuccess(`Membre reconnu : ${member.nom_complet}`);
         }
       } else {
-        setError('Numéro non reconnu. Veuillez contacter l\'administrateur.')
+        setError("Numéro non reconnu. Veuillez contacter l'administrateur.");
       }
-    } catch (err) {
-      setError('Une erreur est survenue. Veuillez réessayer.')
+    } catch {
+      setError("Erreur lors de la vérification. Veuillez réessayer.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    if (!memberData) {
+      setError("Aucun membre trouvé.");
+      setLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
-      setLoading(false)
-      return
+      setError("Les mots de passe ne correspondent pas.");
+      setLoading(false);
+      return;
     }
 
     if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.')
-      setLoading(false)
-      return
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setLoading(false);
+      return;
     }
 
     try {
-      // Créer le compte Supabase Auth avec le client SSR officiel
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            nom_complet: memberData?.nom_complet,
-            telephone: memberData?.telephone
-          }
-        }
-      })
-
-      console.log('📝 signUp résultat:', { authData, authError })
-
-      if (authError) {
-        console.error('❌ Erreur signUp:', authError)
-        setError('Erreur lors de la création du compte: ' + authError.message)
-        return
-      }
-
-      if (!authData.user) {
-        console.error('❌ Aucun utilisateur retourné après signUp')
-        setError('Échec de la création du compte. Veuillez réessayer.')
-        return
-      }
-
-      if (authData.user) {
-        console.log('✅ signUp réussi:', authData.user)
-        
-        // Tenter la connexion avec les mêmes identifiants via le client SSR
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const response = await fetch("/api/auth/preinscription/finaliser", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          telephone: memberData.telephone,
           email,
-          password
-        })
+          password,
+        }),
+      });
 
-        console.log('🔐 signInWithPassword résultat:', { signInData, signInError })
+      const result = (await response.json()) as FinalizeResponse;
 
-        if (signInError) {
-          console.error('❌ Erreur signIn:', signInError)
-          setError('Erreur lors de la connexion. Veuillez réessayer.')
-          return
-        }
-
-        if (!signInData.session) {
-          console.error('❌ Session absente après signIn')
-          setError('Compte créé mais session non active. Vérifiez si une confirmation email est requise ou contactez l\'administrateur.')
-          return
-        }
-
-        console.log('✅ Session active:', signInData.session.user.id)
-
-        // Vérification finale de session
-        const { data: sessionCheck } = await supabase.auth.getSession()
-        console.log('🔍 getSession final:', sessionCheck)
-
-        if (!sessionCheck.session) {
-          console.error('❌ Session non confirmée par getSession')
-          setError('Session non validée. Veuillez confirmer votre email ou contacter l\'administrateur.')
-          return
-        }
-
-        // Finaliser la pré-inscription seulement si session active
-        console.log('📞 Appel fn_finaliser_preinscription avec:', {
-          telephone: memberData?.telephone,
-          email: email
-        })
-
-        const { data: rpcData, error: finalError } = await supabase.rpc('fn_finaliser_preinscription', {
-          p_telephone: memberData?.telephone,
-          p_email_connexion: email
-        })
-
-        console.log('📞 fn_finaliser_preinscription résultat:', { rpcData, finalError })
-
-        if (finalError) {
-          console.error('❌ Erreur RPC finalisation:', finalError)
-          setError('Erreur lors de la finalisation: ' + finalError.message)
-          return
-        }
-
-        console.log('🎉 Pré-inscription finalisée avec succès')
-        // Rediriger vers dashboard
-        router.push('/dashboard')
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Erreur lors de la finalisation");
       }
-    } catch (err) {
-      setError('Une erreur est survenue. Veuillez réessayer.')
+
+      setSuccess(result.message || "Préinscription finalisée avec succès.");
+
+      const target = result.redirect_to || "/login";
+      router.push(`${target}?email=${encodeURIComponent(email)}`);
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors de la finalisation.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="card-3d p-8">
-      {/* Logo */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-2xl mb-4">
-          <span className="text-white font-bold text-2xl">ASF</span>
+    <div className="min-h-screen bg-slate-50 px-4 py-8">
+      <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            ASF-NTOL
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Préinscription</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Active ton accès à partir de ton numéro de téléphone reconnu.
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">NTOL</h1>
-        <p className="text-gray-600 mt-2">Association Famille NTOL</p>
-      </div>
 
-      {/* Messages */}
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
-          <CheckCircle className="w-5 h-5 mr-2" />
-          {success}
-        </div>
-      )}
-
-      {/* Step 1: Lookup */}
-      {step === 'lookup' && (
-        <form onSubmit={handleLookup} className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Première connexion</h2>
-            <p className="text-gray-600">Entrez votre numéro de téléphone pour vérifier votre appartenance à l'association.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Numéro de téléphone
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Phone className="h-5 w-5 text-gray-400" />
+        {step === "lookup" && (
+          <form onSubmit={handleLookup} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Téléphone
+              </label>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={telephone}
+                  onChange={(e) => setTelephone(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-10 py-3 text-sm outline-none transition focus:border-emerald-500"
+                  placeholder="Entrez votre numéro"
+                  required
+                />
               </div>
-              <input
-                type="tel"
-                value={telephone}
-                onChange={(e) => setTelephone(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                placeholder="+228 XX XX XX XX"
-                required
-              />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-primary py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Vérification...
-              </>
-            ) : (
-              <>
-                Vérifier mon numéro
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-        </form>
-      )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {loading ? "Vérification..." : "Vérifier"}
+            </button>
+          </form>
+        )}
 
-      {/* Step 2: Register */}
-      {step === 'register' && memberData && (
-        <form onSubmit={handleRegister} className="space-y-6">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+        {step === "register" && memberData && (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+              <p className="text-sm font-semibold text-emerald-700">{memberData.nom_complet}</p>
+              <p className="mt-1 text-xs text-slate-600">{memberData.telephone}</p>
             </div>
-            <p className="text-lg font-medium text-gray-900">{memberData.nom_complet}</p>
-            <p className="text-sm text-gray-600">Compte à activer</p>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email de connexion
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Email de connexion
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-10 py-3 text-sm outline-none transition focus:border-emerald-500"
+                  placeholder="votre@email.com"
+                  required
+                />
               </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                placeholder="votre@email.com"
-                required
-              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mot de passe
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Mot de passe
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-10 py-3 pr-12 text-sm outline-none transition focus:border-emerald-500"
+                  placeholder="Minimum 6 caractères"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                )}
-              </button>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirmer le mot de passe
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Confirmer le mot de passe
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-10 py-3 pr-12 text-sm outline-none transition focus:border-emerald-500"
+                  placeholder="Confirmez le mot de passe"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                )}
-              </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-primary py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Création du compte...
-              </>
-            ) : (
-              'Créer mon compte'
-            )}
-          </button>
-        </form>
-      )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {loading ? "Finalisation..." : "Finaliser mon inscription"}
+              {!loading && <ArrowRight className="h-4 w-4" />}
+            </button>
+          </form>
+        )}
 
-      {/* Step 3: Account exists */}
-      {step === 'exists' && (
-        <div className="text-center space-y-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
-            <CheckCircle className="w-6 h-6 text-blue-600" />
+        {step === "exists" && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+              Ce compte est déjà activé. Utilise directement la page de connexion.
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+            >
+              Aller à la connexion
+            </button>
           </div>
-          <div>
-            <p className="text-lg font-medium text-gray-900">Compte déjà activé</p>
-            <p className="text-gray-600 mt-2">Votre compte est déjà activé. Veuillez vous connecter.</p>
-          </div>
-          <button
-            onClick={() => router.push('/login')}
-            className="w-full btn-primary py-3 px-4 rounded-lg font-medium transition-colors"
-          >
-            Se connecter
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Links */}
-      <div className="mt-6 text-center space-y-2">
-        <p className="text-sm text-gray-600">
-          Déjà un compte ?{' '}
-          <button
-            onClick={() => router.push('/login')}
-            className="text-green-600 hover:text-green-700 font-medium"
-          >
-            Se connecter
-          </button>
-        </p>
+        {error && (
+          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{success}</span>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }

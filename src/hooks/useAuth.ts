@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -30,11 +30,16 @@ export function useAuth(): AuthState {
           cache: "no-store",
         });
 
-        const result = await res.json();
+        let result: any = {};
+try {
+  result = await res.json();
+} catch {
+  result = {};
+}
 
         if (!mounted) return;
 
-        if (!res.ok || !result.success) {
+        if (!res.ok || result?.success !== true) {
           console.error("Auth context error:", result);
           setUser(null);
           setMember(null);
