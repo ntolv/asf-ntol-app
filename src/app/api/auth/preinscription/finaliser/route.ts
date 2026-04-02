@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+type LookupRow = {
+  nom_complet?: string | null;
+  compte_active?: boolean | null;
+  telephone?: string | null;
+};
+
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,11 +20,19 @@ function getAdminClient() {
   });
 }
 
-type LookupRow = {
-  nom_complet?: string | null;
-  compte_active?: boolean | null;
-  telephone?: string | null;
-};
+function normalizeMessage(error: any) {
+  const message = String(error?.message || "");
+
+  if (!message) {
+    return "Erreur lors de la finalisation de la préinscription";
+  }
+
+  if (message.toLowerCase().includes("already registered")) {
+    return "Cet email est déjà utilisé. Connecte-toi directement ou utilise un autre email.";
+  }
+
+  return message;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,14 +58,13 @@ export async function POST(request: NextRequest) {
 
     if (password.length < 6) {
       return NextResponse.json(
-        { success: false, message: "Le mot de passe doit contenir au moins 6 caractères" },
+        { success: false, message: "Le mot de passe doit contenir au moins 6 caractères." },
         { status: 400 }
       );
     }
 
     const supabase = getAdminClient();
 
-    // 1) Lookup membre préinscrit
     const { data: lookupData, error: lookupError } = await supabase.rpc(
       "fn_preinscription_lookup_telephone",
       { p_telephone: telephone }
@@ -65,7 +78,11 @@ export async function POST(request: NextRequest) {
 
     if (!member) {
       return NextResponse.json(
-        { success: false, message: "Numéro non reconnu. Veuillez contacter l'administrateur." },
+        {
+          success: false,
+          code: "PHONE_NOT_FOUND",
+          message: "Numéro non reconnu. Veuillez contacter l'administrateur.",
+        },
         { status: 404 }
       );
     }
@@ -75,15 +92,15 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           code: "ACCOUNT_ALREADY_ACTIVE",
-          message: "Ce compte est déjà activé. Connecte-toi directement."
+          message: "Ce compte est déjà activé. Connecte-toi directement.",
         },
         { status: 409 }
       );
     }
 
-    // 2) Tenter de créer le compte Auth si nécessaire
     let authUserId: string | null = null;
-    let userAlreadyExists = false;
+    let authUserCreated = false;
+    let authAlreadyExists = false;
 
     const createUserResult = await supabase.auth.admin.createUser({
       email,
@@ -96,23 +113,23 @@ export async function POST(request: NextRequest) {
     });
 
     if (createUserResult.error) {
-      const msg = String(createUserResult.error.message || "");
+      const createUserMessage = String(createUserResult.error.message || "").toLowerCase();
 
       if (
-        msg.toLowerCase().includes("already registered") ||
-        msg.toLowerCase().includes("already been registered") ||
-        msg.toLowerCase().includes("user already registered")
+        createUserMessage.includes("already registered") ||
+        createUserMessage.includes("already been registered") ||
+        createUserMessage.includes("user already registered")
       ) {
-        userAlreadyExists = true;
+        authAlreadyExists = true;
       } else {
         throw createUserResult.error;
       }
     } else {
+      authUserCreated = true;
       authUserId = createUserResult.data.user?.id ?? null;
     }
 
-    // 3) Finalisation métier existante
-    const { data: rpcData, error: rpcError } = await supabase.rpc(
+    const { data: rpcData, error: finalError } = await supabase.rpc(
       "fn_finaliser_preinscription",
       {
         p_telephone: telephone,
@@ -120,17 +137,17 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (rpcError) {
-      throw rpcError;
+    if (finalError) {
+      throw finalError;
     }
 
-    // 4) Réponse propre
     return NextResponse.json({
       success: true,
-      message: userAlreadyExists
-        ? "Compte déjà présent côté authentification. Finalisation métier effectuée. Connecte-toi."
+      message: authAlreadyExists
+        ? "Le compte Auth existait déjà. La finalisation métier a été effectuée. Connecte-toi."
         : "Préinscription finalisée avec succès. Connecte-toi.",
-      auth_user_created: !userAlreadyExists,
+      auth_user_created: authUserCreated,
+      auth_user_already_exists: authAlreadyExists,
       auth_user_id: authUserId,
       finalisation: rpcData ?? null,
       redirect_to: "/login",
@@ -140,7 +157,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Erreur lors de la finalisation de la préinscription",
+        message: normalizeMessage(error),
       },
       { status: 500 }
     );

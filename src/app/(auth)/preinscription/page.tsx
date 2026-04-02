@@ -13,6 +13,7 @@ interface MemberData {
 
 type FinalizeResponse = {
   success: boolean;
+  code?: string;
   message?: string;
   redirect_to?: string;
   email?: string;
@@ -32,7 +33,7 @@ export default function PreinscriptionPage() {
   const [success, setSuccess] = useState("");
   const router = useRouter();
 
-  const handleLookup = async (e: React.FormEvent) => {
+  async function handleLookup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -50,6 +51,7 @@ export default function PreinscriptionPage() {
 
       if (data && data.length > 0) {
         const member = data[0];
+
         setMemberData({
           nom_complet: member.nom_complet,
           compte_active: member.compte_active,
@@ -71,9 +73,9 @@ export default function PreinscriptionPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleRegister = async (e: React.FormEvent) => {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -113,7 +115,7 @@ export default function PreinscriptionPage() {
       const result = (await response.json()) as FinalizeResponse;
 
       if (!response.ok || !result?.success) {
-        throw new Error(result?.message || "Erreur lors de la finalisation");
+        throw new Error(result?.message || "Erreur lors de la finalisation.");
       }
 
       setSuccess(result.message || "Préinscription finalisée avec succès.");
@@ -125,7 +127,7 @@ export default function PreinscriptionPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
