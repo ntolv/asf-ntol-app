@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type MembreOption = {
@@ -35,7 +36,7 @@ type LigneState = {
 };
 
 function formatFcfa(value: number) {
-  return `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
+  return new Intl.NumberFormat("fr-FR").format(value) + " FCFA";
 }
 
 function getTodayIsoDate() {
@@ -49,8 +50,8 @@ function getTodayIsoDate() {
 export default function ContributionsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
 
   const [membres, setMembres] = useState<MembreOption[]>([]);
   const [rubriques, setRubriques] = useState<RubriqueOption[]>([]);
@@ -110,7 +111,10 @@ export default function ContributionsPage() {
   }, []);
 
   const total = useMemo(() => {
-    return lignes.reduce((sum, ligne) => sum + (Number.isFinite(ligne.montant) ? ligne.montant : 0), 0);
+    return lignes.reduce(
+      (sum, ligne) => sum + (Number.isFinite(ligne.montant) ? ligne.montant : 0),
+      0
+    );
   }, [lignes]);
 
   const lignesActives = useMemo(() => {
@@ -183,7 +187,9 @@ export default function ContributionsPage() {
       }
 
       setSuccess(
-        `Contribution enregistrée avec succès. Total : ${formatFcfa(Number(result.montant_total ?? total))}`
+        `Contribution enregistrée avec succès. Total : ${formatFcfa(
+          Number(result.montant_total ?? total)
+        )}`
       );
       resetFormMontants();
     } catch (err: any) {
@@ -199,13 +205,33 @@ export default function ContributionsPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
           ASF-NTOL
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-          Contributions
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
-          Saisie d&apos;une participation financière par membre, ventilée sur plusieurs rubriques.
-          La logique métier reste côté backend.
-        </p>
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+              Contributions
+            </h1>
+            <p className="mt-2 text-sm text-slate-600 md:text-base">
+              Saisie d'une participation financière par membre, ventilée sur plusieurs rubriques.
+              La logique métier reste côté backend.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/montants-attendus"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+            >
+              Ouvrir Montants attendus
+            </Link>
+
+            <Link
+              href="/montants-attendus"
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Aligner les retards
+            </Link>
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -228,7 +254,7 @@ export default function ContributionsPage() {
                   <select
                     value={membreId}
                     onChange={(e) => setMembreId(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
                   >
                     <option value="">Sélectionner un membre</option>
                     {membres.map((membre) => (
@@ -247,17 +273,19 @@ export default function ContributionsPage() {
                     type="date"
                     value={dateContribution}
                     onChange={(e) => setDateContribution(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
                   />
                 </label>
               </div>
 
               <div className="mt-6">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
-                  <p className="text-sm text-slate-500">
-                    Saisis les montants par rubrique puis enregistre l&apos;opération.
-                  </p>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
+                    <p className="text-sm text-slate-500">
+                      Saisis les montants par rubrique puis enregistre l'opération.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -332,14 +360,13 @@ export default function ContributionsPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
                   Résumé
                 </p>
-
                 <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-white bg-white p-4">
+                  <div className="rounded-2xl border border-white/80 bg-white p-4">
                     <p className="text-sm text-slate-500">Nombre de lignes actives</p>
                     <p className="mt-1 text-2xl font-bold text-slate-900">{lignesActives.length}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-white bg-white p-4">
+                  <div className="rounded-2xl border border-white/80 bg-white p-4">
                     <p className="text-sm text-slate-500">Montant total saisi</p>
                     <p className="mt-1 text-2xl font-bold text-emerald-700">
                       {formatFcfa(total)}
@@ -379,7 +406,6 @@ export default function ContributionsPage() {
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-base font-semibold text-slate-900">Aperçu des lignes actives</h3>
-
                 <div className="mt-4 space-y-3">
                   {lignesActives.length === 0 ? (
                     <p className="text-sm text-slate-500">Aucune ligne saisie pour le moment.</p>

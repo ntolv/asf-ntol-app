@@ -1,0 +1,622 @@
+"use client";
+
+
+import { MobilePageShell, MobileTopBar, MobileBottomNav } from "@/components/mobile";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+
+const mobileNavItems = [
+  { href: "/dashboard", label: "Accueil" },
+  { href: "/caisse", label: "Caisse" },
+  { href: "/tontine", label: "Tontine" },
+  { href: "/encheres", label: "Enchères" },
+  { href: "/profil", label: "Profil" },
+];
+type CaisseSolde = {
+  caisse_id: string;
+  caisse_libelle: string;
+  actif: boolean;
+  rubrique_id: string;
+  rubrique_nom: string;
+  total_encaisse: number;
+  total_decaisse: number;
+  solde_disponible: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+function formatMoney(value: number | null | undefined) {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount);
+}
+
+export default function CaissePage() {
+  const [caisses, setCaisses] = useState<CaisseSolde[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRubrique, setSelectedRubrique] = useState<string>("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCaisses() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch("/api/caisses", { cache: "no-store" });
+        const json = await response.json();
+
+        if (!response.ok || !json?.success) {
+          throw new Error(json?.message || "Impossible de charger les caisses.");
+        }
+
+        if (!cancelled) {
+          setCaisses(Array.isArray(json.data) ? json.data : []);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Erreur lors du chargement des caisses.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCaisses();
+
+    return (
+    <>
+      <MobilePageShell
+        pageTitle="Caisse"
+        topBar={<MobileTopBar title="Caisse" subtitle="Suivi financier mobile" />}
+        bottomNav={<MobileBottomNav items={mobileNavItems} />}
+      >
+        <div data-mobile-caisse-content="true" className="flex flex-col gap-4">
+          <section className="mobile-caisse-hero">
+            <div className="mobile-caisse-hero__top">
+              <div>
+                <p className="mobile-caisse-hero__eyebrow">Caisse</p>
+                <h2 className="mobile-caisse-hero__title">Vue compte premium</h2>
+                <p className="mobile-caisse-hero__text">
+                  Cette page mobile réutilise le contenu réel déjà rendu par la page existante, sans déplacer la logique métier hors du backend.
+                </p>
+              </div>
+              <div className="mobile-caisse-hero__badge">Backend intact</div>
+            </div>
+
+            <div className="mobile-caisse-hero__stats">
+              <div className="mobile-caisse-stat-card">
+                <span className="mobile-caisse-stat-card__label">Suivi</span>
+                <span className="mobile-caisse-stat-card__value">Caisse</span>
+              </div>
+              <div className="mobile-caisse-stat-card">
+                <span className="mobile-caisse-stat-card__label">Rendu</span>
+                <span className="mobile-caisse-stat-card__value">Mobile</span>
+              </div>
+              <div className="mobile-caisse-stat-card">
+                <span className="mobile-caisse-stat-card__label">Structure</span>
+                <span className="mobile-caisse-stat-card__value">Pro++</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="mobile-caisse-actions">
+            <Link href="/dashboard" className="mobile-caisse-action-card">
+              <span className="mobile-caisse-action-card__icon" aria-hidden="true">⌂</span>
+              <span className="mobile-caisse-action-card__body">
+                <span className="mobile-caisse-action-card__title">Accueil</span>
+                <span className="mobile-caisse-action-card__text">Retour synthèse</span>
+              </span>
+            </Link>
+
+            <Link href="/contributions" className="mobile-caisse-action-card">
+              <span className="mobile-caisse-action-card__icon" aria-hidden="true">+</span>
+              <span className="mobile-caisse-action-card__body">
+                <span className="mobile-caisse-action-card__title">Contributions</span>
+                <span className="mobile-caisse-action-card__text">Voir les versements</span>
+              </span>
+            </Link>
+
+            <Link href="/imputations" className="mobile-caisse-action-card">
+              <span className="mobile-caisse-action-card__icon" aria-hidden="true">≡</span>
+              <span className="mobile-caisse-action-card__body">
+                <span className="mobile-caisse-action-card__title">Imputations</span>
+                <span className="mobile-caisse-action-card__text">Ventilation</span>
+              </span>
+            </Link>
+
+            <Link href="/encheres" className="mobile-caisse-action-card">
+              <span className="mobile-caisse-action-card__icon" aria-hidden="true">↗</span>
+              <span className="mobile-caisse-action-card__body">
+                <span className="mobile-caisse-action-card__title">Enchères</span>
+                <span className="mobile-caisse-action-card__text">Montants liés</span>
+              </span>
+            </Link>
+          </section>
+
+          <section className="mobile-caisse-section-card">
+            <div className="mobile-caisse-section-card__header">
+              <div>
+                <p className="mobile-caisse-section-card__eyebrow">Contenu réel</p>
+                <h3 className="mobile-caisse-section-card__title">Données actuelles de la page caisse</h3>
+              </div>
+            </div>
+
+            <div data-mobile-caisse-live-block="true" className="mobile-caisse-live-stack">
+) => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rubriques = useMemo(() => {
+    const uniques = new Map<string, string>();
+    for (const item of caisses) {
+      uniques.set(item.rubrique_id, item.rubrique_nom);
+    }
+    return Array.from(uniques.entries()).map(([id, nom]) => ({ id, nom }));
+  }, [caisses]);
+
+  const caissesFiltrees = useMemo(() => {
+    if (!selectedRubrique) return caisses;
+    return caisses.filter((item) => item.rubrique_id === selectedRubrique);
+  }, [caisses, selectedRubrique]);
+
+  const stats = useMemo(() => {
+    return caissesFiltrees.reduce(
+      (acc, item) => {
+        acc.totalEncaisse += Number(item.total_encaisse || 0);
+        acc.totalDecaisse += Number(item.total_decaisse || 0);
+        acc.totalSolde += Number(item.solde_disponible || 0);
+        return acc;
+      },
+      {
+        totalEncaisse: 0,
+        totalDecaisse: 0,
+        totalSolde: 0,
+      }
+    );
+  }, [caissesFiltrees]);
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Caisse
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+              Pilotage des fonds par rubrique
+            </h1>
+            <p className="mt-3 text-sm text-slate-600 md:text-base">
+              Cette page centralise les caisses liées aux rubriques et leurs soldes.
+              Les calculs viennent uniquement du backend. Les décaissements restent
+              accessibles sur une page dédiée pour éviter de mélanger la synthèse et
+              les sorties détaillées.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/gestion-demandes"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Gérer aides et prêts
+            </Link>
+
+            <Link
+              href="/decaissements"
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Ouvrir la page Décaissements
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Actualiser
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Total encaissé
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {formatMoney(stats.totalEncaisse)}
+          </p>
+        </article>
+
+        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Total décaissé
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {formatMoney(stats.totalDecaisse)}
+          </p>
+        </article>
+
+        <article className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Solde disponible
+          </p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">
+            {formatMoney(stats.totalSolde)}
+          </p>
+        </article>
+      </section>
+
+      <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Synthèse des caisses
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Source backend : <span className="font-semibold">v_caisses_soldes</span>
+            </p>
+          </div>
+
+          <div className="w-full md:w-[320px]">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Filtrer par rubrique
+            </label>
+            <select
+              value={selectedRubrique}
+              onChange={(e) => setSelectedRubrique(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
+            >
+              <option value="">Toutes les rubriques</option>
+              {rubriques.map((rubrique) => (
+                <option key={rubrique.id} value={rubrique.id}>
+                  {rubrique.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-44 animate-pulse rounded-[24px] border border-slate-100 bg-slate-50"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {caissesFiltrees.map((caisse) => (
+              <article
+                key={caisse.caisse_id}
+                className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50 p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                      {caisse.rubrique_nom}
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-slate-900">
+                      {caisse.caisse_libelle}
+                    </h3>
+                  </div>
+
+                  <span
+                    className={
+                      caisse.actif
+                        ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"
+                        : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"
+                    }
+                  >
+                    {caisse.actif ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                      Total encaissé
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {formatMoney(caisse.total_encaisse)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                      Total décaissé
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {formatMoney(caisse.total_decaisse)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
+                      Solde disponible
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-emerald-700">
+                      {formatMoney(caisse.solde_disponible)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Link
+                    href={`/decaissements?caisse_id=${caisse.caisse_id}`}
+                    className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    Voir les décaissements de cette caisse
+                  </Link>
+                </div>
+              </article>
+            ))}
+
+            {!caissesFiltrees.length && (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                Aucune caisse trouvée pour le filtre actuel.
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+            </div>
+          </section>
+        </div>
+      </MobilePageShell>
+
+      <div className="hidden xl:block">
+) => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rubriques = useMemo(() => {
+    const uniques = new Map<string, string>();
+    for (const item of caisses) {
+      uniques.set(item.rubrique_id, item.rubrique_nom);
+    }
+    return Array.from(uniques.entries()).map(([id, nom]) => ({ id, nom }));
+  }, [caisses]);
+
+  const caissesFiltrees = useMemo(() => {
+    if (!selectedRubrique) return caisses;
+    return caisses.filter((item) => item.rubrique_id === selectedRubrique);
+  }, [caisses, selectedRubrique]);
+
+  const stats = useMemo(() => {
+    return caissesFiltrees.reduce(
+      (acc, item) => {
+        acc.totalEncaisse += Number(item.total_encaisse || 0);
+        acc.totalDecaisse += Number(item.total_decaisse || 0);
+        acc.totalSolde += Number(item.solde_disponible || 0);
+        return acc;
+      },
+      {
+        totalEncaisse: 0,
+        totalDecaisse: 0,
+        totalSolde: 0,
+      }
+    );
+  }, [caissesFiltrees]);
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Caisse
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+              Pilotage des fonds par rubrique
+            </h1>
+            <p className="mt-3 text-sm text-slate-600 md:text-base">
+              Cette page centralise les caisses liées aux rubriques et leurs soldes.
+              Les calculs viennent uniquement du backend. Les décaissements restent
+              accessibles sur une page dédiée pour éviter de mélanger la synthèse et
+              les sorties détaillées.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/gestion-demandes"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Gérer aides et prêts
+            </Link>
+
+            <Link
+              href="/decaissements"
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Ouvrir la page Décaissements
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Actualiser
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Total encaissé
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {formatMoney(stats.totalEncaisse)}
+          </p>
+        </article>
+
+        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Total décaissé
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {formatMoney(stats.totalDecaisse)}
+          </p>
+        </article>
+
+        <article className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Solde disponible
+          </p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">
+            {formatMoney(stats.totalSolde)}
+          </p>
+        </article>
+      </section>
+
+      <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Synthèse des caisses
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Source backend : <span className="font-semibold">v_caisses_soldes</span>
+            </p>
+          </div>
+
+          <div className="w-full md:w-[320px]">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Filtrer par rubrique
+            </label>
+            <select
+              value={selectedRubrique}
+              onChange={(e) => setSelectedRubrique(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
+            >
+              <option value="">Toutes les rubriques</option>
+              {rubriques.map((rubrique) => (
+                <option key={rubrique.id} value={rubrique.id}>
+                  {rubrique.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-44 animate-pulse rounded-[24px] border border-slate-100 bg-slate-50"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {caissesFiltrees.map((caisse) => (
+              <article
+                key={caisse.caisse_id}
+                className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50 p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                      {caisse.rubrique_nom}
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-slate-900">
+                      {caisse.caisse_libelle}
+                    </h3>
+                  </div>
+
+                  <span
+                    className={
+                      caisse.actif
+                        ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"
+                        : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"
+                    }
+                  >
+                    {caisse.actif ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                      Total encaissé
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {formatMoney(caisse.total_encaisse)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                      Total décaissé
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {formatMoney(caisse.total_decaisse)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
+                      Solde disponible
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-emerald-700">
+                      {formatMoney(caisse.solde_disponible)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Link
+                    href={`/decaissements?caisse_id=${caisse.caisse_id}`}
+                    className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    Voir les décaissements de cette caisse
+                  </Link>
+                </div>
+              </article>
+            ))}
+
+            {!caissesFiltrees.length && (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                Aucune caisse trouvée pour le filtre actuel.
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+      </div>
+    </>
+  );
+}

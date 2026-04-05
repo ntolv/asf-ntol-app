@@ -1,0 +1,1151 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --green-50: #f0fdf4;
+  --green-100: #dcfce7;
+  --green-200: #bbf7d0;
+  --green-300: #86efac;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-800: #166534;
+  --green-900: #14532d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+/* Custom styles for premium 3D card effect */
+.card-3d {
+  @apply bg-white rounded-xl shadow-lg border border-gray-100;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.card-3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Green theme styles */
+.btn-primary {
+  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+}
+
+.btn-secondary {
+  @apply bg-white text-green-600 border border-green-600 hover:bg-green-50;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #22c55e;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #16a34a;
+}
+
+/* === ASF-NTOL MOBILE GLOBAL FIX START === */
+
+/* Base stabilitÃ© mobile */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Evite les dÃ©bordements imprÃ©vus */
+main,
+section,
+article,
+div {
+  min-width: 0;
+}
+
+/* Scroll zones */
+.overflow-auto,
+.overflow-x-auto,
+.overflow-y-auto,
+[data-radix-scroll-area-viewport],
+[data-sonner-toaster],
+[data-scrollable="true"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.55) transparent;
+}
+
+/* Scrollbar WebKit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.42);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.62);
+  background-clip: padding-box;
+}
+
+/* IMPORTANT : supprime les â€œmauvais caractÃ¨resâ€ / boutons parasites */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-resizer {
+  background: transparent;
+}
+
+/* LisibilitÃ© et cohÃ©rence tactile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button {
+  touch-action: manipulation;
+}
+
+/* Tables plus sÃ»res sur smartphone */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 1024px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Harmonisation mobile globale avec le rendu PC */
+@media (max-width: 1024px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .container,
+  .mx-auto,
+  [class*="max-w-"] {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .rounded-\[28px\],
+  .rounded-\[30px\],
+  .rounded-\[32px\] {
+    border-radius: 22px !important;
+  }
+
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      0 2px 10px rgba(16, 185, 129, 0.08) !important;
+  }
+}
+
+/* Smartphone : meilleure respiration visuelle + safe area */
+@media (max-width: 768px) {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  main {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .grid,
+  [class*="grid-cols-"] {
+    min-width: 0;
+  }
+
+  .overflow-auto,
+  .overflow-x-auto,
+  .overflow-y-auto {
+    max-width: 100%;
+  }
+
+  /* Evite que les cartes dÃ©bordent */
+  .rounded-2xl,
+  .rounded-3xl {
+    overflow: hidden;
+  }
+
+  /* Classes utilitaires de stabilisation mobile */
+  .mobile-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .mobile-full {
+    width: 100% !important;
+  }
+
+  .mobile-no-overflow {
+    overflow-x: hidden !important;
+  }
+
+  .mobile-scroll-x {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 88px) !important;
+  }
+}
+
+/* iPhone/Safari */
+@supports (-webkit-touch-callout: none) {
+  html {
+    min-height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* === ASF-NTOL MOBILE GLOBAL FIX END === */
+
+/* === ASF-NTOL MOBILE NAV PRO START === */
+
+@media (max-width: 768px) {
+  [data-mobile-bottom-nav="true"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 80 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px) !important;
+    background: rgba(255,255,255,0.97) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-top: 1px solid rgba(16,185,129,0.18) !important;
+    box-shadow: 0 -10px 28px rgba(15,23,42,0.10) !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  [data-mobile-bottom-nav="true"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  [data-mobile-bottom-nav="true"] a,
+  [data-mobile-bottom-nav="true"] button {
+    flex: 0 0 auto !important;
+    min-width: 190px !important;
+    min-height: 86px !important;
+    padding: 20px 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    border-radius: 28px !important;
+    font-size: 23px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    touch-action: manipulation !important;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.08) !important;
+  }
+
+  [data-mobile-bottom-nav="true"] .mobile-bottom-nav-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    font-size: 28px !important;
+    line-height: 1 !important;
+    font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+    font-weight: 900 !important;
+  }
+
+  [data-mobile-bottom-nav="true"] .mobile-bottom-nav-label {
+    display: inline-block !important;
+    font-size: 23px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  body {
+    padding-bottom: 142px !important;
+  }
+
+  main,
+  .mobile-safe-bottom,
+  [data-page-shell="true"] {
+    padding-bottom: 150px !important;
+  }
+}
+
+/* === ASF-NTOL MOBILE NAV PRO END === */
+
+/* === ASF-NTOL HOME LOGOUT + MOBILE NAV START === */
+
+.home-logout-zone {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.home-logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(254,242,242,0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+  color: #991b1b;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.home-logout-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.10);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.home-logout-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
+.home-logout-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.home-logout-button__label {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  [data-mobile-bottom-nav="true"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 80 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px) !important;
+    background: rgba(255,255,255,0.97) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-top: 1px solid rgba(16,185,129,0.18) !important;
+    box-shadow: 0 -10px 28px rgba(15,23,42,0.10) !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  [data-mobile-bottom-nav="true"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  [data-mobile-bottom-nav="true"] a,
+  [data-mobile-bottom-nav="true"] button {
+    flex: 0 0 auto !important;
+    min-width: 190px !important;
+    min-height: 86px !important;
+    padding: 20px 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    border-radius: 28px !important;
+    font-size: 23px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    touch-action: manipulation !important;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.08) !important;
+  }
+
+  [data-mobile-bottom-nav="true"] .mobile-bottom-nav-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    font-size: 28px !important;
+    line-height: 1 !important;
+    font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+    font-weight: 900 !important;
+  }
+
+  [data-mobile-bottom-nav="true"] .mobile-bottom-nav-label {
+    display: inline-block !important;
+    font-size: 23px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .home-logout-zone {
+    justify-content: stretch;
+    margin-top: 14px;
+    margin-bottom: 4px;
+  }
+
+  .home-logout-button {
+    width: 100%;
+    min-height: 64px;
+    border-radius: 22px;
+    font-size: 18px;
+  }
+
+  .home-logout-button__icon {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    font-size: 22px;
+  }
+
+  body {
+    padding-bottom: 142px !important;
+  }
+
+  main,
+  .mobile-safe-bottom,
+  [data-page-shell="true"] {
+    padding-bottom: 150px !important;
+  }
+}
+
+/* === ASF-NTOL HOME LOGOUT + MOBILE NAV END === */
+
+/* === ASF-NTOL MOBILE FOUNDATION START === */
+
+@media (max-width: 1279px) {
+  [data-mobile-page-shell="true"] {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  [data-mobile-page-shell="true"] [data-mobile-topbar-wrapper="true"] {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(248, 253, 249, 0.96) 0%,
+        rgba(248, 253, 249, 0.88) 70%,
+        rgba(248, 253, 249, 0) 100%
+      );
+  }
+
+  [data-mobile-page-shell="true"] [data-mobile-shell-bottom-nav="true"] {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+  }
+
+  [data-mobile-bottom-nav="true"] {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-mobile-bottom-nav="true"]::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  [data-mobile-topbar="true"],
+  [data-mobile-bottom-nav="true"] {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-mobile-page-shell="true"] {
+    display: none !important;
+  }
+}
+
+/* === ASF-NTOL MOBILE FOUNDATION END === */
+
+/* === ASF-NTOL MOBILE HOME LIVE START === */
+
+@media (max-width: 1279px) {
+  .mobile-bank-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-radius: 30px;
+    padding: 22px 20px;
+    background:
+      linear-gradient(135deg, rgba(5,150,105,0.96) 0%, rgba(4,120,87,0.94) 100%);
+    box-shadow: 0 22px 50px rgba(5, 150, 105, 0.22);
+    color: #ffffff;
+  }
+
+  .mobile-bank-hero__eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(236, 253, 245, 0.9);
+  }
+
+  .mobile-bank-hero__title {
+    margin-top: 8px;
+    font-size: 26px;
+    line-height: 1.08;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    color: #ffffff;
+  }
+
+  .mobile-bank-hero__text {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: rgba(236, 253, 245, 0.92);
+  }
+
+  .mobile-bank-hero__pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .mobile-bank-hero__pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.16);
+    font-size: 12px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  .mobile-quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .mobile-quick-action-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 88px;
+    border-radius: 24px;
+    border: 1px solid rgba(226,232,240,0.95);
+    background: rgba(255,255,255,0.98);
+    padding: 16px 14px;
+    box-shadow: 0 12px 28px rgba(15,23,42,0.06);
+    text-decoration: none;
+  }
+
+  .mobile-quick-action-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    border-radius: 16px;
+    background: rgba(236,253,245,1);
+    color: rgb(5,150,105);
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  .mobile-quick-action-card__body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-quick-action-card__title {
+    display: block;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.15;
+    color: rgb(15,23,42);
+  }
+
+  .mobile-quick-action-card__text {
+    display: block;
+    font-size: 11px;
+    line-height: 1.45;
+    color: rgb(100,116,139);
+  }
+
+  [data-mobile-home-live-block="true"] {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  [data-mobile-home-live-block="true"] > * {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  [data-mobile-home-live-block="true"] .grid,
+  [data-mobile-home-live-block="true"] [class*="grid-cols-"] {
+    min-width: 0;
+  }
+
+  [data-mobile-home-live-block="true"] .rounded-\[28px\],
+  [data-mobile-home-live-block="true"] .rounded-\[30px\],
+  [data-mobile-home-live-block="true"] .rounded-\[32px\],
+  [data-mobile-home-live-block="true"] .rounded-3xl,
+  [data-mobile-home-live-block="true"] .rounded-2xl {
+    border-radius: 24px !important;
+  }
+
+  [data-mobile-home-live-block="true"] .shadow-xl,
+  [data-mobile-home-live-block="true"] .shadow-2xl,
+  [data-mobile-home-live-block="true"] .shadow-lg {
+    box-shadow: 0 12px 30px rgba(15,23,42,0.08) !important;
+  }
+
+  [data-mobile-home-live-block="true"] table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  [data-mobile-home-live-block="true"] .hidden.xl\:block,
+  [data-mobile-home-live-block="true"] .xl\:block,
+  [data-mobile-home-live-block="true"] .xl\:flex,
+  [data-mobile-home-live-block="true"] .xl\:grid {
+    display: block !important;
+  }
+}
+
+/* === ASF-NTOL MOBILE HOME LIVE END === */
+
+/* === ASF-NTOL MOBILE CAISSE BANKING START === */
+
+.mobile-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mobile-status-badge--success {
+  background: rgba(220,252,231,1);
+  color: rgb(22,101,52);
+}
+
+.mobile-status-badge--warning {
+  background: rgba(254,249,195,1);
+  color: rgb(133,77,14);
+}
+
+.mobile-status-badge--danger {
+  background: rgba(254,226,226,1);
+  color: rgb(153,27,27);
+}
+
+.mobile-status-badge--neutral {
+  background: rgba(241,245,249,1);
+  color: rgb(71,85,105);
+}
+
+@media (max-width: 1279px) {
+  .mobile-caisse-bank {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mobile-caisse-bank__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-radius: 30px;
+    padding: 22px 20px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(236,253,245,0.96) 100%);
+    border: 1px solid rgba(167,243,208,0.8);
+    box-shadow: 0 20px 44px rgba(15,23,42,0.08);
+  }
+
+  .mobile-caisse-bank__hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobile-caisse-bank__eyebrow,
+  .mobile-caisse-bank__section-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(5,150,105);
+  }
+
+  .mobile-caisse-bank__title {
+    margin-top: 8px;
+    font-size: 28px;
+    line-height: 1.05;
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    color: rgb(15,23,42);
+  }
+
+  .mobile-caisse-bank__text {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: rgb(71,85,105);
+  }
+
+  .mobile-caisse-bank__hero-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgb(5,150,105);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 10px 24px rgba(5,150,105,0.22);
+  }
+
+  .mobile-caisse-bank__totals {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mobile-caisse-bank__total-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    border-radius: 22px;
+    padding: 14px 12px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(226,232,240,0.95);
+    box-shadow: 0 10px 24px rgba(15,23,42,0.05);
+  }
+
+  .mobile-caisse-bank__total-card--primary {
+    background: linear-gradient(145deg, rgba(5,150,105,0.98) 0%, rgba(4,120,87,0.96) 100%);
+    border-color: rgba(5,150,105,0.4);
+  }
+
+  .mobile-caisse-bank__total-card--primary .mobile-caisse-bank__total-label,
+  .mobile-caisse-bank__total-card--primary .mobile-caisse-bank__total-value {
+    color: #ffffff;
+  }
+
+  .mobile-caisse-bank__total-label,
+  .mobile-caisse-bank__mini-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgb(100,116,139);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .mobile-caisse-bank__total-value,
+  .mobile-caisse-bank__mini-value {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: rgb(15,23,42);
+  }
+
+  .mobile-caisse-bank__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .mobile-caisse-bank__action-card {
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    gap: 12px;
+    border-radius: 24px;
+    border: 1px solid rgba(226,232,240,0.95);
+    background: rgba(255,255,255,0.98);
+    padding: 16px 14px;
+    box-shadow: 0 12px 28px rgba(15,23,42,0.06);
+    text-decoration: none;
+  }
+
+  .mobile-caisse-bank__action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    background: rgba(236,253,245,1);
+    color: rgb(5,150,105);
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  .mobile-caisse-bank__action-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-caisse-bank__action-title,
+  .mobile-caisse-bank__rubrique-title,
+  .mobile-caisse-bank__movement-title,
+  .mobile-caisse-bank__section-title {
+    font-size: 14px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: rgb(15,23,42);
+  }
+
+  .mobile-caisse-bank__section-title {
+    margin-top: 6px;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+  }
+
+  .mobile-caisse-bank__action-text,
+  .mobile-caisse-bank__movement-subtitle,
+  .mobile-caisse-bank__movement-meta,
+  .mobile-caisse-bank__encheres-text,
+  .mobile-caisse-bank-empty__text {
+    font-size: 11px;
+    line-height: 1.5;
+    color: rgb(100,116,139);
+  }
+
+  .mobile-caisse-bank__section {
+    border-radius: 30px;
+    border: 1px solid rgba(226,232,240,0.9);
+    background: rgba(255,255,255,0.97);
+    padding: 18px 16px;
+    box-shadow: 0 16px 34px rgba(15,23,42,0.06);
+  }
+
+  .mobile-caisse-bank__section-head {
+    margin-bottom: 14px;
+  }
+
+  .mobile-caisse-bank__rubriques,
+  .mobile-caisse-bank__movements {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobile-caisse-bank__rubrique-card,
+  .mobile-caisse-bank__movement-card,
+  .mobile-caisse-bank__encheres-card,
+  .mobile-caisse-bank-empty {
+    border-radius: 24px;
+    border: 1px solid rgba(226,232,240,0.95);
+    background: rgba(248,250,252,0.94);
+    padding: 15px 14px;
+  }
+
+  .mobile-caisse-bank__rubrique-top,
+  .mobile-caisse-bank__rubrique-title-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .mobile-caisse-bank__rubrique-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mobile-caisse-bank__movement-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobile-caisse-bank__movement-left,
+  .mobile-caisse-bank__movement-right {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-caisse-bank__movement-right {
+    align-items: flex-end;
+  }
+
+  .mobile-caisse-bank__movement-amount,
+  .mobile-caisse-bank__encheres-value,
+  .mobile-caisse-bank-empty__title {
+    font-size: 18px;
+    line-height: 1.1;
+    font-weight: 900;
+    color: rgb(15,23,42);
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-caisse-bank__totals,
+  .mobile-caisse-bank__actions,
+  .mobile-caisse-bank__rubrique-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-caisse-bank__hero-top,
+  .mobile-caisse-bank__movement-card {
+    flex-direction: column;
+  }
+
+  .mobile-caisse-bank__movement-right {
+    align-items: flex-start;
+  }
+}
+
+/* === ASF-NTOL MOBILE CAISSE BANKING END === */
+
+
+
+/* ================================
+   MOBILE SCROLL PRO CLEAN
+================================ */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* ================================
+   SAFE AREA MOBILE
+================================ */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ================================
+   NAV MOBILE PRO++
+================================ */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 78px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 9999;
+}
+
+.mobile-nav-item {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.mobile-nav-item.active {
+  color: #059669;
+}
+
+.mobile-nav-icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+/* ================================
+   TAP ZONE LARGE (BANQUE STYLE)
+================================ */
+button, a {
+  min-height: 48px;
+}
+
+/* ================================
+   CARD MOBILE PREMIUM
+================================ */
+.mobile-card {
+  border-radius: 18px;
+  background: white;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+}
+
+/* ================================
+   HEADER MOBILE
+================================ */
+.mobile-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 50;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+}

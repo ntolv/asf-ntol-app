@@ -24,7 +24,7 @@ function normalizeMessage(error: any) {
   const message = String(error?.message || "");
 
   if (!message) {
-    return "Erreur lors de la finalisation de la préinscription";
+    return "Erreur lors de la finalisation de la préinscription.";
   }
 
   if (message.toLowerCase().includes("already registered")) {
@@ -38,20 +38,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const telephone = String(body?.telephone ?? "").trim();
+    const telephone =
+      String(body?.telephone ?? "").trim() ||
+      String(body?.telephoneReconnu ?? "").trim();
+
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
 
     if (!telephone) {
       return NextResponse.json(
-        { success: false, message: "Téléphone obligatoire" },
+        { success: false, message: "Téléphone obligatoire." },
         { status: 400 }
       );
     }
 
     if (!email) {
       return NextResponse.json(
-        { success: false, message: "Email obligatoire" },
+        { success: false, message: "Email obligatoire." },
         { status: 400 }
       );
     }
@@ -153,14 +156,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const finalisationRpc = await supabase.rpc(
-      "fn_finaliser_preinscription_admin",
-      {
-        p_telephone: telephone,
-        p_email_connexion: email,
-        p_auth_user_id: authUserId,
-      }
-    );
+    const finalisationRpc = await supabase.rpc("fn_finaliser_preinscription_admin", {
+      p_telephone: telephone,
+      p_email_connexion: email,
+      p_auth_user_id: authUserId,
+    });
 
     if (finalisationRpc.error) {
       throw finalisationRpc.error;

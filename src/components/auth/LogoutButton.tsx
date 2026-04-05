@@ -39,8 +39,6 @@ export default function LogoutButton({ compact = false, className = "" }: Props)
     } catch (error) {
       console.error("Erreur logout:", error);
       alert("La déconnexion a échoué. Veuillez réessayer.");
-    } finally {
-      // S'assurer que le loading est toujours relâché
       setLoading(false);
     }
   }

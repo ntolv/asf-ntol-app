@@ -14,14 +14,15 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/", label: "Accueil", icon: "🏠" },
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/bilan", label: "Bilan", icon: "📈" },
   { href: "/tontine", label: "Tontine", icon: "💚" },
   { href: "/encheres", label: "Enchères", icon: "🔥" },
   { href: "/membres", label: "Membres", icon: "👥" },
   { href: "/contributions", label: "Contributions", icon: "💰" },
   { href: "/imputations", label: "Imputations", icon: "🧾" },
   { href: "/caisse", label: "Caisse", icon: "🦺" },
-  { href: "/aides", label: "Aides / Secours", icon: "🤝" },
-  { href: "/investissements", label: "Investissements / Prêts", icon: "📈" },
+  { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝" },
+  { href: "/prets-aides", label: "Prêts/Aides", icon: "📈" },
   { href: "/documents", label: "Documents", icon: "📂" },
   { href: "/admin/roles", label: "Administration", icon: "⚙️" }
 ];
@@ -38,7 +39,7 @@ export default function AppSidebar() {
   const showRoleBadge = auth?.loading !== true;
 
   return (
-    <aside className="hidden xl:flex xl:w-[290px] xl:flex-col xl:border-r xl:border-emerald-100 xl:bg-white xl:px-5 xl:py-6">
+    <aside className="hidden xl:flex xl:w-[290px] xl:flex-col xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto xl:border-r xl:border-emerald-100 xl:bg-white xl:px-5 xl:py-6">
       <div className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
           Association Famille NTOL
@@ -86,3 +87,9 @@ export default function AppSidebar() {
     </aside>
   );
 }
+
+
+
+
+
+

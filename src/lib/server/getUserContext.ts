@@ -1,8 +1,33 @@
-import { createClient } from "@supabase/supabase-js";
+﻿import { createClient } from "@supabase/supabase-js";
 
 type AuthUserLike = {
   id?: string;
   email?: string | null;
+};
+
+type RequestLike = {
+  headers?: {
+    get?: (name: string) => string | null;
+  };
+  cookies?: {
+    getAll?: () => Array<{ name: string; value: string }>;
+  };
+};
+
+export type UserContext = {
+  success: boolean;
+  message: string;
+  authUserId: string | null;
+  email: string | null;
+  membreId: string | null;
+  user: AuthUserLike | null;
+  utilisateur: any | null;
+  member: any | null;
+  role: {
+    id: string | null;
+    code: string | null;
+    libelle: string | null;
+  } | null;
 };
 
 function getAdminClient() {
@@ -18,11 +43,162 @@ function getAdminClient() {
   });
 }
 
-export async function getUserContext(user: AuthUserLike | null) {
+function getAuthClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error("Variables Supabase manquantes pour l'auth");
+  }
+
+  return createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+function isJwtLike(value: string | null | undefined) {
+  if (!value) return false;
+  return /^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/.test(value);
+}
+
+function extractTokenFromUnknownValue(rawValue: string | null | undefined): string | null {
+  if (!rawValue) return null;
+
+  const direct = rawValue.trim();
+  if (isJwtLike(direct)) return direct;
+
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(direct);
+    } catch {
+      return direct;
+    }
+  })();
+
+  if (isJwtLike(decoded)) return decoded;
+
+  const jwtMatch = decoded.match(/[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+/);
+  if (jwtMatch?.[0]) return jwtMatch[0];
+
+  try {
+    const parsed = JSON.parse(decoded);
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      if (
+        "access_token" in parsed &&
+        typeof (parsed as { access_token?: unknown }).access_token === "string"
+      ) {
+        const token = (parsed as { access_token: string }).access_token;
+        if (isJwtLike(token)) return token;
+      }
+    }
+
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (typeof item === "string" && isJwtLike(item)) {
+          return item;
+        }
+
+        if (
+          item &&
+          typeof item === "object" &&
+          "access_token" in item &&
+          typeof (item as { access_token?: unknown }).access_token === "string"
+        ) {
+          const token = (item as { access_token: string }).access_token;
+          if (isJwtLike(token)) return token;
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function getCookieCandidates(request: RequestLike | null | undefined) {
+  if (!request?.cookies?.getAll) return [];
+
+  const cookies = request.cookies.getAll() || [];
+
+  const prioritizedNames = [
+    "sb-access-token",
+    "supabase-access-token",
+    "access-token",
+    "access_token",
+  ];
+
+  const prioritized = cookies.filter((cookie) => prioritizedNames.includes(cookie.name));
+  const probable = cookies.filter(
+    (cookie) =>
+      cookie.name.includes("auth-token") ||
+      cookie.name.includes("access-token") ||
+      cookie.name.includes("sb-")
+  );
+
+  return [...prioritized, ...probable];
+}
+
+async function resolveAuthUser(input: AuthUserLike | RequestLike | null | undefined): Promise<AuthUserLike | null> {
+  if (input && typeof input === "object" && "id" in input && typeof input.id === "string") {
+    return {
+      id: input.id,
+      email: input.email ?? null,
+    };
+  }
+
+  const request = input as RequestLike | null | undefined;
+  const authClient = getAuthClient();
+
+  const authorizationHeader = request?.headers?.get?.("authorization");
+  if (authorizationHeader?.toLowerCase().startsWith("bearer ")) {
+    const bearerToken = authorizationHeader.slice(7).trim();
+
+    if (bearerToken) {
+      const { data } = await authClient.auth.getUser(bearerToken);
+
+      if (data?.user?.id) {
+        return {
+          id: data.user.id,
+          email: data.user.email ?? null,
+        };
+      }
+    }
+  }
+
+  const cookieCandidates = getCookieCandidates(request);
+
+  for (const cookie of cookieCandidates) {
+    const token = extractTokenFromUnknownValue(cookie.value);
+
+    if (!token) continue;
+
+    const { data } = await authClient.auth.getUser(token);
+
+    if (data?.user?.id) {
+      return {
+        id: data.user.id,
+        email: data.user.email ?? null,
+      };
+    }
+  }
+
+  return null;
+}
+
+export async function getUserContext(
+  input: AuthUserLike | RequestLike | null = null
+): Promise<UserContext> {
+  const user = await resolveAuthUser(input);
+
   if (!user?.id) {
     return {
       success: false,
       message: "Utilisateur non connecté",
+      authUserId: null,
+      email: null,
+      membreId: null,
       user: null,
       utilisateur: null,
       member: null,
@@ -71,6 +247,9 @@ export async function getUserContext(user: AuthUserLike | null) {
     return {
       success: false,
       message: utilisateurError.message || "Erreur chargement utilisateur",
+      authUserId: user.id,
+      email: user.email ?? null,
+      membreId: null,
       user,
       utilisateur: null,
       member: null,
@@ -82,6 +261,9 @@ export async function getUserContext(user: AuthUserLike | null) {
     return {
       success: false,
       message: "Aucun utilisateur lié à l'utilisateur connecté",
+      authUserId: user.id,
+      email: user.email ?? null,
+      membreId: null,
       user,
       utilisateur: null,
       member: null,
@@ -93,6 +275,9 @@ export async function getUserContext(user: AuthUserLike | null) {
     return {
       success: false,
       message: "Aucun membre lié à l'utilisateur connecté",
+      authUserId: user.id,
+      email: user.email ?? null,
+      membreId: null,
       user,
       utilisateur,
       member: null,
@@ -110,6 +295,9 @@ export async function getUserContext(user: AuthUserLike | null) {
     return {
       success: false,
       message: memberResult.error?.message || "Membre introuvable pour l'utilisateur connecté",
+      authUserId: user.id,
+      email: user.email ?? null,
+      membreId: utilisateur.membre_id ?? null,
       user,
       utilisateur,
       member: null,
@@ -141,6 +329,9 @@ export async function getUserContext(user: AuthUserLike | null) {
   return {
     success: true,
     message: "Contexte utilisateur chargé",
+    authUserId: user.id,
+    email: user.email ?? null,
+    membreId: utilisateur.membre_id ?? null,
     user,
     utilisateur,
     member,

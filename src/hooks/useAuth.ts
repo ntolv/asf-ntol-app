@@ -1,7 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  clearPendingRecognition,
+  getPendingRecognition,
+  hasPendingRecognition,
+  type PendingRecognition,
+} from "@/lib/auth/pendingRecognition";
+
+type AuthContextResponse = {
+  success?: boolean;
+  message?: string;
+  authUserId?: string | null;
+  membreId?: string | null;
+  email?: string | null;
+  telephone?: string | null;
+  nom?: string | null;
+  role?: string | null;
+};
 
 type AuthUser = {
   id: string | null;
@@ -9,189 +25,155 @@ type AuthUser = {
 };
 
 type AuthMember = {
-  id?: string | null;
-  nom_complet?: string | null;
-  email?: string | null;
-  telephone?: string | null;
-  role?: string | null;
-  role_code?: string | null;
-  [key: string]: any;
+  id: string | null;
+  nom: string | null;
+  telephone: string | null;
+  role: string | null;
 };
 
-type AuthUtilisateur = {
-  id?: string | null;
-  auth_user_id?: string | null;
-  email_connexion?: string | null;
-  membre_id?: string | null;
-  statut_compte?: string | null;
-  actif?: boolean | null;
-  [key: string]: any;
-};
-
-type AuthContextResponse = {
-  success: boolean;
-  message?: string;
-  user?: any;
-  member?: AuthMember | null;
-  utilisateur?: AuthUtilisateur | null;
-  role?: {
-    id?: string | null;
-    code?: string | null;
-    libelle?: string | null;
-  } | null;
-};
-
-type UseAuthResult = {
+type UseAuthReturn = {
+  loading: boolean;
+  isAuthenticated: boolean;
+  needsPhoneRecognition: boolean;
+  hasPendingMemberRecognition: boolean;
+  pendingRecognition: PendingRecognition | null;
+  message: string | null;
   user: AuthUser | null;
   member: AuthMember | null;
-  utilisateur: AuthUtilisateur | null;
-  role: string | null;
-  roleCode: string | null;
-  loading: boolean;
-  refreshAuth: () => Promise<void>;
-  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
-function normalizeRole(
-  member: AuthMember | null,
-  utilisateur: AuthUtilisateur | null,
-  payload: AuthContextResponse | null
-) {
-  const role =
-    member?.role ??
-    payload?.role?.libelle ??
-    null;
+const DEFAULT_USER: AuthUser = {
+  id: null,
+  email: null,
+};
 
-  const roleCode =
-    member?.role_code ??
-    payload?.role?.code ??
-    null;
+const DEFAULT_MEMBER: AuthMember = {
+  id: null,
+  nom: null,
+  telephone: null,
+  role: null,
+};
 
-  return { role, roleCode };
-}
-
-export function useAuth(): UseAuthResult {
+function useAuthInternal(): UseAuthReturn {
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [member, setMember] = useState<AuthMember | null>(null);
-  const [utilisateur, setUtilisateur] = useState<AuthUtilisateur | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [roleCode, setRoleCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<PendingRecognition | null>(null);
+
+  const syncPending = useCallback(() => {
+    const current = getPendingRecognition();
+    setPending(current);
+    return current;
+  }, []);
 
   const loadAuth = useCallback(async () => {
-    setLoading(true);
-
     try {
-      const res = await fetch("/api/auth/context", {
+      setLoading(true);
+      setMessage(null);
+
+      const currentPending = syncPending();
+
+      const response = await fetch("/api/auth/context", {
         method: "GET",
-        cache: "no-store",
         credentials: "include",
+        cache: "no-store",
         headers: {
-          Accept: "application/json",
+          "Cache-Control": "no-store",
+          Pragma: "no-cache",
         },
       });
 
-      const rawText = await res.text();
+      const data = (await response.json().catch(() => null)) as AuthContextResponse | null;
 
-      let payload: AuthContextResponse | null = null;
-
-      try {
-        payload = rawText ? (JSON.parse(rawText) as AuthContextResponse) : null;
-      } catch {
-        payload = {
-          success: false,
-          message: "Réponse auth invalide (non JSON)",
-        };
-      }
-
-      if (!res.ok || payload?.success !== true) {
-        console.warn("Auth context warning:", {
-          status: res.status,
-          statusText: res.statusText,
-          payload,
-          rawText,
-        });
-
+      if (!response.ok || !data?.success || !data?.authUserId || !data?.membreId) {
         setUser(null);
         setMember(null);
-        setUtilisateur(null);
-        setRole(null);
-        setRoleCode(null);
-        setLoading(false);
+        setMessage(data?.message || "Contexte utilisateur indisponible.");
+
+        if (currentPending?.membreId) {
+          setMessage(null);
+        }
+
         return;
       }
 
-      const apiUser = payload.user ?? null;
-      const apiMember = payload.member ?? null;
-      const apiUtilisateur = payload.utilisateur ?? null;
-
       setUser({
-        id: apiUser?.id ?? null,
-        email: apiUser?.email ?? null,
+        ...DEFAULT_USER,
+        id: data.authUserId ?? null,
+        email: data.email ?? null,
       });
 
-      setMember(apiMember);
-      setUtilisateur(apiUtilisateur);
+      setMember({
+        ...DEFAULT_MEMBER,
+        id: data.membreId ?? null,
+        nom: data.nom ?? null,
+        telephone: data.telephone ?? null,
+        role: data.role ?? null,
+      });
 
-      const normalizedRole = normalizeRole(apiMember, apiUtilisateur, payload);
-      setRole(normalizedRole.role);
-      setRoleCode(normalizedRole.roleCode);
-
-      setLoading(false);
+      clearPendingRecognition();
+      setPending(null);
+      setMessage(data.message ?? null);
     } catch (error: any) {
-      console.warn("Auth context fetch failed:", {
-        message: error?.message || "Erreur inconnue",
-      });
-
       setUser(null);
       setMember(null);
-      setUtilisateur(null);
-      setRole(null);
-      setRoleCode(null);
+
+      const currentPending = syncPending();
+      if (currentPending?.membreId) {
+        setMessage(null);
+      } else {
+        setMessage(error?.message || "Erreur lors du chargement du contexte utilisateur.");
+      }
+    } finally {
       setLoading(false);
     }
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      setUser(null);
-      setMember(null);
-      setUtilisateur(null);
-      setRole(null);
-      setRoleCode(null);
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-  }, []);
+  }, [syncPending]);
 
   useEffect(() => {
-    loadAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      loadAuth();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    void loadAuth();
   }, [loadAuth]);
 
-  return useMemo(
-    () => ({
-      user,
-      member,
-      utilisateur,
-      role,
-      roleCode,
-      loading,
-      refreshAuth: loadAuth,
-      logout,
-    }),
-    [user, member, utilisateur, role, roleCode, loading, loadAuth, logout]
-  );
+  const isAuthenticated = useMemo(() => {
+    return Boolean(user?.id && member?.id);
+  }, [user?.id, member?.id]);
+
+  const hasPendingMemberRecognition = useMemo(() => {
+    return Boolean(pending?.membreId || hasPendingRecognition());
+  }, [pending?.membreId]);
+
+  const needsPhoneRecognition = useMemo(() => {
+    if (loading) {
+      return false;
+    }
+
+    if (isAuthenticated) {
+      return false;
+    }
+
+    if (hasPendingMemberRecognition) {
+      return false;
+    }
+
+    return true;
+  }, [loading, isAuthenticated, hasPendingMemberRecognition]);
+
+  return {
+    loading,
+    isAuthenticated,
+    needsPhoneRecognition,
+    hasPendingMemberRecognition,
+    pendingRecognition: pending,
+    message,
+    user,
+    member,
+    refresh: loadAuth,
+  };
 }
+
+export function useAuth(): UseAuthReturn {
+  return useAuthInternal();
+}
+
+export default useAuth;

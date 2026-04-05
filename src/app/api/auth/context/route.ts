@@ -1,92 +1,73 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import { getUserContext } from "@/lib/server/getUserContext";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
 
-    const supabase = createServerClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
+        global: {
+          headers: {
+            Cookie: cookieStore.getAll().map(c => `${c.name}=${c.value}`).join("; "),
           },
-          set() {},
-          remove() {},
         },
       }
     );
 
+    // 🔐 utilisateur connecté
     const {
       data: { user },
-      error: userError,
+      error: authError,
     } = await supabase.auth.getUser();
 
-    if (userError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: userError.message || "Erreur récupération utilisateur",
-          user: null,
-          member: null,
-          utilisateur: null,
-        },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Utilisateur non connecté",
-          user: null,
-          member: null,
-          utilisateur: null,
-        },
-        { status: 401 }
-      );
-    }
-
-    const context = await getUserContext(user);
-
-    if (!context?.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: context?.message || "Erreur contexte utilisateur",
-          user,
-          member: null,
-          utilisateur: context?.utilisateur ?? null,
-        },
-        { status: 200 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Contexte utilisateur chargé",
-        user,
-        member: context.member ?? null,
-        utilisateur: context.utilisateur ?? null,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
+    if (authError || !user) {
+      return NextResponse.json({
         success: false,
-        message: error?.message || "Erreur serveur auth context",
-        user: null,
-        member: null,
-        utilisateur: null,
-      },
-      { status: 500 }
-    );
+        message: "Utilisateur non connecté",
+        membreId: null,
+      });
+    }
+
+    // 🔗 lien utilisateur -> membre
+    const { data: utilisateur, error: userError } = await supabase
+      .from("utilisateurs")
+      .select("membre_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (userError || !utilisateur?.membre_id) {
+      return NextResponse.json({
+        success: false,
+        message: "Lien membre introuvable",
+        membreId: null,
+      });
+    }
+
+    // 📦 récupération infos membre
+    const { data: membre } = await supabase
+      .from("membres")
+      .select("id, email, telephone, nom_complet")
+      .eq("id", utilisateur.membre_id)
+      .maybeSingle();
+
+    return NextResponse.json({
+      success: true,
+      message: "Contexte utilisateur OK",
+      authUserId: user.id,
+      membreId: utilisateur.membre_id,
+      email: membre?.email ?? null,
+      telephone: membre?.telephone ?? null,
+      nom: membre?.nom_complet ?? null,
+    });
+  } catch (error: any) {
+    return NextResponse.json({
+      success: false,
+      message: error?.message || "Erreur contexte utilisateur",
+      membreId: null,
+    });
   }
 }

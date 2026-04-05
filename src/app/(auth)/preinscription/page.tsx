@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Phone, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  AlertCircle,
+  ArrowRight,
+} from "lucide-react";
 
 interface MemberData {
   nom_complet: string;
@@ -39,9 +48,17 @@ export default function PreinscriptionPage() {
     setError("");
     setSuccess("");
 
+    const normalizedTelephone = telephone.trim();
+
+    if (!normalizedTelephone) {
+      setError("Téléphone obligatoire.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.rpc("fn_preinscription_lookup_telephone", {
-        p_telephone: telephone,
+        p_telephone: normalizedTelephone,
       });
 
       if (error) {
@@ -53,9 +70,9 @@ export default function PreinscriptionPage() {
         const member = data[0];
 
         setMemberData({
-          nom_complet: member.nom_complet,
-          compte_active: member.compte_active,
-          telephone: member.telephone,
+          nom_complet: String(member.nom_complet ?? ""),
+          compte_active: Boolean(member.compte_active),
+          telephone: String(member.telephone ?? "").trim(),
         });
 
         if (member.compte_active) {
@@ -63,7 +80,7 @@ export default function PreinscriptionPage() {
           setError("Ce compte est déjà activé. Connecte-toi directement.");
         } else {
           setStep("register");
-          setSuccess(`Membre reconnu : ${member.nom_complet}`);
+          setSuccess(`Téléphone reconnu : ${member.nom_complet}`);
         }
       } else {
         setError("Numéro non reconnu. Veuillez contacter l'administrateur.");
@@ -87,6 +104,21 @@ export default function PreinscriptionPage() {
       return;
     }
 
+    const emailFinal = email.trim().toLowerCase();
+    const telephoneFinal = String(memberData.telephone ?? "").trim() || telephone.trim();
+
+    if (!telephoneFinal) {
+      setError("Téléphone obligatoire.");
+      setLoading(false);
+      return;
+    }
+
+    if (!emailFinal) {
+      setError("Email obligatoire.");
+      setLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       setLoading(false);
@@ -106,8 +138,9 @@ export default function PreinscriptionPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          telephone: memberData.telephone,
-          email,
+          telephone: telephoneFinal,
+          telephoneReconnu: telephoneFinal,
+          email: emailFinal,
           password,
         }),
       });
@@ -121,7 +154,7 @@ export default function PreinscriptionPage() {
       setSuccess(result.message || "Préinscription finalisée avec succès.");
 
       const target = result.redirect_to || "/login";
-      router.push(`${target}?email=${encodeURIComponent(email)}`);
+      router.push(`${target}?email=${encodeURIComponent(emailFinal)}`);
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la finalisation.");
     } finally {
@@ -175,7 +208,10 @@ export default function PreinscriptionPage() {
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-700">{memberData.nom_complet}</p>
-              <p className="mt-1 text-xs text-slate-600">{memberData.telephone}</p>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
+              Téléphone reconnu : <span className="font-semibold">{memberData.telephone}</span>
             </div>
 
             <div>

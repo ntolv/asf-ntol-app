@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabaseClient";
 
 type Session = {
   id: string;
@@ -58,11 +59,21 @@ function formatDateTime(value?: string | null) {
 function getBadgeClass(value?: string | null) {
   const statut = String(value || "").toUpperCase();
 
-  if (statut === "EN_COURS" || statut === "OUVERTE" || statut === "ACTIVE") {
+  if (
+    statut === "EN_COURS" ||
+    statut === "OUVERTE" ||
+    statut === "ACTIVE" ||
+    statut === "OUVERT"
+  ) {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
-  if (statut === "TERMINE" || statut === "CLOTUREE" || statut === "CLÔTURÉE") {
+  if (
+    statut === "TERMINE" ||
+    statut === "CLOTUREE" ||
+    statut === "CLÔTURÉE" ||
+    statut === "CLOTURE"
+  ) {
     return "border-slate-300 bg-slate-100 text-slate-700";
   }
 
@@ -70,6 +81,13 @@ function getBadgeClass(value?: string | null) {
     return "border-amber-200 bg-amber-50 text-amber-800";
   }
 
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function getRankTone(rank: number) {
+  if (rank === 1) return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (rank === 2) return "border-sky-200 bg-sky-50 text-sky-800";
+  if (rank === 3) return "border-amber-200 bg-amber-50 text-amber-800";
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
@@ -86,6 +104,62 @@ function secondsSince(dateIso?: string | null) {
   if (!dateIso) return null;
   const diffMs = Date.now() - new Date(dateIso).getTime();
   return Math.max(0, Math.floor(diffMs / 1000));
+}
+
+function getTimerProgressPercent(remainingMs: number | null, totalMs: number | null) {
+  if (remainingMs === null || totalMs === null || totalMs <= 0) return 0;
+  const ratio = Math.max(0, Math.min(1, remainingMs / totalMs));
+  return ratio * 100;
+}
+
+function getTimerTone(progressPercent: number) {
+  if (progressPercent <= 20) {
+    return {
+      card: "border-rose-200 bg-rose-50",
+      text: "text-rose-700",
+      track: "bg-rose-100",
+      bar: "bg-rose-500",
+      chip: "border-rose-200 bg-white text-rose-700",
+    };
+  }
+
+  if (progressPercent <= 45) {
+    return {
+      card: "border-amber-200 bg-amber-50",
+      text: "text-amber-700",
+      track: "bg-amber-100",
+      bar: "bg-amber-500",
+      chip: "border-amber-200 bg-white text-amber-700",
+    };
+  }
+
+  return {
+    card: "border-emerald-200 bg-emerald-50",
+    text: "text-emerald-700",
+    track: "bg-emerald-100",
+    bar: "bg-emerald-500",
+    chip: "border-emerald-200 bg-white text-emerald-700",
+  };
+}
+
+function buildLotCardClass(isSelected: boolean, isCurrentLot: boolean, isClosed: boolean) {
+  if (isSelected && isCurrentLot) {
+    return "rounded-[24px] border border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-white p-5 text-left shadow-[0_10px_30px_rgba(16,185,129,0.10)] ring-2 ring-emerald-200 transition";
+  }
+
+  if (isSelected) {
+    return "rounded-[24px] border border-emerald-300 bg-emerald-50/80 p-5 text-left shadow-sm ring-2 ring-emerald-100 transition";
+  }
+
+  if (isClosed) {
+    return "rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm transition";
+  }
+
+  if (isCurrentLot) {
+    return "rounded-[24px] border border-emerald-200 bg-white p-5 text-left shadow-[0_8px_24px_rgba(16,185,129,0.08)] transition hover:border-emerald-300 hover:bg-emerald-50/40";
+  }
+
+  return "rounded-[24px] border border-emerald-100 bg-white p-5 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/40";
 }
 
 export default function EncheresPage() {
@@ -106,26 +180,23 @@ export default function EncheresPage() {
   const [nowMs, setNowMs] = useState(Date.now());
   const [lastClassementUpdateAt, setLastClassementUpdateAt] = useState<string | null>(null);
 
-  const loadSessions = async (silent = false) => {
-    if (!silent) {
-      setLoadingSessions(true);
-    }
+  const loadSessions = useCallback(async (silent = false) => {
+    if (!silent) setLoadingSessions(true);
 
     try {
-      const res = await fetch("/api/tontine/sessions");
+      const res = await fetch("/api/tontine/sessions", {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
       const data = await res.json();
       setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Erreur chargement sessions:", err);
-      if (!silent) {
-        setSessions([]);
-      }
+      if (!silent) setSessions([]);
     } finally {
-      if (!silent) {
-        setLoadingSessions(false);
-      }
+      if (!silent) setLoadingSessions(false);
     }
-  };
+  }, []);
 
   const sessionActive =
     sessions.find(
@@ -134,59 +205,53 @@ export default function EncheresPage() {
         s.statut_encheres !== "TERMINE"
     ) || null;
 
-  const loadLots = async (sessionId?: string | null, silent = false) => {
+  const loadLots = useCallback(async (sessionId?: string | null, silent = false) => {
     if (!sessionId) {
       setLots([]);
       return;
     }
 
-    if (!silent) {
-      setLoadingLots(true);
-    }
+    if (!silent) setLoadingLots(true);
 
     try {
-      const res = await fetch(`/api/tontine/lots?session_id=${sessionId}`);
+      const res = await fetch(`/api/tontine/lots?session_id=${sessionId}`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
       const data = await res.json();
       setLots(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Erreur chargement lots:", err);
-      if (!silent) {
-        setLots([]);
-      }
+      if (!silent) setLots([]);
     } finally {
-      if (!silent) {
-        setLoadingLots(false);
-      }
+      if (!silent) setLoadingLots(false);
     }
-  };
+  }, []);
 
-  const loadEncheres = async (lotId: string, silent = false) => {
-    if (!silent) {
-      setLoadingEncheres(true);
-    }
+  const loadEncheres = useCallback(async (lotId: string, silent = false) => {
+    if (!silent) setLoadingEncheres(true);
 
     try {
-      const res = await fetch(`/api/tontine/encheres?lot_id=${lotId}`);
+      const res = await fetch(`/api/tontine/encheres?lot_id=${lotId}`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
       const data = await res.json();
       setEncheres(Array.isArray(data) ? data : []);
       setSelectedLot(lotId);
       setLastClassementUpdateAt(new Date().toISOString());
     } catch (err) {
       console.error("Erreur chargement enchères:", err);
-      if (!silent) {
-        setEncheres([]);
-      }
+      if (!silent) setEncheres([]);
       setSelectedLot(lotId);
     } finally {
-      if (!silent) {
-        setLoadingEncheres(false);
-      }
+      if (!silent) setLoadingEncheres(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadSessions(false);
-  }, []);
+  }, [loadSessions]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -206,30 +271,79 @@ export default function EncheresPage() {
 
   useEffect(() => {
     loadLots(sessionActive?.id, false);
-  }, [sessionActive?.id]);
+  }, [sessionActive?.id, loadLots]);
 
   useEffect(() => {
     if (!sessionActive?.id) return;
-    if (sessionActive.statut_encheres !== "EN_COURS") return;
 
-    const intervalId = window.setInterval(() => {
-      loadSessions(true);
-      loadLots(sessionActive.id, true);
-    }, 2500);
+    const channel = supabase
+      .channel(`encheres-session-${sessionActive.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tontine_sessions",
+          filter: `id=eq.${sessionActive.id}`,
+        },
+        async () => {
+          await loadSessions(true);
+          await loadLots(sessionActive.id, true);
+          if (selectedLot) {
+            await loadEncheres(selectedLot, true);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tontine_lots",
+          filter: `session_id=eq.${sessionActive.id}`,
+        },
+        async () => {
+          await loadLots(sessionActive.id, true);
+          await loadSessions(true);
+          if (selectedLot) {
+            await loadEncheres(selectedLot, true);
+          }
+        }
+      )
+      .subscribe();
 
-    return () => window.clearInterval(intervalId);
-  }, [sessionActive?.id, sessionActive?.statut_encheres]);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionActive?.id, selectedLot, loadSessions, loadLots, loadEncheres]);
 
   useEffect(() => {
     if (!selectedLot) return;
-    if (sessionActive?.statut_encheres !== "EN_COURS") return;
 
-    const intervalId = window.setInterval(() => {
-      loadEncheres(selectedLot, true);
-    }, 2500);
+    const channel = supabase
+      .channel(`encheres-lot-${selectedLot}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tontine_encheres",
+          filter: `lot_id=eq.${selectedLot}`,
+        },
+        async () => {
+          await loadEncheres(selectedLot, true);
+          if (sessionActive?.id) {
+            await loadLots(sessionActive.id, true);
+            await loadSessions(true);
+          }
+        }
+      )
+      .subscribe();
 
-    return () => window.clearInterval(intervalId);
-  }, [selectedLot, sessionActive?.statut_encheres]);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [selectedLot, sessionActive?.id, loadEncheres, loadLots, loadSessions]);
 
   const referenceTimerAt = useMemo(() => {
     return sessionActive?.derniere_enchere_at || sessionActive?.date_debut_encheres || null;
@@ -247,7 +361,20 @@ export default function EncheresPage() {
   }, [referenceTimerAt, inactivityLimitMs, nowMs]);
 
   const timerText = useMemo(() => formatCountdown(remainingMs), [remainingMs]);
-  const liveAgeSeconds = useMemo(() => secondsSince(lastClassementUpdateAt), [lastClassementUpdateAt, nowMs]);
+  const liveAgeSeconds = useMemo(
+    () => secondsSince(lastClassementUpdateAt),
+    [lastClassementUpdateAt, nowMs]
+  );
+
+  const timerProgressPercent = useMemo(
+    () => getTimerProgressPercent(remainingMs, inactivityLimitMs),
+    [remainingMs, inactivityLimitMs]
+  );
+
+  const timerTone = useMemo(
+    () => getTimerTone(timerProgressPercent),
+    [timerProgressPercent]
+  );
 
   useEffect(() => {
     const autoCloseSession = async () => {
@@ -264,6 +391,7 @@ export default function EncheresPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
           body: JSON.stringify({
             session_id: sessionActive.id,
@@ -283,6 +411,7 @@ export default function EncheresPage() {
         if (selectedLot) {
           await loadEncheres(selectedLot, true);
         }
+
         alert("Le délai sans nouvelle enchère est dépassé. La session a été clôturée automatiquement.");
       } catch (err) {
         console.error(err);
@@ -292,7 +421,16 @@ export default function EncheresPage() {
     };
 
     autoCloseSession();
-  }, [remainingMs, sessionActive?.id, sessionActive?.statut_encheres, autoClosing, selectedLot]);
+  }, [
+    remainingMs,
+    sessionActive?.id,
+    sessionActive?.statut_encheres,
+    autoClosing,
+    selectedLot,
+    loadSessions,
+    loadLots,
+    loadEncheres,
+  ]);
 
   const updateLotBidValue = (lotId: string, value: string) => {
     setLotBidValues((prev) => ({
@@ -350,10 +488,10 @@ export default function EncheresPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           lot_id: lotId,
-          membre_id: member.id,
           montant_relance: montantRelance,
         }),
       });
@@ -377,284 +515,476 @@ export default function EncheresPage() {
     }
   };
 
+  const selectedLotData = useMemo(
+    () => lots.find((item) => item.id === selectedLot) ?? null,
+    [lots, selectedLot]
+  );
+
+  const leader = encheres.length > 0 ? encheres[0] : null;
+
+  const selectedLotIsCurrent = useMemo(() => {
+    if (!selectedLotData || !sessionActive?.lot_en_cours_index) return false;
+    return selectedLotData.lot === sessionActive.lot_en_cours_index;
+  }, [selectedLotData, sessionActive?.lot_en_cours_index]);
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white px-4 py-6 md:px-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.08),_transparent_35%),linear-gradient(to_bottom,_#f0fdf4,_#ffffff_38%,_#ffffff)] px-4 py-6 md:px-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
-                Enchères
+        <section className="rounded-[32px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-4xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">
+                Enchères en ligne
+              </p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
+                Salle d’enchères Pro ++
               </h1>
-              <p className="mt-2 text-sm text-emerald-900/70 md:text-base">
-                Salle d’enchères utilisateur : session active, lots actifs, renchérissement et classement live.
+              <p className="mt-3 text-sm text-emerald-900/70 md:text-base">
+                Session active, lots disponibles, renchérissement rapide et classement live.
               </p>
             </div>
 
-            <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm">
-              Salle d’enchères
+            <div className="flex flex-wrap gap-3">
+              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm">
+                Salle membre
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  loadSessions(false);
+                  if (sessionActive?.id) loadLots(sessionActive.id, false);
+                  if (selectedLot) loadEncheres(selectedLot, false);
+                }}
+                className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+              >
+                Actualiser
+              </button>
             </div>
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-emerald-950">Session active</h2>
-            <p className="text-sm text-emerald-900/70">
-              Toutes les enchères en cours se pilotent désormais depuis cette page.
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Session active
             </p>
-          </div>
+            <p className="mt-2 text-lg font-bold text-slate-900">
+              {sessionActive?.libelle || "Aucune"}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {sessionActive?.periode || "Aucune période"}
+            </p>
+          </article>
 
-          {!sessionActive ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucune session active.
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Statut enchères
+            </p>
+            <div className="mt-2">
+              <span
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(
+                  sessionActive?.statut_encheres
+                )}`}
+              >
+                {sessionActive?.statut_encheres || "Indisponible"}
+              </span>
             </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm ring-1 ring-emerald-100">
-                <p className="text-sm text-emerald-900/65">Session</p>
-                <p className="mt-1 text-base font-semibold text-emerald-950">{sessionActive.libelle}</p>
-              </div>
+          </article>
 
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm ring-1 ring-emerald-100">
-                <p className="text-sm text-emerald-900/65">Période</p>
-                <p className="mt-1 text-base font-semibold text-emerald-950">{sessionActive.periode}</p>
-              </div>
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Lots session
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {sessionActive?.nombre_lots ?? 0}
+            </p>
+          </article>
 
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm ring-1 ring-emerald-100">
-                <p className="text-sm text-emerald-900/65">Départ minimum</p>
-                <p className="mt-1 text-base font-semibold text-emerald-950">
-                  {formatMontant(sessionActive.montant_depart_enchere_session)}
+          <article className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              Dernière enchère
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {formatDateTime(sessionActive?.derniere_enchere_at || sessionActive?.date_debut_encheres)}
+            </p>
+          </article>
+
+          <article className={`rounded-[24px] border p-5 shadow-sm transition ${timerTone.card}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${timerTone.text}`}>
+                  Timer global
+                </p>
+                <p className={`mt-2 text-3xl font-black tracking-tight ${timerTone.text}`}>
+                  {timerText}
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm ring-1 ring-emerald-100">
-                <p className="text-sm text-emerald-900/65">Dernière enchère</p>
-                <p className="mt-1 text-base font-semibold text-emerald-950">
-                  {formatDateTime(sessionActive.derniere_enchere_at || sessionActive.date_debut_encheres)}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm ring-1 ring-emerald-100">
-                <p className="text-sm text-emerald-900/65">Timer global</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-950">{timerText}</p>
-              </div>
+              <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${timerTone.chip}`}>
+                {remainingMs === null
+                  ? "Inactif"
+                  : timerProgressPercent <= 20
+                  ? "Fin proche"
+                  : timerProgressPercent <= 45
+                  ? "À surveiller"
+                  : "Stable"}
+              </span>
             </div>
-          )}
+
+            <div className={`mt-4 h-2.5 overflow-hidden rounded-full ${timerTone.track}`}>
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${timerTone.bar}`}
+                style={{ width: `${timerProgressPercent}%` }}
+              />
+            </div>
+          </article>
         </section>
 
-        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-emerald-950">Lots de la session active</h2>
-            <p className="text-sm text-emerald-900/70">
-              Tous les lots mis aux enchères apparaissent exclusivement ici.
-            </p>
-          </div>
+        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>
+                <p className="text-sm text-emerald-900/70">
+                  Sélectionne un lot pour voir le classement live et enchérir.
+                </p>
+              </div>
 
-          {!sessionActive ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucune session active pour afficher des lots.
+              <div className="flex flex-wrap items-center gap-2">
+                {sessionActive?.lot_en_cours_index ? (
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                    Lot courant : {sessionActive.lot_en_cours_index}
+                  </span>
+                ) : null}
+
+                {loadingLots || loadingSessions ? (
+                  <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                    Chargement...
+                  </span>
+                ) : null}
+              </div>
             </div>
-          ) : loadingLots ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/40 px-6 py-8 text-sm text-emerald-900/70">
-              Chargement des lots...
-            </div>
-          ) : lots.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucun lot trouvé pour cette session.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {lots.map((lot) => (
-                <div
-                  key={lot.id}
-                  className={
-                    selectedLot === lot.id
-                      ? "rounded-3xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm ring-2 ring-emerald-200"
-                      : "rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm"
-                  }
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="text-lg font-bold text-emerald-950">
-                        Lot {lot.lot}{lot.libelle ? ` — ${lot.libelle}` : ""}
-                      </p>
-                      <p className="mt-1 text-sm text-emerald-900/65">Session : {lot.periode}</p>
-                    </div>
 
-                    <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(lot.statut_lot)}`}>
-                      {lot.statut_lot}
-                    </span>
-                  </div>
+            {!sessionActive ? (
+              <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
+                Aucune session active.
+              </div>
+            ) : lots.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
+                Aucun lot trouvé pour cette session.
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {lots.map((lot) => {
+                  const isSelected = selectedLot === lot.id;
+                  const isCurrentLot =
+                    !!sessionActive?.lot_en_cours_index &&
+                    lot.lot === sessionActive.lot_en_cours_index;
+                  const isClosed =
+                    String(lot.statut_lot || "").toUpperCase() === "CLOTURE";
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-                      <p className="text-sm text-emerald-900/65">Départ enchère</p>
-                      <p className="mt-1 text-base font-semibold text-emerald-950">
-                        {formatMontant(lot.montant_depart_enchere)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-                      <p className="text-sm text-emerald-900/65">Mise brute</p>
-                      <p className="mt-1 text-base font-semibold text-emerald-950">
-                        {formatMontant(lot.mise_brute_lot)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-                      <p className="text-sm text-emerald-900/65">Total relances</p>
-                      <p className="mt-1 text-base font-semibold text-emerald-950">
-                        {formatMontant(lot.montant_total_relances)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-                      <p className="text-sm text-emerald-900/65">Montant net</p>
-                      <p className="mt-1 text-base font-semibold text-emerald-950">
-                        {formatMontant(lot.gain_reel)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  return (
                     <button
+                      key={lot.id}
                       type="button"
                       onClick={() => loadEncheres(lot.id)}
-                      className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                      className={buildLotCardClass(isSelected, isCurrentLot, isClosed)}
                     >
-                      Voir enchères
-                    </button>
-                  </div>
-
-                  {sessionActive.statut_encheres === "EN_COURS" && (
-                    <div className="mt-4 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm">
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-emerald-950">Renchérir sur ce lot</h3>
-                        <p className="text-sm text-emerald-900/70">
-                          Le montant saisi est un ajout au meilleur total actuel. Exemple : départ 5000 + ajout 500 = total 5500 FCFA.
-                        </p>
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                        <input
-                          type="number"
-                          min={500}
-                          step={500}
-                          value={lotBidValues[lot.id] ?? ""}
-                          onChange={(e) => updateLotBidValue(lot.id, e.target.value)}
-                          placeholder="Montant d'ajout"
-                          className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => encherirSurLot(lot.id)}
-                          disabled={actionLoading || authLoading || !member?.id}
-                          className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
-                        >
-                          {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => incrementLotBidValue(lot.id, 500)}
-                          className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm"
-                        >
-                          +500 FCFA
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => incrementLotBidValue(lot.id, 1000)}
-                          className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm"
-                        >
-                          +1000 FCFA
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {lot.gagnant ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-900">
-                      <span className="font-medium text-emerald-800">Gagnant : </span>
-                      <strong>{lot.gagnant}</strong>
-                    </div>
-                  ) : null}
-
-                  {selectedLot === lot.id && (
-                    <div className="mt-5 border-t border-emerald-100 pt-5">
-                      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-lg font-semibold text-emerald-950">Classement enchères</h3>
-                          <p className="text-sm text-emerald-900/70">
-                            Classement live du lot sélectionné.
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-lg font-bold text-emerald-950">
+                              Lot {lot.lot}{lot.libelle ? ` — ${lot.libelle}` : ""}
+                            </p>
+
+                            {isCurrentLot ? (
+                              <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                                En focus
+                              </span>
+                            ) : null}
+
+                            {isSelected ? (
+                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                                Sélectionné
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <p className="mt-1 text-sm text-emerald-900/65">
+                            Période : {lot.periode}
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                            Live
-                          </span>
-                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                            {liveAgeSeconds === null ? "Mise à jour en attente" : `Dernière mise à jour il y a ${liveAgeSeconds}s`}
-                          </span>
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(
+                            lot.statut_lot
+                          )}`}
+                        >
+                          {lot.statut_lot}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Départ
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {formatMontant(lot.montant_depart_enchere)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Mise brute
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {formatMontant(lot.mise_brute_lot)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Total relances
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {formatMontant(lot.montant_total_relances)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-amber-700">
+                            Gain net
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-amber-700">
+                            {formatMontant(lot.gain_reel)}
+                          </p>
                         </div>
                       </div>
 
-                      {loadingEncheres ? (
-                        <p className="text-sm text-emerald-900/70">Chargement des enchères...</p>
-                      ) : encheres.length === 0 ? (
-                        <p className="text-sm text-emerald-900/70">Aucune enchère.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {encheres.map((e, index) => {
-                            const isLeader = index === 0;
-                            return (
-                              <div
-                                key={e.id}
-                                className={
-                                  isLeader
-                                    ? "rounded-3xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-white p-5 shadow-sm ring-2 ring-emerald-200"
-                                    : "rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"
-                                }
-                              >
-                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                  <div className="min-w-0">
-                                    {isLeader && (
-                                      <span className="mb-2 inline-flex rounded-full border border-emerald-300 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                                        Leader actuel
-                                      </span>
-                                    )}
-
-                                    <p className={isLeader ? "text-lg font-bold text-emerald-950" : "text-base font-semibold text-emerald-950"}>
-                                      #{e.rang ?? index + 1} — {e.nom_complet}
-                                    </p>
-
-                                    <p className="mt-1 text-sm text-emerald-900/65">
-                                      Ajout : {formatMontant(e.montant_relance)}
-                                    </p>
-                                  </div>
-
-                                  <div className="text-left md:text-right">
-                                    <p className={isLeader ? "text-2xl font-extrabold tracking-tight text-emerald-950" : "text-xl font-bold text-emerald-950"}>
-                                      {formatMontant(e.montant_total_offert)}
-                                    </p>
-                                    <p className="mt-1 text-sm text-slate-500">Statut : {e.statut}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                      {lot.gagnant ? (
+                        <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-900">
+                          <span className="font-medium text-emerald-800">Gagnant : </span>
+                          <strong>{lot.gagnant}</strong>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>
+                  <p className="text-sm text-emerald-900/70">
+                    {selectedLotData
+                      ? `Lot ${selectedLotData.lot}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`
+                      : "Sélectionne un lot pour afficher le classement"}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                    Live
+                  </span>
+                  <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                    {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
+                  </span>
+                </div>
+              </div>
+
+              {!selectedLot ? (
+                <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
+                  Aucun lot sélectionné.
+                </div>
+              ) : loadingEncheres ? (
+                <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
+                  Chargement du classement...
+                </div>
+              ) : encheres.length === 0 ? (
+                <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
+                  Aucune enchère pour ce lot.
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {leader ? (
+                    <div className="rounded-[24px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-white p-5 shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                            Leader actuel
+                          </p>
+                          <p className="mt-2 text-xl font-bold text-emerald-950">
+                            {leader.nom_complet}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-2xl font-black tracking-tight text-emerald-950">
+                            {formatMontant(leader.montant_total_offert)}
+                          </p>
+                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-emerald-700">
+                            meilleure offre
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {encheres.map((e, index) => {
+                    const rank = e.rang ?? index + 1;
+                    const isLeader = index === 0;
+
+                    return (
+                      <div
+                        key={e.id}
+                        className={
+                          isLeader
+                            ? "rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
+                            : "rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
+                        }
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getRankTone(rank)}`}>
+                                #{rank}
+                              </span>
+                              {isLeader ? (
+                                <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                                  En tête
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <p className="mt-3 text-base font-bold text-slate-900">
+                              {e.nom_complet}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Ajout : {formatMontant(e.montant_relance)}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <p className={isLeader ? "text-2xl font-black tracking-tight text-emerald-950" : "text-xl font-bold text-slate-900"}>
+                              {formatMontant(e.montant_total_offert)}
+                            </p>
+                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                              {e.statut}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>
+                <p className="text-sm text-emerald-900/70">
+                  Tu ajoutes un montant au meilleur total actuel.
+                </p>
+              </div>
+
+              {!selectedLotData ? (
+                <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
+                  Sélectionne d’abord un lot.
+                </div>
+              ) : sessionActive?.statut_encheres !== "EN_COURS" ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+                  Les enchères ne sont pas en cours.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                        Lot sélectionné
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900">
+                          Lot {selectedLotData.lot}{selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}
+                        </p>
+                        {selectedLotIsCurrent ? (
+                          <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                            Lot en focus
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
+                        Meilleure offre
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-emerald-700">
+                        {formatMontant(leader?.montant_total_offert ?? selectedLotData.montant_depart_enchere)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Montant d’ajout
+                    </label>
+                    <input
+                      type="number"
+                      min={500}
+                      step={500}
+                      value={lotBidValues[selectedLotData.id] ?? ""}
+                      onChange={(e) => updateLotBidValue(selectedLotData.id, e.target.value)}
+                      placeholder="Ex : 500"
+                      className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-400"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => incrementLotBidValue(selectedLotData.id, 500)}
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                    >
+                      +500 FCFA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => incrementLotBidValue(selectedLotData.id, 1000)}
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                    >
+                      +1000 FCFA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => incrementLotBidValue(selectedLotData.id, 2000)}
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                    >
+                      +2000 FCFA
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => encherirSurLot(selectedLotData.id)}
+                    disabled={actionLoading || authLoading || !member?.id}
+                    className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
+                  </button>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    Le renchérissement minimum reste de 500 FCFA.
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
         </section>
       </div>
     </main>

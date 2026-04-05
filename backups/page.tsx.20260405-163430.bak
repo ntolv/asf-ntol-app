@@ -1,0 +1,204 @@
+"use client";
+
+
+
+import { MobilePageShell, MobileTopBar, MobileBottomNav } from "@/components/mobile";
+import HomeLogoutButton from "@/components/home/HomeLogoutButton";
+import Link from "next/link";
+
+
+const mobileNavItems = [
+  { href: "/Tableau de bord", label: "Accueil", exact: true },
+  { href: "/Ma caisse", label: "Ma caisse" },
+  { href: "/Ma tontine", label: "Ma tontine" },
+  { href: "/encheres", label: "EnchÃ¨res" },
+  { href: "/profil", label: "Profil" },
+];
+const quickLinks = [
+  { href: "/Tableau de bord", label: "Tableau de bord", description: "Situation rÃ©elle du membre" },
+  { href: "/bilan", label: "Bilan", description: "Bilan global de l'association" },
+  { href: "/membres", label: "Membres", description: "Gestion et consultation des membres" },
+  { href: "/contributions", label: "Contributions", description: "Contributions des membres" },
+  { href: "/montants-attendus", label: "Montants attendus", description: "ParamÃ©trage initial des attendus" },
+  { href: "/Ma caisse", label: "Ma caisse", description: "Pilotage des fonds par rubrique" },
+  { href: "/deMa caissements", label: "DÃ©Ma caissements", description: "Sorties de fonds des Ma caisses" },
+  { href: "/Ma tontine", label: "Ma tontine", description: "Cycles, sessions et suivi Ma tontine" },
+  { href: "/aides", label: "Aides / Secours / PrÃªts", description: "Transmission des demandes membre" },
+  { href: "/gestion-demandes", label: "Gestion des demandes", description: "Validation bureau des aides et prÃªts" },
+  { href: "/prets-aides", label: "PrÃªts / Aides", description: "Historique global de tous les membres" },
+  { href: "/documents", label: "Documents", description: "Documents et piÃ¨ces de l'association" },
+  { href: "/admin/roles", label: "Administration des rÃ´les", description: "Gestion des accÃ¨s et rÃ´les" }
+];
+
+export default function HomePage() {
+  return (
+
+<div className="mobile-header flex items-center justify-between">
+  <div>
+    <h1 className="text-lg font-bold text-emerald-700">
+      ASF-NTOL
+    </h1>
+    <p className="text-xs text-gray-500">
+      Tableau de bord
+    </p>
+  </div>
+
+  <button
+    onClick={async () => {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }}
+    className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-semibold"
+  >
+    Déconnexion
+  </button>
+</div>
+
+    <>
+      <MobilePageShell
+        pageTitle="Accueil"
+        topBar={<MobileTopBar title="Accueil" subtitle="Association Famille NTOL" />}
+        bottomNav={<MobileBottomNav items={mobileNavItems} />}
+      >
+        <div data-mobile-home-content="true" className="flex flex-col gap-4">
+        <div className="mobile-bank-hero">
+          <div>
+            <p className="mobile-bank-hero__eyebrow">Accueil mobile premium</p>
+            <h2 className="mobile-bank-hero__title">Vos vraies donnÃ©es sont maintenant rÃ©utilisÃ©es cÃ´tÃ© tÃ©lÃ©phone</h2>
+            <p className="mobile-bank-hero__text">
+              Cette vue mobile reprend les donnÃ©es dÃ©jÃ  affichÃ©es par la page existante, sans inventer de nouvelle logique mÃ©tier dans le frontend.
+            </p>
+          </div>
+
+          <div className="mobile-bank-hero__pill-row">
+            <span className="mobile-bank-hero__pill">Vue mobile</span>
+            <span className="mobile-bank-hero__pill">DonnÃ©es rÃ©elles</span>
+            <span className="mobile-bank-hero__pill">Backend intact</span>
+          </div>
+        </div>
+
+        <div className="mobile-quick-actions-grid">
+          <Link href="/Tableau de bord" className="mobile-quick-action-card">
+            <span className="mobile-quick-action-card__icon" aria-hidden="true">âŒ‚</span>
+            <span className="mobile-quick-action-card__body">
+              <span className="mobile-quick-action-card__title">Accueil</span>
+              <span className="mobile-quick-action-card__text">Vue gÃ©nÃ©rale</span>
+            </span>
+          </Link>
+
+          <Link href="/Ma caisse" className="mobile-quick-action-card">
+            <span className="mobile-quick-action-card__icon" aria-hidden="true">â—«</span>
+            <span className="mobile-quick-action-card__body">
+              <span className="mobile-quick-action-card__title">Ma caisse</span>
+              <span className="mobile-quick-action-card__text">Paiements et situation</span>
+            </span>
+          </Link>
+
+          <Link href="/Ma tontine" className="mobile-quick-action-card">
+            <span className="mobile-quick-action-card__icon" aria-hidden="true">â—Ž</span>
+            <span className="mobile-quick-action-card__body">
+              <span className="mobile-quick-action-card__title">Ma tontine</span>
+              <span className="mobile-quick-action-card__text">Cycle et sessions</span>
+            </span>
+          </Link>
+
+          <Link href="/encheres" className="mobile-quick-action-card">
+            <span className="mobile-quick-action-card__icon" aria-hidden="true">â†—</span>
+            <span className="mobile-quick-action-card__body">
+              <span className="mobile-quick-action-card__title">EnchÃ¨res</span>
+              <span className="mobile-quick-action-card__text">Lots et participation</span>
+            </span>
+          </Link>
+
+          <Link href="/profil" className="mobile-quick-action-card">
+            <span className="mobile-quick-action-card__icon" aria-hidden="true">â—‰</span>
+            <span className="mobile-quick-action-card__body">
+              <span className="mobile-quick-action-card__title">Profil</span>
+              <span className="mobile-quick-action-card__text">Compte et actions</span>
+            </span>
+          </Link>
+        </div>
+
+        <div data-mobile-home-live-block="true" className="mobile-live-Tableau de bord-stack">
+<div className="space-y-6 p-4 md:p-6">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="max-w-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            Association Famille NTOL
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+            Bienvenue 👋 sur ASF-NTOL
+          </h1>
+          <HomeLogoutButton />
+          <p className="mt-3 text-sm text-slate-600 md:text-base">
+            AccÃ¨s rapide Ã  toutes les pages principales de l'application.
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              AccÃ¨s rapide
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900">
+              {item.label}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {item.description}
+            </p>
+          </Link>
+        ))}
+      </section>
+    </div>
+        </div>
+
+        </div>
+      </MobilePageShell>
+
+      <div className="hidden xl:block">
+<div className="space-y-6 p-4 md:p-6">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="max-w-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            Association Famille NTOL
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+            Bienvenue 👋 sur ASF-NTOL
+          </h1>
+          <HomeLogoutButton />
+          <p className="mt-3 text-sm text-slate-600 md:text-base">
+            AccÃ¨s rapide Ã  toutes les pages principales de l'application.
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              AccÃ¨s rapide
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900">
+              {item.label}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {item.description}
+            </p>
+          </Link>
+        ))}
+      </section>
+    </div>
+      </div>
+    </>
+  );
+}

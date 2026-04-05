@@ -1,0 +1,62 @@
+"use client";
+
+
+import HomeLogoutButton from "@/components/home/HomeLogoutButton";
+import Link from "next/link";
+
+const quickLinks = [
+  { href: "/dashboard", label: "Dashboard", description: "Situation réelle du membre" },
+  { href: "/bilan", label: "Bilan", description: "Bilan global de l'association" },
+  { href: "/membres", label: "Membres", description: "Gestion et consultation des membres" },
+  { href: "/contributions", label: "Contributions", description: "Contributions des membres" },
+  { href: "/montants-attendus", label: "Montants attendus", description: "Paramétrage initial des attendus" },
+  { href: "/caisse", label: "Caisse", description: "Pilotage des fonds par rubrique" },
+  { href: "/decaissements", label: "Décaissements", description: "Sorties de fonds des caisses" },
+  { href: "/tontine", label: "Tontine", description: "Cycles, sessions et suivi tontine" },
+  { href: "/aides", label: "Aides / Secours / Prêts", description: "Transmission des demandes membre" },
+  { href: "/gestion-demandes", label: "Gestion des demandes", description: "Validation bureau des aides et prêts" },
+  { href: "/prets-aides", label: "Prêts / Aides", description: "Historique global de tous les membres" },
+  { href: "/documents", label: "Documents", description: "Documents et pièces de l'association" },
+  { href: "/admin/roles", label: "Administration des rôles", description: "Gestion des accès et rôles" }
+];
+
+export default function HomePage() {
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="max-w-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            Association Famille NTOL
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+            Bienvenue sur ASF-NTOL
+          </h1>
+          <HomeLogoutButton />
+          <p className="mt-3 text-sm text-slate-600 md:text-base">
+            Accès rapide à toutes les pages principales de l'application.
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Accès rapide
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900">
+              {item.label}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {item.description}
+            </p>
+          </Link>
+        ))}
+      </section>
+    </div>
+  );
+}

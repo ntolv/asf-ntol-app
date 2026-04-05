@@ -1,5 +1,7 @@
 "use client";
 
+
+import { MobileBankBottomNav } from "@/components/mobile";
 import AppSidebar from "@/components/ui/AppSidebar";
 import MobileBottomNav from "@/components/ui/MobileBottomNav";
 import AppTopBar from "@/components/ui/AppTopBar";
@@ -19,7 +21,8 @@ export default function DashboardLayout({
           <AppTopBar />
 
           <main className="flex-1 px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-32 xl:pb-6">
-            <RoleGuard>{children}</RoleGuard>
+            <RoleGuard>{children}
+      <MobileBankBottomNav /></RoleGuard>
           </main>
         </div>
       </div>

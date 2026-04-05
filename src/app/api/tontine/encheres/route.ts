@@ -1,5 +1,8 @@
 ﻿import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { getUserContext } from "@/lib/server/getUserContext";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +14,10 @@ export async function GET(req: Request) {
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }
   );
 
   const { data, error } = await supabase
@@ -27,154 +33,137 @@ export async function GET(req: Request) {
   return NextResponse.json(data ?? []);
 }
 
+type FnEncherirRow = {
+  success: boolean;
+  message: string;
+  session_id: string;
+  lot_id: string;
+  membre_id: string;
+  statut_session: string;
+  statut_lot: string;
+  montant_depart: number;
+  montant_actuel: number;
+  montant_relance: number;
+  nouveau_montant_total: number;
+  total_relances_lot: number;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const cookieStore = await cookies();
 
-    const supabase = createClient(
+    const supabaseAuth = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+          set() {},
+          remove() {},
+        },
+      }
     );
 
-    const lot_id = body.lot_id as string;
-    const membre_id = body.membre_id as string;
-    const montant_relance = Number(body.montant_relance || 0);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAuth.auth.getUser();
 
-    if (!lot_id || !membre_id || montant_relance <= 0) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "lot_id, membre_id et montant_relance sont requis" },
+        { error: userError?.message || "Utilisateur non authentifié" },
+        { status: 401 }
+      );
+    }
+
+    const context = await getUserContext(user);
+
+    if (!context?.success || !context.membreId) {
+      return NextResponse.json(
+        { error: context?.message || "Contexte membre introuvable" },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+
+    const lot_id = String(body?.lot_id || "").trim();
+    const montant_relance = Number(body?.montant_relance || 0);
+    const commentaire =
+      typeof body?.commentaire === "string" && body.commentaire.trim().length > 0
+        ? body.commentaire.trim()
+        : null;
+
+    if (!lot_id || !Number.isFinite(montant_relance) || montant_relance <= 0) {
+      return NextResponse.json(
+        { error: "lot_id et montant_relance sont requis" },
         { status: 400 }
       );
     }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    );
 
     const { data: membreData, error: membreError } = await supabase
       .from("membres")
       .select("id")
-      .eq("id", membre_id)
+      .eq("id", context.membreId)
       .maybeSingle();
 
     if (membreError || !membreData?.id) {
       return NextResponse.json(
-        { error: membreError?.message || "Membre introuvable" },
+        { error: membreError?.message || "Membre connecté introuvable" },
         { status: 404 }
       );
     }
 
-    const { data: lot, error: lotError } = await supabase
-      .from("tontine_lots")
-      .select("*")
-      .eq("id", lot_id)
-      .single();
+    const { data, error } = await supabase.rpc("fn_encherir", {
+      p_lot_id: lot_id,
+      p_membre_id: membreData.id,
+      p_montant_relance: montant_relance,
+      p_commentaire: commentaire,
+    });
 
-    if (lotError || !lot) {
+    if (error) {
       return NextResponse.json(
-        { error: lotError?.message || "Lot introuvable" },
-        { status: 404 }
-      );
-    }
-
-    if (lot.statut_lot !== "OUVERT" && lot.statut_lot !== "EN_COURS") {
-      return NextResponse.json(
-        { error: "Ce lot n'accepte pas d'enchères" },
+        { error: error.message || "Erreur backend fn_encherir" },
         { status: 400 }
       );
     }
 
-    const { data: session, error: sessionError } = await supabase
-      .from("tontine_sessions")
-      .select("*")
-      .eq("id", lot.session_id)
-      .single();
+    const rows = (data as FnEncherirRow[] | null) ?? [];
+    const row = rows[0];
 
-    if (sessionError || !session) {
+    if (!row) {
       return NextResponse.json(
-        { error: sessionError?.message || "Session introuvable" },
-        { status: 404 }
-      );
-    }
-
-    const { data: dejaGagnant } = await supabase
-      .from("tontine_gagnants")
-      .select("id")
-      .eq("cycle_id", session.cycle_id)
-      .eq("membre_id", membre_id)
-      .maybeSingle();
-
-    if (dejaGagnant?.id) {
-      return NextResponse.json(
-        { error: "Ce membre a déjà gagné dans ce cycle" },
-        { status: 400 }
-      );
-    }
-
-    const { data: best } = await supabase
-      .from("tontine_encheres")
-      .select("montant_total_offert")
-      .eq("lot_id", lot_id)
-      .order("montant_total_offert", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const base = Number(best?.montant_total_offert ?? lot.montant_depart_enchere ?? 0);
-    const total = base + montant_relance;
-
-    const { data: enchere, error } = await supabase
-      .from("tontine_encheres")
-      .insert({
-        lot_id,
-        session_id: lot.session_id,
-        cycle_id: session.cycle_id,
-        membre_id,
-        montant_relance,
-        montant_total_offert: total,
-        statut_enchere: "ACTIVE",
-        date_enchere: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error || !enchere) {
-      return NextResponse.json(
-        { error: error?.message || "Erreur création enchère" },
+        { error: "Aucune réponse retournée par fn_encherir" },
         { status: 500 }
       );
     }
 
-    const { data: encheresLot } = await supabase
-      .from("tontine_encheres")
-      .select("id, montant_total_offert")
-      .eq("lot_id", lot_id)
-      .order("montant_total_offert", { ascending: false });
-
-    if (encheresLot && encheresLot.length > 0) {
-      for (let i = 0; i < encheresLot.length; i++) {
-        await supabase
-          .from("tontine_encheres")
-          .update({
-            rang_snapshot: i + 1,
-            statut_enchere: i === 0 ? "ACTIVE" : "SURCLASSEE",
-          })
-          .eq("id", encheresLot[i].id);
-      }
-
-      await supabase
-        .from("tontine_lots")
-        .update({
-          statut_lot: "EN_COURS",
-          montant_total_relances: Number(encheresLot[0].montant_total_offert || 0),
-          gain_reel: Number(lot.mise_brute_lot || 0) - Number(encheresLot[0].montant_total_offert || 0),
-        })
-        .eq("id", lot_id);
+    if (!row.success) {
+      return NextResponse.json(
+        { error: row.message || "Enchère refusée" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ success: true, enchere });
+    return NextResponse.json({
+      success: true,
+      message: row.message,
+      enchere: row,
+    });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e.message || "Erreur serveur" },
+      { error: e?.message || "Erreur serveur" },
       { status: 500 }
     );
   }
 }
-
-
-

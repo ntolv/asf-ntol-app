@@ -1,15 +1,45 @@
 ﻿import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { getUserContext } from "@/lib/server/getUserContext";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const membre_id = searchParams.get("membre_id");
+    const cookieStore = await cookies();
 
-    if (!membre_id) {
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAuth.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "membre_id requis" },
-        { status: 400 }
+        { error: userError?.message || "Utilisateur non authentifié" },
+        { status: 401 }
+      );
+    }
+
+    const context = await getUserContext(user);
+
+    if (!context?.success || !context.membreId) {
+      return NextResponse.json(
+        { error: context?.message || "Contexte membre introuvable" },
+        { status: 401 }
       );
     }
 
@@ -21,7 +51,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("v_tontine_encheres")
       .select("*")
-      .eq("membre_id", membre_id)
+      .eq("membre_id", context.membreId)
       .order("date_enchere", { ascending: false });
 
     if (error) {

@@ -1,7 +1,9 @@
-﻿"use client";
+"use client";
+import EnablePushButton from "@/components/push/EnablePushButton";
 
-import { useEffect, useState, useRef } from "react";
+
 import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState, useRef } from "react";
 
 type MembreData = {
   id: string;
@@ -557,4 +559,5 @@ export default function MembresPage() {
     </main>
   );
 }
+
 

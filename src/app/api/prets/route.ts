@@ -1,65 +1,77 @@
 ﻿import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
 
+function isBureauRole(role: { code?: string | null; libelle?: string | null } | null | undefined) {
+  const raw = `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
+  return raw.includes("admin") || raw.includes("président") || raw.includes("president") || raw.includes("trésorier") || raw.includes("tresorier");
+}
+
 export async function GET() {
   try {
-    const userContext = await getUserContext();
+    const cookieStore = await cookies();
 
-    if (!userContext?.authUserId) {
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "Utilisateur non authentifié." },
+        { success: false, message: userError?.message || "Utilisateur non authentifié.", data: [] },
         { status: 401 }
       );
     }
 
-    if (!userContext?.membreId) {
+    const context = await getUserContext(user);
+
+    if (!context?.success) {
       return NextResponse.json(
-        { error: "Membre introuvable pour cet utilisateur." },
+        { success: false, message: context?.message || "Contexte utilisateur introuvable.", data: [] },
+        { status: 401 }
+      );
+    }
+
+    if (!isBureauRole(context.role)) {
+      return NextResponse.json(
+        { success: false, message: "Accès refusé. Action réservée au bureau.", data: [] },
         { status: 403 }
       );
     }
 
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
-    const { data, error } = await supabase.rpc("fn_prets_membre", {
-      p_membre_id: userContext.membreId
-    });
+    const { data, error } = await supabaseAdmin
+      .from("demandes_prets")
+      .select("*")
+      .eq("statut", "EN_ATTENTE")
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Erreur API /api/prets via fn_prets_membre:", error);
+    if (error) throw error;
 
-      return NextResponse.json(
-        { error: error.message || "Erreur lors du chargement des prêts." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      data || {
-        demandesPret: [],
-        prets: [],
-        remboursements: [],
-        resume: {
-          totalPrets: 0,
-          soldeRestantCumule: 0,
-          totalRembourse: 0,
-          totalDemandesPret: 0
-        }
-      }
-    );
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (error: any) {
-    console.error("Erreur inattendue API /api/prets:", error);
-
     return NextResponse.json(
-      {
-        error:
-          error?.message || "Erreur inattendue lors du chargement des prêts."
-      },
+      { success: false, message: error?.message || "Erreur lors du chargement des demandes de prêt.", data: [] },
       { status: 500 }
     );
   }
 }
+

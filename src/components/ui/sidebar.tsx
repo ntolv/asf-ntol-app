@@ -20,7 +20,7 @@ const navigation = [
   { name: "Imputations", href: "/imputations", icon: FileText },
   { name: "Tontine", href: "/tontine", icon: TrendingUp },
   { name: "Enchères", href: "/encheres", icon: Gavel },
-  { name: "Aides", href: "/aides", icon: Heart },
+  { name: "Aides / Secours / Prêts / Prêts", href: "/aides", icon: Heart },
   { name: "Prêts", href: "/prets", icon: HandCoins },
   { name: "Membres", href: "/membres", icon: Users },
   { name: "Documents", href: "/documents", icon: FileText },
@@ -98,3 +98,5 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
+
+
