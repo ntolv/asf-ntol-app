@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import MobileStatusBadge from "./MobileStatusBadge";
 
 export type MobileCaisseSummary = {
@@ -33,20 +32,7 @@ type MobileCaisseBankingProps = {
   summary: MobileCaisseSummary;
   rubriques: MobileCaisseRubriqueItem[];
   mouvements: MobileCaisseMovementItem[];
-  contributionsHref?: string;
-  imputationsHref?: string;
-  decaissementsHref?: string;
-  montantsAttendusHref?: string;
-  encheresHref?: string;
 };
-
-const ACTIONS = [
-  { key: "contributions", label: "Contributions", text: "Versements enregistrés" },
-  { key: "imputations", label: "Imputations", text: "Ventilation des montants" },
-  { key: "decaissements", label: "Décaissements", text: "Sorties de fonds" },
-  { key: "montantsAttendus", label: "Montants attendus", text: "Référentiel des restes" },
-  { key: "encheres", label: "Enchères", text: "Montant total lié à la caisse" },
-] as const;
 
 function EmptyBlock({
   title,
@@ -67,36 +53,23 @@ export default function MobileCaisseBanking({
   summary,
   rubriques,
   mouvements,
-  contributionsHref = "/contributions",
-  imputationsHref = "/imputations",
-  decaissementsHref = "/decaissements",
-  montantsAttendusHref = "/montants-attendus",
-  encheresHref = "/encheres",
 }: MobileCaisseBankingProps) {
-  const hrefByKey = {
-    contributions: contributionsHref,
-    imputations: imputationsHref,
-    decaissements: decaissementsHref,
-    montantsAttendus: montantsAttendusHref,
-    encheres: encheresHref,
-  };
-
   return (
-    <section className="space-y-5">
+    <section className="space-y-5 xl:hidden">
       <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
             Caisse
           </p>
           <h2 className="mt-2 text-2xl font-bold text-slate-900">
-            Vue réelle de la caisse
+            Vue bancaire mobile
           </h2>
           <p className="mt-3 text-sm text-slate-600">
-            Lecture claire des montants, des rubriques, des mouvements récents et du total des enchères.
+            Lecture claire des montants, des rubriques, des mouvements et du total enchères.
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="mt-5 grid gap-3">
           <div className="rounded-[24px] bg-emerald-600 px-5 py-4 text-white">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/85">
               Total attendu
@@ -132,30 +105,6 @@ export default function MobileCaisseBanking({
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            Liens caisse
-          </p>
-          <h3 className="mt-2 text-xl font-bold text-slate-900">
-            Pages qui alimentent la caisse
-          </h3>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {ACTIONS.map((item) => (
-            <Link
-              key={item.key}
-              href={hrefByKey[item.key]}
-              className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 transition hover:border-emerald-200 hover:bg-emerald-50"
-            >
-              <p className="text-base font-bold text-slate-900">{item.label}</p>
-              <p className="mt-1 text-sm text-slate-500">{item.text}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
             Rubriques
           </p>
           <h3 className="mt-2 text-xl font-bold text-slate-900">
@@ -183,7 +132,7 @@ export default function MobileCaisseBanking({
                   />
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="mt-4 grid grid-cols-3 gap-3">
                   <div className="rounded-xl bg-slate-50 px-3 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                       Attendu

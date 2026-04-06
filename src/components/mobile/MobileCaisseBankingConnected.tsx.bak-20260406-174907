@@ -291,7 +291,7 @@ export default function MobileCaisseBankingConnected() {
   const summary = useMemo(() => state.summary, [state.summary]);
 
   return (
-    <div className="space-y-4">
+    <div className="xl:hidden">
       <MobileCaisseBanking
         summary={{
           totalAttendu: state.loading ? "Chargement..." : summary.totalAttendu,
@@ -304,7 +304,7 @@ export default function MobileCaisseBankingConnected() {
       />
 
       {state.error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mobile-caisse-data-alert mobile-caisse-data-alert--danger">
           {state.error}
         </div>
       ) : null}
