@@ -60,11 +60,11 @@ function getBadgeClass(value?: string | null) {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
-  if (statut === "TERMINE" || statut === "CLOTUREE" || statut === "CLÃ”TURÃ‰E") {
+  if (statut === "TERMINE" || statut === "CLOTUREE" || statut === "CLÔTURÉE") {
     return "border-slate-300 bg-slate-100 text-slate-700";
   }
 
-  if (statut === "PLANIFIEE" || statut === "PLANIFIÃ‰E") {
+  if (statut === "PLANIFIEE" || statut === "PLANIFIÉE") {
     return "border-amber-200 bg-amber-50 text-amber-800";
   }
 
@@ -202,12 +202,12 @@ export default function TontinePage() {
       const montant = Number(montantFixeParTontineur);
 
       if (!montant || montant <= 0) {
-        alert("Le montant fixe par tontineur doit Ãªtre supÃ©rieur Ã  0 FCFA.");
+        alert("Le montant fixe par tontineur doit être supérieur à 0 FCFA.");
         return;
       }
 
       if (!dateDebutCycle) {
-        alert("La date de dÃ©but du cycle est obligatoire.");
+        alert("La date de début du cycle est obligatoire.");
         return;
       }
 
@@ -233,7 +233,8 @@ export default function TontinePage() {
       }
 
       await loadCycleParams();
-      alert("ParamÃ¨tres du cycle enregistrÃ©s avec succÃ¨s");
+      await loadSessions();
+      alert("Paramètres du cycle enregistrés avec succès");
     } catch (err) {
       console.error(err);
       alert("Erreur enregistrement paramètres cycle");
@@ -250,7 +251,7 @@ export default function TontinePage() {
       }
 
       if (!cycleParams.nb_tontineurs_inscrits || cycleParams.nb_tontineurs_inscrits <= 0) {
-        alert("Aucun tontineur inscrit n'a Ã©tÃ© trouvÃ©.");
+        alert("Aucun tontineur inscrit n'a été trouvé.");
         return;
       }
 
@@ -260,7 +261,7 @@ export default function TontinePage() {
       }
 
       if (montantDepartSession < 0) {
-        alert("Le montant minimum du dÃ©part des enchÃ¨res ne peut pas Ãªtre nÃ©gatif.");
+        alert("Le montant minimum du départ des enchères ne peut pas être négatif.");
         return;
       }
 
@@ -290,15 +291,15 @@ export default function TontinePage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur crÃ©ation session");
+        alert(data?.error || "Erreur création session");
         return;
       }
 
       await loadSessions();
-      alert("Session crÃ©Ã©e avec succÃ¨s");
+      alert("Session créée avec succès");
     } catch (err) {
       console.error(err);
-      alert("Erreur crÃ©ation session");
+      alert("Erreur création session");
     } finally {
       setActionLoading(false);
     }
@@ -307,7 +308,7 @@ export default function TontinePage() {
   const startGlobalEncheres = async () => {
     try {
       if (!sessionActive?.id) {
-        alert("Aucune session sÃ©lectionnÃ©e");
+        alert("Aucune session sélectionnée");
         return;
       }
 
@@ -327,15 +328,15 @@ export default function TontinePage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur dÃ©marrage enchÃ¨res");
+        alert(data?.error || "Erreur démarrage enchères");
         return;
       }
 
       await loadSessions();
-      alert("EnchÃ¨res globales dÃ©marrÃ©es pour tous les lots");
+      alert("Enchères globales démarrées pour tous les lots");
     } catch (err) {
       console.error(err);
-      alert("Erreur dÃ©marrage enchÃ¨res");
+      alert("Erreur démarrage enchères");
     } finally {
       setActionLoading(false);
     }
@@ -351,7 +352,7 @@ export default function TontinePage() {
                 Tontine
               </h1>
               <p className="mt-2 text-sm text-emerald-900/70 md:text-base">
-                Paramétrage du cycle, crÃ©ation de session, lancement des enchÃ¨res et suivi des rÃ©sultats.
+                Paramétrage du cycle, création de session, lancement des enchères et suivi des résultats.
               </p>
             </div>
 
@@ -367,7 +368,7 @@ export default function TontinePage() {
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Paramétrage du cycle de tontine</h2>
                 <p className="text-sm text-emerald-900/70">
-                  Les montants et le calcul du cycle sont affichÃ©s automatiquement selon la logique du cycle.
+                  Les montants et le calcul du cycle sont affichés automatiquement selon la logique du cycle.
                 </p>
               </div>
 
@@ -377,7 +378,7 @@ export default function TontinePage() {
                 disabled={loadingCycle || actionLoading}
                 className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {loadingCycle ? "Chargement..." : "RafraÃ®chir cycle"}
+                {loadingCycle ? "Chargement..." : "Rafraîchir cycle"}
               </button>
             </div>
 
@@ -398,7 +399,7 @@ export default function TontinePage() {
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <label className="text-sm font-medium text-emerald-900">
-                  Date de dÃ©but du cycle
+                  Date de début du cycle
                 </label>
                 <input
                   type="date"
@@ -423,7 +424,7 @@ export default function TontinePage() {
               </div>
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">DÃ©but du cycle</p>
+                <p className="text-sm text-emerald-900/65">Début du cycle</p>
                 <p className="mt-2 text-base font-semibold text-emerald-950">
                   {formatDate(cycleParams?.date_debut_cycle)}
                 </p>
@@ -468,7 +469,7 @@ export default function TontinePage() {
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Paramétrage de session</h2>
                 <p className="text-sm text-emerald-900/70">
-                  Choix de la session disponible Ã  piloter et lancement global des enchÃ¨res.
+                  Préparation de la session et lancement global des enchères.
                 </p>
               </div>
 
@@ -478,14 +479,14 @@ export default function TontinePage() {
                 disabled={loadingSessions || actionLoading}
                 className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {loadingSessions ? "Chargement..." : "RafraÃ®chir"}
+                {loadingSessions ? "Chargement..." : "Rafraîchir"}
               </button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4 md:col-span-2">
                 <label className="text-sm font-medium text-emerald-900">
-                  Session Ã  piloter
+                  Session à piloter
                 </label>
                 <select
                   value={sessionActive?.id || ""}
@@ -495,26 +496,26 @@ export default function TontinePage() {
                   }}
                   className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
                 >
-                  <option value="">SÃ©lectionner une session</option>
+                  <option value="">Sélectionner une session</option>
                   {sessions
                     .filter((s) => s?.est_selectionnable === true)
                     .sort((a, b) => (a?.ordre_session ?? 0) - (b?.ordre_session ?? 0))
                     .map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.libelle} â€” {s.periode}
-                        {s.est_active ? " (premiÃ¨re disponible)" : ""}
+                        {s.libelle} — {s.periode}
+                        {s.est_active ? " (première disponible)" : ""}
                       </option>
                     ))}
                 </select>
                 <p className="mt-2 text-xs text-emerald-800/80">
-                  La premiÃ¨re session non clÃ´turÃ©e du cycle est prÃ©chargÃ©e automatiquement depuis le backend.
+                  La première session non clôturée du cycle est préchargée automatiquement depuis le backend.
                 </p>
               </div>
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Session sÃ©lectionnÃ©e</p>
+                <p className="text-sm text-emerald-900/65">Session sélectionnée</p>
                 <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {sessionActive?.libelle ? `${sessionActive.libelle} â€” ${sessionActive.periode}` : "Aucune"}
+                  {sessionActive?.libelle ? `${sessionActive.libelle} — ${sessionActive.periode}` : "Aucune"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {sessionActive?.statut_session || "-"} / {sessionActive?.statut_encheres || "-"}
@@ -536,7 +537,7 @@ export default function TontinePage() {
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <label className="text-sm font-medium text-emerald-900">
-                  DurÃ©e d'inactivitÃ© avant clÃ´ture (minutes)
+                  Durée d'inactivité avant clôture (minutes)
                 </label>
                 <input
                   type="number"
@@ -549,7 +550,7 @@ export default function TontinePage() {
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4 md:col-span-2">
                 <label className="text-sm font-medium text-emerald-900">
-                  Montant minimum du dÃ©part des enchÃ¨res
+                  Montant minimum du départ des enchères
                 </label>
                 <input
                   type="number"
@@ -562,7 +563,7 @@ export default function TontinePage() {
             </div>
 
             <div className="mt-4 rounded-3xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-              Le bloc Session active et les lots actifs sont dÃ©sormais transfÃ©rÃ©s dans la page EnchÃ¨res. Câ€™est lÃ  que les utilisateurs renchÃ©rissent.
+              Le bloc Session active et les lots actifs sont désormais transférés dans la page Enchères. C’est là que les utilisateurs renchérissent.
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
@@ -581,7 +582,7 @@ export default function TontinePage() {
                 disabled={actionLoading || !sessionActive?.id}
                 className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {actionLoading ? "Traitement..." : "DÃ©marrer enchÃ¨res (global)"}
+                {actionLoading ? "Traitement..." : "Démarrer enchères (global)"}
               </button>
             </div>
           </section>
@@ -591,11 +592,11 @@ export default function TontinePage() {
           <div className="mb-5">
             <h2 className="text-xl font-semibold text-emerald-950">Gagnants de la session</h2>
             <p className="text-sm text-emerald-900/70">
-              RÃ©sultats renvoyÃ©s par le backend pour la session active ou, Ã  dÃ©faut, pour la derniÃ¨re session disponible.
+              Résultats renvoyés par le backend pour la session active ou, à défaut, pour la dernière session disponible.
             </p>
             {sessionReferenceForWinners && (
               <p className="mt-1 text-sm font-medium text-emerald-800">
-                Session affichÃ©e : {sessionReferenceForWinners.libelle} â€” {sessionReferenceForWinners.periode}
+                Session affichée : {sessionReferenceForWinners.libelle} — {sessionReferenceForWinners.periode}
               </p>
             )}
           </div>
@@ -610,14 +611,14 @@ export default function TontinePage() {
             </div>
           ) : gagnants.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucun gagnant attribuÃ© pour le moment.
+              Aucun gagnant attribué pour le moment.
             </div>
           ) : (
             <div className="space-y-3">
               {gagnants.map((g) => (
                 <div key={g.id} className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/40 p-4 shadow-sm">
                   <p className="text-base font-semibold text-emerald-950">
-                    Lot {g.lot} â€” {g.nom_complet}
+                    Lot {g.lot} — {g.nom_complet}
                   </p>
                   <div className="mt-3 space-y-1 text-sm text-slate-600">
                     <p>Mise brute : {formatMontant(g.mise_brute)}</p>
@@ -634,7 +635,7 @@ export default function TontinePage() {
         <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-xl font-semibold text-emerald-950">Historique sessions</h2>
-            <p className="text-sm text-emerald-900/70">Liste des sessions dÃ©jÃ  prÃ©sentes dans le systÃ¨me.</p>
+            <p className="text-sm text-emerald-900/70">Liste des sessions déjà présentes dans le système.</p>
           </div>
 
           {loadingSessions ? (
@@ -656,7 +657,7 @@ export default function TontinePage() {
                         {s.statut_session}
                       </span>
                       <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(s.statut_encheres)}`}>
-                        {s.statut_encheres ?? "Non dÃ©marrÃ©es"}
+                        {s.statut_encheres ?? "Non démarrées"}
                       </span>
                     </div>
                   </div>
