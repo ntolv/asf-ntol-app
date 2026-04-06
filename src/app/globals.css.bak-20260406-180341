@@ -69,7 +69,7 @@ body {
 
 /* === ASF-NTOL MOBILE GLOBAL FIX START === */
 
-/* Base stabilitÃƒÂ© mobile */
+/* Base stabilitÃ© mobile */
 html,
 body {
   max-width: 100%;
@@ -114,7 +114,7 @@ textarea {
   font-size: 16px;
 }
 
-/* Evite les dÃƒÂ©bordements imprÃƒÂ©vus */
+/* Evite les dÃ©bordements imprÃ©vus */
 main,
 section,
 article,
@@ -157,7 +157,7 @@ div {
   background-clip: padding-box;
 }
 
-/* IMPORTANT : supprime les Ã¢â‚¬Å“mauvais caractÃƒÂ¨resÃ¢â‚¬Â / boutons parasites */
+/* IMPORTANT : supprime les â€œmauvais caractÃ¨resâ€ / boutons parasites */
 ::-webkit-scrollbar-button {
   display: none;
   width: 0;
@@ -173,7 +173,7 @@ div {
   background: transparent;
 }
 
-/* LisibilitÃƒÂ© et cohÃƒÂ©rence tactile */
+/* LisibilitÃ© et cohÃ©rence tactile */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -183,7 +183,7 @@ button {
   touch-action: manipulation;
 }
 
-/* Tables plus sÃƒÂ»res sur smartphone */
+/* Tables plus sÃ»res sur smartphone */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -251,7 +251,7 @@ table {
     max-width: 100%;
   }
 
-  /* Evite que les cartes dÃƒÂ©bordent */
+  /* Evite que les cartes dÃ©bordent */
   .rounded-2xl,
   .rounded-3xl {
     overflow: hidden;
@@ -1402,33 +1402,3 @@ body {
 }
 
 /* === ASF-NTOL PRO MAX FINAL END === */
-
-
-/* === ASF-NTOL DESKTOP SCROLL RESTORE START === */
-@media (min-width: 1280px) {
-  html {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-    scroll-behavior: auto !important;
-  }
-
-  body {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-    overscroll-behavior-y: auto !important;
-    -webkit-overflow-scrolling: auto !important;
-  }
-
-  body > div,
-  body > main,
-  #__next {
-    position: static !important;
-  }
-}
-/* === ASF-NTOL DESKTOP SCROLL RESTORE END === */
