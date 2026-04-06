@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -8,8 +8,10 @@ type Session = {
   periode: string;
   ordre_session: number;
   statut_session: string;
-  nombre_lots: number;
+  nombre_lots?: number;
   statut_encheres?: string | null;
+  est_selectionnable?: boolean;
+  est_active?: boolean;
 };
 
 type Gagnant = {
@@ -71,6 +73,7 @@ function getBadgeClass(value?: string | null) {
 
 export default function TontinePage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionActive, setSessionActive] = useState<Session | null>(null);
   const [gagnants, setGagnants] = useState<Gagnant[]>([]);
   const [cycleParams, setCycleParams] = useState<CycleParams | null>(null);
 
@@ -90,10 +93,36 @@ export default function TontinePage() {
     try {
       const res = await fetch("/api/tontine/sessions");
       const data = await res.json();
-      setSessions(Array.isArray(data) ? data : []);
+
+      const loadedSessions: Session[] = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.sessions)
+          ? data.sessions
+          : [];
+
+      setSessions(loadedSessions);
+
+      const resolvedSessionActive =
+        data?.session_active
+          ? loadedSessions.find((s) => s.id === data.session_active.id) ?? {
+              id: data.session_active.id,
+              libelle: data.session_active.libelle,
+              periode: data.session_active.periode,
+              ordre_session: data.session_active.ordre_session,
+              statut_session: "OUVERTE",
+              statut_encheres: null,
+              est_selectionnable: true,
+              est_active: true,
+            }
+          : loadedSessions.find((s) => s.est_active) ??
+            loadedSessions.find((s) => s.est_selectionnable) ??
+            null;
+
+      setSessionActive(resolvedSessionActive);
     } catch (err) {
       console.error("Erreur chargement sessions:", err);
       setSessions([]);
+      setSessionActive(null);
     } finally {
       setLoadingSessions(false);
     }
@@ -120,6 +149,7 @@ export default function TontinePage() {
         date_debut_cycle: data?.date_debut_cycle ?? null,
         date_fin_cycle: data?.date_fin_cycle ?? null,
         annee_cycle: data?.annee_cycle != null ? Number(data.annee_cycle) : null,
+        calcul_detail: data?.calcul_detail ?? null,
       };
 
       setCycleParams(normalized);
@@ -141,13 +171,6 @@ export default function TontinePage() {
     loadSessions();
     loadCycleParams();
   }, []);
-
-  const sessionActive =
-    sessions.find(
-      (s) =>
-        (s.statut_session === "EN_COURS" || s.statut_session === "OUVERTE") &&
-        s.statut_encheres !== "TERMINE"
-    ) || null;
 
   const sessionReferenceForWinners = sessionActive || sessions[0] || null;
 
@@ -232,7 +255,7 @@ export default function TontinePage() {
       }
 
       if (!cycleParams.mise_brute_cycle || cycleParams.mise_brute_cycle <= 0) {
-        alert("La Mise brute du cycle est invalide.");
+        alert("La mise brute du cycle est invalide.");
         return;
       }
 
@@ -284,7 +307,7 @@ export default function TontinePage() {
   const startGlobalEncheres = async () => {
     try {
       if (!sessionActive?.id) {
-        alert("Aucune session active");
+        alert("Aucune session sélectionnée");
         return;
       }
 
@@ -431,12 +454,12 @@ export default function TontinePage() {
                 Consulter le tableau de suivi du cycle
               </a>
 
-            <div className="rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
-              <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
-              <p className="mt-3 text-sm font-semibold text-slate-900">
-                {cycleParams?.calcul_detail || "Calcul non disponible"}
-              </p>
-            </div>
+              <div className="rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
+                <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
+                <p className="mt-3 text-sm font-semibold text-slate-900">
+                  {cycleParams?.calcul_detail || "Calcul non disponible"}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -445,7 +468,7 @@ export default function TontinePage() {
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Paramétrage de session</h2>
                 <p className="text-sm text-emerald-900/70">
-                  Préparation de la session et lancement global des enchères.
+                  Choix de la session disponible à piloter et lancement global des enchères.
                 </p>
               </div>
 
@@ -460,6 +483,44 @@ export default function TontinePage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4 md:col-span-2">
+                <label className="text-sm font-medium text-emerald-900">
+                  Session à piloter
+                </label>
+                <select
+                  value={sessionActive?.id || ""}
+                  onChange={(e) => {
+                    const nextSession = sessions.find((s) => s.id === e.target.value) || null;
+                    setSessionActive(nextSession);
+                  }}
+                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
+                >
+                  <option value="">Sélectionner une session</option>
+                  {sessions
+                    .filter((s) => s?.est_selectionnable === true)
+                    .sort((a, b) => (a?.ordre_session ?? 0) - (b?.ordre_session ?? 0))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.libelle} — {s.periode}
+                        {s.est_active ? " (première disponible)" : ""}
+                      </option>
+                    ))}
+                </select>
+                <p className="mt-2 text-xs text-emerald-800/80">
+                  La première session non clôturée du cycle est préchargée automatiquement depuis le backend.
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
+                <p className="text-sm text-emerald-900/65">Session sélectionnée</p>
+                <p className="mt-2 text-base font-semibold text-emerald-950">
+                  {sessionActive?.libelle ? `${sessionActive.libelle} — ${sessionActive.periode}` : "Aucune"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {sessionActive?.statut_session || "-"} / {sessionActive?.statut_encheres || "-"}
+                </p>
+              </div>
+
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <label className="text-sm font-medium text-emerald-900">
                   Nombre de lots de la session
@@ -608,8 +669,3 @@ export default function TontinePage() {
     </main>
   );
 }
-
-
-
-
-

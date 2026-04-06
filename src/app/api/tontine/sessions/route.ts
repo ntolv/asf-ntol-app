@@ -8,48 +8,42 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // ✅ ON UTILISE LA VUE BACKEND (SOURCE DE VÉRITÉ)
     const { data, error } = await supabase
-      .from("tontine_sessions")
-      .select(`
-        id,
-        libelle,
-        periode_reference,
-        ordre_session,
-        statut_session,
-        nb_lots_effectif,
-        date_debut_encheres,
-        duree_par_lot_minutes,
-        lot_en_cours_index,
-        statut_encheres,
-        montant_depart_enchere_session,
-        derniere_enchere_at
-      `)
-      .order("periode_reference", { ascending: false })
-      .order("ordre_session", { ascending: false });
+      .from("v_tontine_sessions_disponibles_selection")
+      .select("*")
+      .order("ordre_session", { ascending: true });
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const normalized = (data ?? []).map((row) => ({
-      id: row.id,
-      libelle: row.libelle,
-      periode: row.periode_reference,
-      ordre_session: row.ordre_session,
-      statut_session: row.statut_session,
-      nombre_lots: row.nb_lots_effectif,
-      date_debut_encheres: row.date_debut_encheres,
-      duree_par_lot_minutes: row.duree_par_lot_minutes,
-      lot_en_cours_index: row.lot_en_cours_index,
-      statut_encheres: row.statut_encheres,
-      montant_depart_enchere_session: row.montant_depart_enchere_session,
-      derniere_enchere_at: row.derniere_enchere_at,
-    }));
+    const sessions = data ?? [];
 
-    return NextResponse.json(normalized);
+    // ✅ SESSION ACTIVE = PREMIERE SESSION DISPONIBLE
+    const sessionActive =
+      sessions.find((s) => s.est_premiere_session_disponible) || null;
+
+    return NextResponse.json({
+      sessions: sessions.map((s) => ({
+        id: s.id,
+        libelle: s.libelle,
+        periode: s.periode_reference,
+        ordre_session: s.ordre_session,
+        statut_session: s.statut_session,
+        statut_encheres: s.statut_encheres,
+        est_selectionnable: s.est_selectionnable,
+        est_active: s.est_premiere_session_disponible,
+      })),
+      session_active: sessionActive
+        ? {
+            id: sessionActive.id,
+            libelle: sessionActive.libelle,
+            periode: sessionActive.periode_reference,
+            ordre_session: sessionActive.ordre_session,
+          }
+        : null,
+    });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Erreur serveur" },

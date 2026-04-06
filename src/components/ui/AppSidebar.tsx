@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
 
   { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝", section: "support" },
   { href: "/gestion-demandes", label: "Gestion des demandes", icon: "🗂️", section: "support" },
-  { href: "/prets-aides", label: "Prêts/Aides", icon: "📈", section: "support" },
+  { href: "/prets-aides", label: "Prêts / Aides", icon: "📉", section: "support" },
   { href: "/documents", label: "Documents", icon: "📂", section: "support" },
 
   { href: "/admin/roles", label: "Administration", icon: "⚙️", section: "admin" }
@@ -51,8 +51,11 @@ function normalizeRoleLabel(role: unknown, roleCode: unknown) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const auth: any = useAuth?.() ?? {};
+
   const displayedRole = normalizeRoleLabel(auth?.member?.role, auth?.member?.roleCode);
+  const displayedName = String(auth?.member?.nom || "").trim();
   const showRoleBadge = auth?.loading !== true && !!displayedRole;
+  const showMemberName = auth?.loading !== true && !!displayedName;
 
   return (
     <aside className="hidden xl:flex xl:w-[300px] xl:flex-col xl:h-screen xl:shrink-0 xl:border-r xl:border-emerald-100 xl:bg-white">
@@ -68,6 +71,20 @@ export default function AppSidebar() {
         <p className="mt-2 text-sm text-slate-600">
           Navigation complète de l’application.
         </p>
+
+        {showMemberName ? (
+          <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Membre connecté
+            </p>
+            <p className="mt-1 text-sm font-bold text-emerald-950">
+              {displayedName}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {displayedRole || "Rôle indisponible"}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {showRoleBadge ? (
