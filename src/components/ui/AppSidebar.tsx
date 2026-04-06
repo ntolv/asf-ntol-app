@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,87 +9,109 @@ type NavItem = {
   href: string;
   label: string;
   icon: string;
+  section: "pilotage" | "operations" | "support" | "admin";
 };
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Accueil", icon: "🏠" },
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/bilan", label: "Bilan", icon: "📈" },
-  { href: "/tontine", label: "Tontine", icon: "💚" },
-  { href: "/encheres", label: "Enchères", icon: "🔥" },
-  { href: "/membres", label: "Membres", icon: "👥" },
-  { href: "/contributions", label: "Contributions", icon: "💰" },
-  { href: "/imputations", label: "Imputations", icon: "🧾" },
-  { href: "/caisse", label: "Caisse", icon: "🦺" },
-  { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝" },
-  { href: "/prets-aides", label: "Prêts/Aides", icon: "📈" },
-  { href: "/documents", label: "Documents", icon: "📂" },
-  { href: "/admin/roles", label: "Administration", icon: "⚙️" }
+  { href: "/dashboard", label: "Dashboard", icon: "📊", section: "pilotage" },
+  { href: "/bilan", label: "Bilan", icon: "📈", section: "pilotage" },
+  { href: "/caisse", label: "Caisse", icon: "🦺", section: "pilotage" },
+  { href: "/tontine", label: "Tontine", icon: "💚", section: "pilotage" },
+  { href: "/encheres", label: "Enchères", icon: "🔥", section: "pilotage" },
+
+  { href: "/membres", label: "Membres", icon: "👥", section: "operations" },
+  { href: "/contributions", label: "Contributions", icon: "💰", section: "operations" },
+  { href: "/imputations", label: "Imputations", icon: "🧾", section: "operations" },
+  { href: "/montants-attendus", label: "Montants attendus", icon: "📌", section: "operations" },
+  { href: "/decaissements", label: "Décaissements", icon: "💸", section: "operations" },
+
+  { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝", section: "support" },
+  { href: "/gestion-demandes", label: "Gestion des demandes", icon: "🗂️", section: "support" },
+  { href: "/prets-aides", label: "Prêts/Aides", icon: "📈", section: "support" },
+  { href: "/documents", label: "Documents", icon: "📂", section: "support" },
+
+  { href: "/admin/roles", label: "Administration", icon: "⚙️", section: "admin" }
 ];
 
-function getDisplayedRoleLabel(role: unknown) {
+const sections = [
+  { key: "pilotage", label: "Pilotage" },
+  { key: "operations", label: "Opérations" },
+  { key: "support", label: "Support" },
+  { key: "admin", label: "Administration" },
+] as const;
+
+function normalizeRoleLabel(role: unknown) {
   const value = String(role || "").trim();
-  return value ? value : "Rôle indisponible";
+  return value || null;
 }
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const auth: any = useAuth?.() ?? {};
-  const role = auth?.member?.role ?? null;
-  const showRoleBadge = auth?.loading !== true;
+  const roleLabel = normalizeRoleLabel(auth?.member?.role);
+  const showRoleBadge = auth?.loading !== true && !!roleLabel;
 
   return (
-    <aside className="hidden xl:flex xl:w-[290px] xl:flex-col xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto xl:border-r xl:border-emerald-100 xl:bg-white xl:px-5 xl:py-6">
-      <div className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+    <aside className="hidden xl:flex xl:w-[310px] xl:flex-col xl:sticky xl:top-0 xl:h-screen xl:border-r xl:border-emerald-100 xl:bg-white">
+      <div className="border-b border-emerald-100 px-5 py-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
           Association Famille NTOL
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-emerald-950">
           ASF-NTOL
         </h1>
-        <p className="mt-2 text-sm text-emerald-900/70">
+        <p className="mt-2 text-sm text-slate-600">
           Navigation complète de l’application.
         </p>
 
-        {showRoleBadge && (
-          <div className="mt-4 inline-flex rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-emerald-800">
-            {getDisplayedRoleLabel(role)}
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {showRoleBadge ? (
+            <div className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+              {roleLabel}
+            </div>
+          ) : null}
 
-        <div className="mt-4">
           <LogoutButton compact />
         </div>
       </div>
 
-      <nav className="mt-5 space-y-2 overflow-y-auto pr-1">
-        {navItems.map((item) => {
-          const active =
-            pathname === item.href ||
-            (item.href !== "/" && pathname?.startsWith(item.href));
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {sections.map((section) => {
+          const items = navItems.filter((item) => item.section === section.key);
+          if (items.length === 0) return null;
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={
-                active
-                  ? "flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm"
-                  : "flex items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-emerald-100 hover:bg-emerald-50/40"
-              }
-            >
-              <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
+            <div key={section.key} className="mb-5">
+              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {section.label}
+              </p>
+
+              <nav className="space-y-2">
+                {items.map((item) => {
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname?.startsWith(item.href));
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={
+                        active
+                          ? "flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm"
+                          : "flex items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-emerald-100 hover:bg-emerald-50/40"
+                      }
+                    >
+                      <span className="text-lg">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
           );
         })}
-      </nav>
+      </div>
     </aside>
   );
 }
-
-
-
-
-
-
