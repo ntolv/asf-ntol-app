@@ -55,7 +55,7 @@ export default function AppSidebar() {
   const showRoleBadge = auth?.loading !== true && !!displayedRole;
 
   return (
-    <aside className="hidden xl:flex xl:w-[300px] xl:flex-col xl:h-screen xl:shrink-0 xl:border-r xl:border-emerald-100 xl:bg-white">
+    <aside className="hidden xl:flex xl:w-[300px] xl:flex-col xl:sticky xl:top-0 xl:h-screen xl:overflow-hidden xl:border-r xl:border-emerald-100 xl:bg-white">
       <div className="shrink-0 border-b border-emerald-100 px-5 py-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
           Association Famille NTOL
