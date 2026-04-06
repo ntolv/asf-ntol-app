@@ -21,7 +21,7 @@ export default function MobilePageShell({
     <div
       data-mobile-page-shell="true"
       className={[
-        "min-h-dvh w-full bg-slate-50 text-slate-950",
+        "min-h-dvh w-full bg-[linear-gradient(180deg,#f8fdf9_0%,#f3f7f5_100%)] text-slate-950",
         "xl:hidden",
         className,
       ].join(" ")}
@@ -30,7 +30,7 @@ export default function MobilePageShell({
         {topBar ? (
           <div
             data-mobile-topbar-wrapper="true"
-            className="px-4 pb-3 pt-3"
+            className="sticky top-0 z-30 px-4 pb-3 pt-3 backdrop-blur-xl"
           >
             {topBar}
           </div>
@@ -40,7 +40,7 @@ export default function MobilePageShell({
           data-page-shell="true"
           aria-label={pageTitle || "Contenu mobile"}
           className={[
-            "flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-1",
+            "flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+120px)] pt-2",
             contentClassName,
           ].join(" ")}
         >
@@ -50,9 +50,9 @@ export default function MobilePageShell({
         {bottomNav ? (
           <div
             data-mobile-shell-bottom-nav="true"
-            className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-3 pb-3"
+            className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 pb-4"
           >
-            <div className="w-full max-w-[640px]">
+            <div className="pointer-events-auto w-full max-w-[640px]">
               {bottomNav}
             </div>
           </div>

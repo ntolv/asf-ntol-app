@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -144,22 +144,22 @@ function getTimerTone(progressPercent: number) {
 
 function buildLotCardClass(isSelected: boolean, isCurrentLot: boolean, isClosed: boolean) {
   if (isSelected && isCurrentLot) {
-    return "rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-4 text-left";
+    return "rounded-[24px] border border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-white p-5 text-left shadow-[0_10px_30px_rgba(16,185,129,0.10)] ring-2 ring-emerald-200 transition";
   }
 
   if (isSelected) {
-    return "rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 text-left";
+    return "rounded-[24px] border border-emerald-300 bg-emerald-50/80 p-5 text-left shadow-sm ring-2 ring-emerald-100 transition";
   }
 
   if (isClosed) {
-    return "rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left";
+    return "rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm transition";
   }
 
   if (isCurrentLot) {
-    return "rounded-2xl border border-emerald-300 bg-white p-4 text-left";
+    return "rounded-[24px] border border-emerald-200 bg-white p-5 text-left shadow-[0_8px_24px_rgba(16,185,129,0.08)] transition hover:border-emerald-300 hover:bg-emerald-50/40";
   }
 
-  return "rounded-2xl border border-slate-200 bg-white p-4 text-left";
+  return "rounded-[24px] border border-emerald-100 bg-white p-5 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/40";
 }
 
 export default function EncheresPage() {
@@ -528,24 +528,24 @@ export default function EncheresPage() {
   }, [selectedLotData, sessionActive?.lot_en_cours_index]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-4 md:px-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.08),_transparent_35%),linear-gradient(to_bottom,_#f0fdf4,_#ffffff_38%,_#ffffff)] px-4 py-6 md:px-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-[32px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">
                 Enchères en ligne
               </p>
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                Salle d’enchères
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
+                Salle d’enchères Pro ++
               </h1>
-              <p className="mt-2 text-sm text-slate-600 md:text-base">
+              <p className="mt-3 text-sm text-emerald-900/70 md:text-base">
                 Session active, lots disponibles, renchérissement rapide et classement live.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
+            <div className="flex flex-wrap gap-3">
+              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm">
                 Salle membre
               </div>
               <button
@@ -555,7 +555,7 @@ export default function EncheresPage() {
                   if (sessionActive?.id) loadLots(sessionActive.id, false);
                   if (selectedLot) loadEncheres(selectedLot, false);
                 }}
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
               >
                 Actualiser
               </button>
@@ -563,8 +563,8 @@ export default function EncheresPage() {
           </div>
         </section>
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <article className="rounded-2xl border border-slate-200 bg-white p-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
               Session active
             </p>
@@ -576,7 +576,7 @@ export default function EncheresPage() {
             </p>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-4">
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
               Statut enchères
             </p>
@@ -591,7 +591,7 @@ export default function EncheresPage() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-4">
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
               Lots session
             </p>
@@ -600,7 +600,7 @@ export default function EncheresPage() {
             </p>
           </article>
 
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <article className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
               Dernière enchère
             </p>
@@ -609,7 +609,7 @@ export default function EncheresPage() {
             </p>
           </article>
 
-          <article className={`rounded-2xl border p-4 ${timerTone.card}`}>
+          <article className={`rounded-[24px] border p-5 shadow-sm transition ${timerTone.card}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${timerTone.text}`}>
@@ -631,21 +631,21 @@ export default function EncheresPage() {
               </span>
             </div>
 
-            <div className={`mt-4 h-2 overflow-hidden rounded-full ${timerTone.track}`}>
+            <div className={`mt-4 h-2.5 overflow-hidden rounded-full ${timerTone.track}`}>
               <div
-                className={`h-full rounded-full ${timerTone.bar}`}
+                className={`h-full rounded-full transition-all duration-1000 ${timerTone.bar}`}
                 style={{ width: `${timerProgressPercent}%` }}
               />
             </div>
           </article>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Lots de la session</h2>
-                <p className="text-sm text-slate-600">
+                <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>
+                <p className="text-sm text-emerald-900/70">
                   Sélectionne un lot pour voir le classement live et enchérir.
                 </p>
               </div>
@@ -666,15 +666,15 @@ export default function EncheresPage() {
             </div>
 
             {!sessionActive ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+              <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
                 Aucune session active.
               </div>
             ) : lots.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+              <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
                 Aucun lot trouvé pour cette session.
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {lots.map((lot) => {
                   const isSelected = selectedLot === lot.id;
                   const isCurrentLot =
@@ -693,24 +693,24 @@ export default function EncheresPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-lg font-bold text-slate-900">
+                            <p className="text-lg font-bold text-emerald-950">
                               Lot {lot.lot}{lot.libelle ? ` — ${lot.libelle}` : ""}
                             </p>
 
                             {isCurrentLot ? (
-                              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                              <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
                                 En focus
                               </span>
                             ) : null}
 
                             {isSelected ? (
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                                 Sélectionné
                               </span>
                             ) : null}
                           </div>
 
-                          <p className="mt-1 text-sm text-slate-500">
+                          <p className="mt-1 text-sm text-emerald-900/65">
                             Période : {lot.periode}
                           </p>
                         </div>
@@ -724,8 +724,8 @@ export default function EncheresPage() {
                         </span>
                       </div>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Départ
                           </p>
@@ -734,7 +734,7 @@ export default function EncheresPage() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Mise brute
                           </p>
@@ -743,7 +743,7 @@ export default function EncheresPage() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Total relances
                           </p>
@@ -752,7 +752,7 @@ export default function EncheresPage() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.14em] text-amber-700">
                             Gain net
                           </p>
@@ -763,7 +763,7 @@ export default function EncheresPage() {
                       </div>
 
                       {lot.gagnant ? (
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-slate-900">
+                        <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-900">
                           <span className="font-medium text-emerald-800">Gagnant : </span>
                           <strong>{lot.gagnant}</strong>
                         </div>
@@ -775,12 +775,12 @@ export default function EncheresPage() {
             )}
           </div>
 
-          <div className="space-y-5">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Classement live</h2>
-                  <p className="text-sm text-slate-600">
+                  <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>
+                  <p className="text-sm text-emerald-900/70">
                     {selectedLotData
                       ? `Lot ${selectedLotData.lot}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`
                       : "Sélectionne un lot pour afficher le classement"}
@@ -791,40 +791,40 @@ export default function EncheresPage() {
                   <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                     Live
                   </span>
-                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                     {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
                   </span>
                 </div>
               </div>
 
               {!selectedLot ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+                <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
                   Aucun lot sélectionné.
                 </div>
               ) : loadingEncheres ? (
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
+                <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
                   Chargement du classement...
                 </div>
               ) : encheres.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+                <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
                   Aucune enchère pour ce lot.
                 </div>
               ) : (
                 <div className="mt-5 space-y-3">
                   {leader ? (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="rounded-[24px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-white p-5 shadow-sm">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
                             Leader actuel
                           </p>
-                          <p className="mt-2 text-xl font-bold text-slate-900">
+                          <p className="mt-2 text-xl font-bold text-emerald-950">
                             {leader.nom_complet}
                           </p>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-2xl font-black tracking-tight text-slate-900">
+                          <p className="text-2xl font-black tracking-tight text-emerald-950">
                             {formatMontant(leader.montant_total_offert)}
                           </p>
                           <p className="mt-1 text-xs font-medium uppercase tracking-wide text-emerald-700">
@@ -844,8 +844,8 @@ export default function EncheresPage() {
                         key={e.id}
                         className={
                           isLeader
-                            ? "rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
-                            : "rounded-2xl border border-slate-200 bg-white p-4"
+                            ? "rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
+                            : "rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
                         }
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -870,7 +870,7 @@ export default function EncheresPage() {
                           </div>
 
                           <div className="text-right">
-                            <p className={isLeader ? "text-2xl font-black tracking-tight text-slate-900" : "text-xl font-bold text-slate-900"}>
+                            <p className={isLeader ? "text-2xl font-black tracking-tight text-emerald-950" : "text-xl font-bold text-slate-900"}>
                               {formatMontant(e.montant_total_offert)}
                             </p>
                             <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -885,26 +885,26 @@ export default function EncheresPage() {
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">Renchérissement rapide</h2>
-                <p className="text-sm text-slate-600">
+                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>
+                <p className="text-sm text-emerald-900/70">
                   Tu ajoutes un montant au meilleur total actuel.
                 </p>
               </div>
 
               {!selectedLotData ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+                <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
                   Sélectionne d’abord un lot.
                 </div>
               ) : sessionActive?.statut_encheres !== "EN_COURS" ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
                   Les enchères ne sont pas en cours.
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                         Lot sélectionné
                       </p>
@@ -920,7 +920,7 @@ export default function EncheresPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
                         Meilleure offre
                       </p>
@@ -941,7 +941,7 @@ export default function EncheresPage() {
                       value={lotBidValues[selectedLotData.id] ?? ""}
                       onChange={(e) => updateLotBidValue(selectedLotData.id, e.target.value)}
                       placeholder="Ex : 500"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-emerald-500"
+                      className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-400"
                     />
                   </div>
 
@@ -949,21 +949,21 @@ export default function EncheresPage() {
                     <button
                       type="button"
                       onClick={() => incrementLotBidValue(selectedLotData.id, 500)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
                     >
                       +500 FCFA
                     </button>
                     <button
                       type="button"
                       onClick={() => incrementLotBidValue(selectedLotData.id, 1000)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
                     >
                       +1000 FCFA
                     </button>
                     <button
                       type="button"
                       onClick={() => incrementLotBidValue(selectedLotData.id, 2000)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
                     >
                       +2000 FCFA
                     </button>
@@ -973,12 +973,12 @@ export default function EncheresPage() {
                     type="button"
                     onClick={() => encherirSurLot(selectedLotData.id)}
                     disabled={actionLoading || authLoading || !member?.id}
-                    className="w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                    className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
                     {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
                   </button>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
                     Le renchérissement minimum reste de 500 FCFA.
                   </div>
                 </div>

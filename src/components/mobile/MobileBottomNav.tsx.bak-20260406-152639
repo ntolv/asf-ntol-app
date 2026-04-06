@@ -47,7 +47,7 @@ export default function MobileBottomNav({
       data-mobile-bottom-nav="true"
       aria-label="Navigation principale mobile"
       className={[
-        "rounded-[22px] border border-slate-200 bg-white",
+        "rounded-[30px] border border-emerald-100/80 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.12)] backdrop-blur-xl",
         "px-2 py-2",
         className,
       ].join(" ")}
@@ -62,23 +62,23 @@ export default function MobileBottomNav({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "flex min-h-[64px] w-full flex-col items-center justify-center gap-2 rounded-[16px] px-2 py-2 text-center",
+                  "group flex min-h-[70px] w-full flex-col items-center justify-center gap-2 rounded-[24px] px-2 py-3 text-center transition-all duration-200",
                   active
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white text-slate-600",
+                    ? "bg-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.28)]"
+                    : "bg-transparent text-slate-500 hover:bg-emerald-50 hover:text-emerald-700",
                 ].join(" ")}
               >
                 <span
                   aria-hidden="true"
                   className={[
-                    "flex h-5 w-5 items-center justify-center text-[17px] leading-none",
+                    "flex h-6 w-6 items-center justify-center text-[18px] leading-none",
                     active ? "text-white" : "text-current",
                   ].join(" ")}
                 >
                   {item.icon ?? <DefaultDot />}
                 </span>
 
-                <span className="block max-w-full truncate text-[11px] font-semibold leading-tight">
+                <span className="block max-w-full truncate text-[11px] font-bold leading-tight">
                   {item.label}
                 </span>
               </Link>
