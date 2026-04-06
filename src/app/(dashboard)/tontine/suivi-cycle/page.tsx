@@ -103,6 +103,26 @@ function getSessionTone(totalLotsGagnes: number) {
 }
 
 export default function TontineSuiviCyclePage() {
+
+const [sessionsSuivi, setSessionsSuivi] = useState<any[]>([]);
+
+useEffect(() => {
+  async function loadSuiviSessions() {
+    const { data, error } = await supabase
+      .from("v_tontine_suivi_sessions")
+      .select("*")
+      .order("ordre_session", { ascending: true });
+
+    if (!error) {
+      setSessionsSuivi(data || []);
+    } else {
+      console.error("Erreur suivi sessions:", error);
+    }
+  }
+
+  loadSuiviSessions();
+}, []);
+
   const [cycles, setCycles] = useState<ResultatCycle[]>([]);
   const [membresSessions, setMembresSessions] = useState<ResultatMembreSession[]>([]);
   const [membresCycles, setMembresCycles] = useState<ResultatMembreCycle[]>([]);
@@ -290,7 +310,45 @@ export default function TontineSuiviCyclePage() {
           </p>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        
+<section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+  <h2 className="text-xl font-semibold text-emerald-950 mb-4">
+    Pilotage du cycle (caisse & lots)
+  </h2>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left border-b text-slate-600">
+          <th className="py-2">Session</th>
+          <th className="py-2">Période</th>
+          <th className="py-2">Caisse</th>
+          <th className="py-2">Lots théoriques</th>
+          <th className="py-2">Lots effectifs</th>
+          <th className="py-2">Statut session</th>
+          <th className="py-2">Enchères</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sessionsSuivi.map((s) => (
+          <tr key={s.session_id} className="border-b">
+            <td className="py-2 font-semibold">#{s.ordre_session}</td>
+            <td className="py-2">{s.periode_reference}</td>
+            <td className="py-2 text-emerald-700 font-semibold">
+              {formatMontant(s.caisse_accumulee)}
+            </td>
+            <td className="py-2">{s.nb_lots_theorique}</td>
+            <td className="py-2">{s.nb_lots_effectif ?? 0}</td>
+            <td className="py-2">{s.statut_session}</td>
+            <td className="py-2">{s.statut_encheres}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-emerald-900">Cycle</p>
             <p className="mt-1 text-xs text-slate-500">
@@ -735,3 +793,4 @@ export default function TontineSuiviCyclePage() {
     </main>
   );
 }
+
