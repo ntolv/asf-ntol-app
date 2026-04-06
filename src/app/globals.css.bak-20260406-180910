@@ -69,7 +69,7 @@ body {
 
 /* === ASF-NTOL MOBILE GLOBAL FIX START === */
 
-/* Base stabilitÃƒÆ’Ã‚Â© mobile */
+/* Base stabilitÃƒÂ© mobile */
 html,
 body {
   max-width: 100%;
@@ -114,7 +114,7 @@ textarea {
   font-size: 16px;
 }
 
-/* Evite les dÃƒÆ’Ã‚Â©bordements imprÃƒÆ’Ã‚Â©vus */
+/* Evite les dÃƒÂ©bordements imprÃƒÂ©vus */
 main,
 section,
 article,
@@ -157,7 +157,7 @@ div {
   background-clip: padding-box;
 }
 
-/* IMPORTANT : supprime les ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œmauvais caractÃƒÆ’Ã‚Â¨resÃƒÂ¢Ã¢â€šÂ¬Ã‚Â / boutons parasites */
+/* IMPORTANT : supprime les Ã¢â‚¬Å“mauvais caractÃƒÂ¨resÃ¢â‚¬Â / boutons parasites */
 ::-webkit-scrollbar-button {
   display: none;
   width: 0;
@@ -173,7 +173,7 @@ div {
   background: transparent;
 }
 
-/* LisibilitÃƒÆ’Ã‚Â© et cohÃƒÆ’Ã‚Â©rence tactile */
+/* LisibilitÃƒÂ© et cohÃƒÂ©rence tactile */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -183,7 +183,7 @@ button {
   touch-action: manipulation;
 }
 
-/* Tables plus sÃƒÆ’Ã‚Â»res sur smartphone */
+/* Tables plus sÃƒÂ»res sur smartphone */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -251,7 +251,7 @@ table {
     max-width: 100%;
   }
 
-  /* Evite que les cartes dÃƒÆ’Ã‚Â©bordent */
+  /* Evite que les cartes dÃƒÂ©bordent */
   .rounded-2xl,
   .rounded-3xl {
     overflow: hidden;
@@ -1432,48 +1432,3 @@ body {
   }
 }
 /* === ASF-NTOL DESKTOP SCROLL RESTORE END === */
-
-
-/* === ASF-NTOL MOBILE SCROLL RESTORE START === */
-@media (max-width: 1279px) {
-  html {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-    touch-action: pan-y !important;
-  }
-
-  body {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-    touch-action: pan-y !important;
-    overscroll-behavior-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  body > div,
-  body > main,
-  #__next {
-    position: static !important;
-    overflow: visible !important;
-  }
-
-  [data-mobile-page-shell="true"] {
-    min-height: 100dvh !important;
-    overflow: visible !important;
-  }
-
-  [data-mobile-page-shell="true"] main,
-  [data-page-shell="true"],
-  [data-caisse-page-root="true"] {
-    overflow: visible !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y !important;
-  }
-}
-/* === ASF-NTOL MOBILE SCROLL RESTORE END === */
