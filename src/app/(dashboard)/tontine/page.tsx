@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Session = {
   id: string;
@@ -26,10 +26,6 @@ type Gagnant = {
 };
 
 type CycleParams = {
-  mise_brute_unitaire?: number;
-  contribution_globale_mensuelle?: number;
-  contribution_globale_cycle?: number;
-  calcul_detail?: string | null;
   configured: boolean;
   libelle_cycle?: string;
   montant_fixe_par_tontineur?: number;
@@ -38,6 +34,10 @@ type CycleParams = {
   date_debut_cycle?: string | null;
   date_fin_cycle?: string | null;
   annee_cycle?: number | null;
+  mise_brute_unitaire?: number;
+  contribution_globale_mensuelle?: number;
+  contribution_globale_cycle?: number;
+  calcul_detail?: string | null;
 };
 
 function formatMontant(value: number | null | undefined) {
@@ -71,6 +71,20 @@ function getBadgeClass(value?: string | null) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function toNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function pickFirst<T>(...values: Array<T | null | undefined>): T | undefined {
+  for (const value of values) {
+    if (value !== undefined && value !== null) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 export default function TontinePage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionActive, setSessionActive] = useState<Session | null>(null);
@@ -90,8 +104,9 @@ export default function TontinePage() {
 
   const loadSessions = async () => {
     setLoadingSessions(true);
+
     try {
-      const res = await fetch("/api/tontine/sessions");
+      const res = await fetch("/api/tontine/sessions", { cache: "no-store" });
       const data = await res.json();
 
       const loadedSessions: Session[] = Array.isArray(data)
@@ -109,13 +124,19 @@ export default function TontinePage() {
               libelle: data.session_active.libelle,
               periode: data.session_active.periode,
               ordre_session: data.session_active.ordre_session,
-              statut_session: "OUVERTE",
-              statut_encheres: null,
+              statut_session: data.session_active.statut_session ?? "OUVERTE",
+              statut_encheres: data.session_active.statut_encheres ?? null,
               est_selectionnable: true,
               est_active: true,
             }
           : loadedSessions.find((s) => s.est_active) ??
             loadedSessions.find((s) => s.est_selectionnable) ??
+            loadedSessions.find(
+              (s) =>
+                s.statut_session === "EN_COURS" ||
+                s.statut_session === "OUVERTE" ||
+                s.statut_encheres === "EN_COURS"
+            ) ??
             null;
 
       setSessionActive(resolvedSessionActive);
@@ -130,8 +151,9 @@ export default function TontinePage() {
 
   const loadCycleParams = async () => {
     setLoadingCycle(true);
+
     try {
-      const res = await fetch("/api/tontine/cycle-parametres");
+      const res = await fetch("/api/tontine/cycle-parametres", { cache: "no-store" });
       const data = await res.json();
 
       if (!res.ok || data?.error) {
@@ -140,15 +162,39 @@ export default function TontinePage() {
         return;
       }
 
+      const nbTontineurs = toNumber(
+        pickFirst(
+          data?.nb_tontineurs_inscrits,
+          data?.nb_tontineurs,
+          data?.tontineurs_inscrits
+        ),
+        0
+      );
+
+      const miseBruteCycle = toNumber(
+        pickFirst(
+          data?.mise_brute_cycle,
+          data?.contribution_globale_cycle,
+          data?.mise_brute_unitaire
+        ),
+        0
+      );
+
       const normalized: CycleParams = {
         configured: Boolean(data?.configured),
-        libelle_cycle: data?.libelle_cycle ?? "CYCLE ACTIF",
-        montant_fixe_par_tontineur: Number(data?.montant_fixe_par_tontineur || 0),
-        nb_tontineurs_inscrits: Number(data?.nb_tontineurs_inscrits || 0),
-        mise_brute_cycle: Number(data?.mise_brute_cycle || 0),
-        date_debut_cycle: data?.date_debut_cycle ?? null,
-        date_fin_cycle: data?.date_fin_cycle ?? null,
-        annee_cycle: data?.annee_cycle != null ? Number(data.annee_cycle) : null,
+        libelle_cycle: pickFirst(data?.libelle_cycle, "CYCLE ACTIF"),
+        montant_fixe_par_tontineur: toNumber(data?.montant_fixe_par_tontineur, 0),
+        nb_tontineurs_inscrits: nbTontineurs,
+        mise_brute_cycle: miseBruteCycle,
+        date_debut_cycle: pickFirst(data?.date_debut_cycle, data?.date_debut, null) ?? null,
+        date_fin_cycle: pickFirst(data?.date_fin_cycle, data?.date_fin, null) ?? null,
+        annee_cycle:
+          pickFirst(data?.annee_cycle, data?.annee) != null
+            ? toNumber(pickFirst(data?.annee_cycle, data?.annee), 0)
+            : null,
+        mise_brute_unitaire: toNumber(data?.mise_brute_unitaire, 0),
+        contribution_globale_mensuelle: toNumber(data?.contribution_globale_mensuelle, 0),
+        contribution_globale_cycle: toNumber(data?.contribution_globale_cycle, 0),
         calcul_detail: data?.calcul_detail ?? null,
       };
 
@@ -168,11 +214,14 @@ export default function TontinePage() {
   };
 
   useEffect(() => {
-    loadSessions();
-    loadCycleParams();
+    void loadSessions();
+    void loadCycleParams();
   }, []);
 
-  const sessionReferenceForWinners = sessionActive || sessions[0] || null;
+  const sessionReferenceForWinners = useMemo(
+    () => sessionActive || sessions[0] || null,
+    [sessionActive, sessions]
+  );
 
   const loadGagnants = async (sessionId?: string | null) => {
     if (!sessionId) {
@@ -181,8 +230,11 @@ export default function TontinePage() {
     }
 
     setLoadingGagnants(true);
+
     try {
-      const res = await fetch(`/api/tontine/gagnants-session?session_id=${sessionId}`);
+      const res = await fetch(`/api/tontine/gagnants-session?session_id=${sessionId}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       setGagnants(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -194,7 +246,7 @@ export default function TontinePage() {
   };
 
   useEffect(() => {
-    loadGagnants(sessionReferenceForWinners?.id);
+    void loadGagnants(sessionReferenceForWinners?.id);
   }, [sessionReferenceForWinners?.id, sessionReferenceForWinners?.statut_encheres]);
 
   const saveCycleParams = async () => {
@@ -368,13 +420,13 @@ export default function TontinePage() {
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Paramétrage du cycle de tontine</h2>
                 <p className="text-sm text-emerald-900/70">
-                  Les montants et le calcul du cycle sont affichés automatiquement selon la logique du cycle.
+                  Les informations du cycle sont affichées automatiquement depuis le backend.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={loadCycleParams}
+                onClick={() => void loadCycleParams()}
                 disabled={loadingCycle || actionLoading}
                 className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
@@ -419,21 +471,21 @@ export default function TontinePage() {
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <p className="text-sm text-emerald-900/65">Mise brute du cycle</p>
                 <p className="mt-2 text-xl font-bold text-emerald-950">
-                  {formatMontant(cycleParams?.mise_brute_cycle ?? cycleParams?.mise_brute_unitaire ?? 0)}
+                  {loadingCycle ? "..." : formatMontant(cycleParams?.mise_brute_cycle ?? 0)}
                 </p>
               </div>
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <p className="text-sm text-emerald-900/65">Début du cycle</p>
                 <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {formatDate(cycleParams?.date_debut_cycle)}
+                  {loadingCycle ? "..." : formatDate(cycleParams?.date_debut_cycle)}
                 </p>
               </div>
 
               <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
                 <p className="text-sm text-emerald-900/65">Fin du cycle</p>
                 <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {formatDate(cycleParams?.date_fin_cycle)}
+                  {loadingCycle ? "..." : formatDate(cycleParams?.date_fin_cycle)}
                 </p>
               </div>
             </div>
@@ -441,7 +493,7 @@ export default function TontinePage() {
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={saveCycleParams}
+                onClick={() => void saveCycleParams()}
                 disabled={actionLoading}
                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
@@ -454,13 +506,13 @@ export default function TontinePage() {
               >
                 Consulter le tableau de suivi du cycle
               </a>
+            </div>
 
-              <div className="rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
-                <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
-                <p className="mt-3 text-sm font-semibold text-slate-900">
-                  {cycleParams?.calcul_detail || "Calcul non disponible"}
-                </p>
-              </div>
+            <div className="mt-4 rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
+              <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
+              <p className="mt-3 text-sm font-semibold text-slate-900">
+                {cycleParams?.calcul_detail || "Calcul non disponible"}
+              </p>
             </div>
           </section>
 
@@ -475,7 +527,7 @@ export default function TontinePage() {
 
               <button
                 type="button"
-                onClick={loadSessions}
+                onClick={() => void loadSessions()}
                 disabled={loadingSessions || actionLoading}
                 className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
@@ -498,7 +550,7 @@ export default function TontinePage() {
                 >
                   <option value="">Sélectionner une session</option>
                   {sessions
-                    .filter((s) => s?.est_selectionnable === true)
+                    .filter((s) => s?.est_selectionnable === true || s?.est_active === true)
                     .sort((a, b) => (a?.ordre_session ?? 0) - (b?.ordre_session ?? 0))
                     .map((s) => (
                       <option key={s.id} value={s.id}>
@@ -569,7 +621,7 @@ export default function TontinePage() {
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={createSession}
+                onClick={() => void createSession()}
                 disabled={actionLoading || !cycleParams?.configured}
                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
@@ -578,7 +630,7 @@ export default function TontinePage() {
 
               <button
                 type="button"
-                onClick={startGlobalEncheres}
+                onClick={() => void startGlobalEncheres()}
                 disabled={actionLoading || !sessionActive?.id}
                 className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
               >
@@ -616,7 +668,10 @@ export default function TontinePage() {
           ) : (
             <div className="space-y-3">
               {gagnants.map((g) => (
-                <div key={g.id} className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/40 p-4 shadow-sm">
+                <div
+                  key={g.id}
+                  className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/40 p-4 shadow-sm"
+                >
                   <p className="text-base font-semibold text-emerald-950">
                     Lot {g.lot} — {g.nom_complet}
                   </p>
@@ -653,10 +708,14 @@ export default function TontinePage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(s.statut_session)}`}>
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(s.statut_session)}`}
+                      >
                         {s.statut_session}
                       </span>
-                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(s.statut_encheres)}`}>
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(s.statut_encheres)}`}
+                      >
                         {s.statut_encheres ?? "Non démarrées"}
                       </span>
                     </div>
