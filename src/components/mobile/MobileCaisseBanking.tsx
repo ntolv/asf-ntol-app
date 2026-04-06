@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import MobileStatusBadge from "./MobileStatusBadge";
 
 export type MobileCaisseSummary = {
@@ -33,10 +32,6 @@ type MobileCaisseBankingProps = {
   summary: MobileCaisseSummary;
   rubriques: MobileCaisseRubriqueItem[];
   mouvements: MobileCaisseMovementItem[];
-  caisseHref?: string;
-  contributionsHref?: string;
-  imputationsHref?: string;
-  encheresHref?: string;
 };
 
 function EmptyBlock({
@@ -47,9 +42,9 @@ function EmptyBlock({
   text: string;
 }) {
   return (
-    <div className="mobile-caisse-bank-empty">
-      <p className="mobile-caisse-bank-empty__title">{title}</p>
-      <p className="mobile-caisse-bank-empty__text">{text}</p>
+    <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-center">
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-2 text-sm text-slate-500">{text}</p>
     </div>
   );
 }
@@ -58,78 +53,63 @@ export default function MobileCaisseBanking({
   summary,
   rubriques,
   mouvements,
-  caisseHref = "/caisse",
-  contributionsHref = "/contributions",
-  imputationsHref = "/imputations",
-  encheresHref = "/encheres",
 }: MobileCaisseBankingProps) {
   return (
-    <section className="mobile-caisse-bank xl:hidden">
-      <div className="mobile-caisse-bank__hero">
-        <div className="mobile-caisse-bank__hero-top">
-          <div>
-            <p className="mobile-caisse-bank__eyebrow">Caisse</p>
-            <h2 className="mobile-caisse-bank__title">Vue bancaire mobile</h2>
-            <p className="mobile-caisse-bank__text">
-              Lecture claire des montants, des rubriques, des mouvements et du total enchères.
+    <section className="space-y-5 xl:hidden">
+      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            Caisse
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900">
+            Vue bancaire mobile
+          </h2>
+          <p className="mt-3 text-sm text-slate-600">
+            Lecture claire des montants, des rubriques, des mouvements et du total enchères.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-[24px] bg-emerald-600 px-5 py-4 text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/85">
+              Total attendu
+            </p>
+            <p className="mt-2 text-2xl font-black">{summary.totalAttendu}</p>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Total versé
+            </p>
+            <p className="mt-2 text-2xl font-black text-slate-900">{summary.totalVerse}</p>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Reste à payer
+            </p>
+            <p className="mt-2 text-2xl font-black text-slate-900">{summary.resteAPayer}</p>
+          </div>
+
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              Montant total des enchères
+            </p>
+            <p className="mt-2 text-2xl font-black text-amber-700">
+              {summary.totalEncheres || "0 FCFA"}
             </p>
           </div>
-
-          <Link href={caisseHref} className="mobile-caisse-bank__hero-link">
-            Ouvrir
-          </Link>
         </div>
+      </section>
 
-        <div className="mobile-caisse-bank__totals">
-          <div className="mobile-caisse-bank__total-card mobile-caisse-bank__total-card--primary">
-            <span className="mobile-caisse-bank__total-label">Total attendu</span>
-            <span className="mobile-caisse-bank__total-value">{summary.totalAttendu}</span>
-          </div>
-
-          <div className="mobile-caisse-bank__total-card">
-            <span className="mobile-caisse-bank__total-label">Total versé</span>
-            <span className="mobile-caisse-bank__total-value">{summary.totalVerse}</span>
-          </div>
-
-          <div className="mobile-caisse-bank__total-card">
-            <span className="mobile-caisse-bank__total-label">Reste à payer</span>
-            <span className="mobile-caisse-bank__total-value">{summary.resteAPayer}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mobile-caisse-bank__actions">
-        <Link href={contributionsHref} className="mobile-caisse-bank__action-card">
-          <span className="mobile-caisse-bank__action-icon" aria-hidden="true">+</span>
-          <span className="mobile-caisse-bank__action-body">
-            <span className="mobile-caisse-bank__action-title">Contributions</span>
-            <span className="mobile-caisse-bank__action-text">Versements enregistrés</span>
-          </span>
-        </Link>
-
-        <Link href={imputationsHref} className="mobile-caisse-bank__action-card">
-          <span className="mobile-caisse-bank__action-icon" aria-hidden="true">≡</span>
-          <span className="mobile-caisse-bank__action-body">
-            <span className="mobile-caisse-bank__action-title">Imputations</span>
-            <span className="mobile-caisse-bank__action-text">Ventilation des montants</span>
-          </span>
-        </Link>
-
-        <Link href={encheresHref} className="mobile-caisse-bank__action-card">
-          <span className="mobile-caisse-bank__action-icon" aria-hidden="true">↗</span>
-          <span className="mobile-caisse-bank__action-body">
-            <span className="mobile-caisse-bank__action-title">Enchères</span>
-            <span className="mobile-caisse-bank__action-text">Suivi lié à la caisse</span>
-          </span>
-        </Link>
-      </div>
-
-      <section className="mobile-caisse-bank__section">
-        <div className="mobile-caisse-bank__section-head">
-          <div>
-            <p className="mobile-caisse-bank__section-eyebrow">Rubriques</p>
-            <h3 className="mobile-caisse-bank__section-title">Situation par rubrique</h3>
-          </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Rubriques
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-slate-900">
+            Situation par rubrique
+          </h3>
         </div>
 
         {rubriques.length === 0 ? (
@@ -138,31 +118,40 @@ export default function MobileCaisseBanking({
             text="Les rubriques de caisse s'afficheront ici dès que les données seront branchées."
           />
         ) : (
-          <div className="mobile-caisse-bank__rubriques">
+          <div className="space-y-3">
             {rubriques.map((item) => (
-              <article key={item.id} className="mobile-caisse-bank__rubrique-card">
-                <div className="mobile-caisse-bank__rubrique-top">
-                  <div className="mobile-caisse-bank__rubrique-title-wrap">
-                    <p className="mobile-caisse-bank__rubrique-title">{item.label}</p>
-                    <MobileStatusBadge
-                      label={item.statutLabel}
-                      tone={item.statutTone ?? "neutral"}
-                    />
+              <article key={item.id} className="rounded-[22px] border border-slate-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900">{item.label}</p>
                   </div>
+
+                  <MobileStatusBadge
+                    label={item.statutLabel}
+                    tone={item.statutTone ?? "neutral"}
+                  />
                 </div>
 
-                <div className="mobile-caisse-bank__rubrique-grid">
-                  <div>
-                    <span className="mobile-caisse-bank__mini-label">Attendu</span>
-                    <span className="mobile-caisse-bank__mini-value">{item.attendu}</span>
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="rounded-xl bg-slate-50 px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Attendu
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-slate-900">{item.attendu}</p>
                   </div>
-                  <div>
-                    <span className="mobile-caisse-bank__mini-label">Versé</span>
-                    <span className="mobile-caisse-bank__mini-value">{item.verse}</span>
+
+                  <div className="rounded-xl bg-slate-50 px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Versé
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-slate-900">{item.verse}</p>
                   </div>
-                  <div>
-                    <span className="mobile-caisse-bank__mini-label">Reste</span>
-                    <span className="mobile-caisse-bank__mini-value">{item.reste}</span>
+
+                  <div className="rounded-xl bg-slate-50 px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Reste
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-slate-900">{item.reste}</p>
                   </div>
                 </div>
               </article>
@@ -171,61 +160,58 @@ export default function MobileCaisseBanking({
         )}
       </section>
 
-      <section className="mobile-caisse-bank__section">
-        <div className="mobile-caisse-bank__section-head">
-          <div>
-            <p className="mobile-caisse-bank__section-eyebrow">Historique</p>
-            <h3 className="mobile-caisse-bank__section-title">Mouvements récents</h3>
-          </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Historique
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-slate-900">
+            Mouvements récents
+          </h3>
         </div>
 
         {mouvements.length === 0 ? (
           <EmptyBlock
             title="Aucun mouvement récent"
-            text="Les mouvements de caisse apparaîtront ici dans un style relevé bancaire."
+            text="Les mouvements de caisse apparaîtront ici."
           />
         ) : (
-          <div className="mobile-caisse-bank__movements">
+          <div className="space-y-3">
             {mouvements.map((item) => (
-              <article key={item.id} className="mobile-caisse-bank__movement-card">
-                <div className="mobile-caisse-bank__movement-left">
-                  <p className="mobile-caisse-bank__movement-title">{item.title}</p>
-                  {item.subtitle ? (
-                    <p className="mobile-caisse-bank__movement-subtitle">{item.subtitle}</p>
-                  ) : null}
-                  {item.meta ? (
-                    <p className="mobile-caisse-bank__movement-meta">{item.meta}</p>
-                  ) : null}
-                </div>
+              <article key={item.id} className="rounded-[22px] border border-slate-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900">{item.title}</p>
+                    {item.subtitle ? (
+                      <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+                    ) : null}
+                    {item.meta ? (
+                      <p className="mt-1 text-xs text-slate-400">{item.meta}</p>
+                    ) : null}
+                  </div>
 
-                <div className="mobile-caisse-bank__movement-right">
-                  <p className="mobile-caisse-bank__movement-amount">{item.amount}</p>
-                  <MobileStatusBadge
-                    label={item.tone === "success" ? "Validé" : item.tone === "warning" ? "En attente" : item.tone === "danger" ? "Alerte" : "Info"}
-                    tone={item.tone ?? "neutral"}
-                  />
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-slate-900">{item.amount}</p>
+                    <div className="mt-2 flex justify-end">
+                      <MobileStatusBadge
+                        label={
+                          item.tone === "success"
+                            ? "Validé"
+                            : item.tone === "warning"
+                            ? "En attente"
+                            : item.tone === "danger"
+                            ? "Alerte"
+                            : "Info"
+                        }
+                        tone={item.tone ?? "neutral"}
+                      />
+                    </div>
+                  </div>
                 </div>
               </article>
             ))}
           </div>
         )}
-      </section>
-
-      <section className="mobile-caisse-bank__section">
-        <div className="mobile-caisse-bank__encheres-card">
-          <div>
-            <p className="mobile-caisse-bank__section-eyebrow">Enchères</p>
-            <h3 className="mobile-caisse-bank__section-title">Montant total des enchères</h3>
-          </div>
-
-          <p className="mobile-caisse-bank__encheres-value">
-            {summary.totalEncheres || "0 FCFA"}
-          </p>
-
-          <p className="mobile-caisse-bank__encheres-text">
-            Bloc visuel dédié à la caisse, prévu pour être alimenté par le backend.
-          </p>
-        </div>
       </section>
     </section>
   );

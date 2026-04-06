@@ -8,7 +8,7 @@ const quickLinks = [
   { href: "/imputations", label: "Imputations", description: "Ventiler les montants par rubrique" },
   { href: "/decaissements", label: "Décaissements", description: "Suivre les sorties de fonds" },
   { href: "/encheres", label: "Enchères", description: "Consulter le montant total des enchères" },
-  { href: "/montants-attendus", label: "Montants attendus", description: "Référentiel de calcul des restes" }
+  { href: "/montants-attendus", label: "Montants attendus", description: "Référentiel de calcul des restes" },
 ];
 
 export default function CaissePage() {

@@ -28,27 +28,37 @@ export default function MobileBankBottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="mobile-bank-nav-shell xl:hidden">
-      <nav className="mobile-bank-nav" aria-label="Navigation mobile principale">
-        {NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href, item.exact);
-          const Icon = item.icon;
+    <div className="fixed inset-x-0 bottom-0 z-50 xl:hidden">
+      <div className="mx-auto max-w-[640px] px-3 pb-3">
+        <nav
+          aria-label="Navigation mobile principale"
+          className="rounded-[24px] border border-slate-200 bg-white px-2 py-2 shadow-sm"
+        >
+          <div className="grid grid-cols-5 gap-2">
+            {NAV_ITEMS.map((item) => {
+              const active = isActive(pathname, item.href, item.exact);
+              const Icon = item.icon;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={["mobile-bank-nav__item", active ? "is-active" : ""].join(" ")}
-            >
-              <span className="mobile-bank-nav__icon-wrap" aria-hidden="true">
-                <Icon className="mobile-bank-nav__icon" />
-              </span>
-              <span className="mobile-bank-nav__label">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "flex min-h-[72px] flex-col items-center justify-center gap-2 rounded-[18px] px-2 py-2 text-center",
+                    active
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white text-slate-500",
+                  ].join(" ")}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[11px] font-semibold leading-tight">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }
