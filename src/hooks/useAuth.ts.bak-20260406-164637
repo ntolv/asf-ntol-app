@@ -17,15 +17,6 @@ type AuthContextResponse = {
   telephone?: string | null;
   nom?: string | null;
   role?: string | null;
-  roleCode?: string | null;
-  member?: {
-    id?: string | null;
-    nom?: string | null;
-    nom_complet?: string | null;
-    telephone?: string | null;
-    role?: string | null;
-    role_code?: string | null;
-  } | null;
 };
 
 type AuthUser = {
@@ -38,7 +29,6 @@ type AuthMember = {
   nom: string | null;
   telephone: string | null;
   role: string | null;
-  roleCode: string | null;
 };
 
 type UseAuthReturn = {
@@ -63,7 +53,6 @@ const DEFAULT_MEMBER: AuthMember = {
   nom: null,
   telephone: null,
   role: null,
-  roleCode: null,
 };
 
 function useAuthInternal(): UseAuthReturn {
@@ -110,27 +99,6 @@ function useAuthInternal(): UseAuthReturn {
         return;
       }
 
-      const resolvedNom =
-        data.member?.nom_complet ??
-        data.member?.nom ??
-        data.nom ??
-        null;
-
-      const resolvedTelephone =
-        data.member?.telephone ??
-        data.telephone ??
-        null;
-
-      const resolvedRole =
-        data.member?.role ??
-        data.role ??
-        null;
-
-      const resolvedRoleCode =
-        data.member?.role_code ??
-        data.roleCode ??
-        null;
-
       setUser({
         ...DEFAULT_USER,
         id: data.authUserId ?? null,
@@ -140,10 +108,9 @@ function useAuthInternal(): UseAuthReturn {
       setMember({
         ...DEFAULT_MEMBER,
         id: data.membreId ?? null,
-        nom: resolvedNom,
-        telephone: resolvedTelephone,
-        role: resolvedRole,
-        roleCode: resolvedRoleCode,
+        nom: data.nom ?? null,
+        telephone: data.telephone ?? null,
+        role: data.role ?? null,
       });
 
       clearPendingRecognition();
