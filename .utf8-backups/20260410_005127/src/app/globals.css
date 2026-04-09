@@ -69,7 +69,7 @@ body {
 
 /* === ASF-NTOL MOBILE GLOBAL FIX START === */
 
-/* Base stabilitÃƒÂ© mobile */
+/* Base stabilitÃƒÆ’Ã‚Â© mobile */
 html,
 body {
   max-width: 100%;
@@ -114,7 +114,7 @@ textarea {
   font-size: 16px;
 }
 
-/* Evite les dÃƒÂ©bordements imprÃƒÂ©vus */
+/* Evite les dÃƒÆ’Ã‚Â©bordements imprÃƒÆ’Ã‚Â©vus */
 main,
 section,
 article,
@@ -157,7 +157,7 @@ div {
   background-clip: padding-box;
 }
 
-/* IMPORTANT : supprime les Ã¢â‚¬Å“mauvais caractÃƒÂ¨resÃ¢â‚¬Â / boutons parasites */
+/* IMPORTANT : supprime les ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œmauvais caractÃƒÆ’Ã‚Â¨resÃƒÂ¢Ã¢â€šÂ¬Ã‚Â / boutons parasites */
 ::-webkit-scrollbar-button {
   display: none;
   width: 0;
@@ -173,7 +173,7 @@ div {
   background: transparent;
 }
 
-/* LisibilitÃƒÂ© et cohÃƒÂ©rence tactile */
+/* LisibilitÃƒÆ’Ã‚Â© et cohÃƒÆ’Ã‚Â©rence tactile */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -183,7 +183,7 @@ button {
   touch-action: manipulation;
 }
 
-/* Tables plus sÃƒÂ»res sur smartphone */
+/* Tables plus sÃƒÆ’Ã‚Â»res sur smartphone */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -251,7 +251,7 @@ table {
     max-width: 100%;
   }
 
-  /* Evite que les cartes dÃƒÂ©bordent */
+  /* Evite que les cartes dÃƒÆ’Ã‚Â©bordent */
   .rounded-2xl,
   .rounded-3xl {
     overflow: hidden;

@@ -1,0 +1,129 @@
+﻿CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\public\sw.js | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(auth)\layout.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(auth)\login\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(auth)\preinscription\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\caisse\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\encheres\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\imputations\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\layout.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\membres\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\auth\context\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\auth\preinscription\finaliser\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\contributions\create\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\contributions\form-data\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\imputations\form-data\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\imputations\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\membres\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\push\send\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\push\subscribe\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\cycle-parametres\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\sessions-planifiees\route.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\layout.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\manifest.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\page.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\app\AppNotificationsCenter.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\app\AppPwaRegister.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\app\InstallAppButton.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\auth\AuthContextGate.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\auth\RoleGuard.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\member-card.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\module-card.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\notifications-card.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\stat-card.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\home\HomeLogoutButton.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\index.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileBankBottomNav.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileBottomNav.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileCaisseBanking.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileCaisseBankingConnected.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileHomeProHeader.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileLogoutButton.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobilePageShell.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileStatusBadge.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\mobile\MobileTopBar.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\push\EnablePushButton.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\push\PushNotificationPanel.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\push\PushNotificationTestCard.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\AppSidebar.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\AppTopBar.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\LogoutButton.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\MobileBottomNav.tsx | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\hooks\useAuth.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\hooks\useNotifications.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\hooks\usePushCurrentMembreId.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\auth\debugPendingRecognition.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\auth\pendingRecognition.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\getCurrentMembreId.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\push\registerPush.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\push\webPush.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\server\requireUserContext.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\server\unauthorizedResponse.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\supabase.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\supabase\client.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\supabase\server.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\supabaseClient.ts | No improvement
+CHECKED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\withTimeout.ts | No improvement
+ERROR | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\prets\demande\[id]\page.tsx | Impossible de convertir « System.Object[] » en type « System.String », requis par le paramètre « ChildPath ». La méthode spécifiée n'est pas prise en charge.
+ERROR | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\[id]\route.ts | Impossible de convertir « System.Object[] » en type « System.String », requis par le paramètre « ChildPath ». La méthode spécifiée n'est pas prise en charge.
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\public\app-icons\README.txt | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\public\manifest.json | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\admin\roles\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\aides\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\bilan\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\contributions\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\dashboard\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\decaissements\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\documents\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\gestion-demandes\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\montants-attendus\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\prets\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\prets-aides\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\tontine\components\EncherirModal.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\tontine\page.tsx | ROUNDTRIP_FIX | score 3143 -> 1904
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\(dashboard)\tontine\suivi-cycle\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\aides\create\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\aides\decision\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\aides\mine\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\aides\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\auth\debug-context\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\bilan\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\caisses\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\contributions\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\dashboard\membre\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\dashboard\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\decaissements\create\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\decaissements\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\documents\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\montants-attendus\form-data\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\montants-attendus\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\montants-attendus\save\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\create\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\mine\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\request-otp\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\valider\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets\verify-otp\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\prets-aides\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\rubriques\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\close-session\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\create-session\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\encheres\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\gagnants-session\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\lots\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\mes-encheres\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\sessions\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\start-session\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\api\tontine\suivi-cycle\route.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\app-personnalisee\page.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\app\globals.css | ROUNDTRIP_FIX | score 1469 -> 1133
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\app\AppInstallBanner.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\auth\LogoutButton.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\contributions-table.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\imputations-table.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\dashboard\montants-attente-list.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\sidebar.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\components\ui\topbar.tsx | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\logout.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\server\getUserContext.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\server\sendPretOtpEmail.ts | UTF8_BOM_REMOVED
+FIXED | C:\Users\ntolv\OneDrive\Documents\ASF-NTOL\asf-ntol-app\src\lib\server\supabaseServer.ts | UTF8_BOM_REMOVED

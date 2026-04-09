@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -15,21 +15,8 @@ function isBureauRole(role: { code?: string | null; libelle?: string | null } | 
   );
 }
 
-export async function GET(
-  _request: Request,
-  contextParams: { params: Promise<{ id: string }> }
-) {
+export async function GET() {
   try {
-    const params = await contextParams.params;
-    const demandeId = String(params?.id || "").trim();
-
-    if (!demandeId) {
-      return NextResponse.json(
-        { success: false, message: "Identifiant de demande manquant." },
-        { status: 400 }
-      );
-    }
-
     const cookieStore = await cookies();
 
     const supabaseAuth = createServerClient(
@@ -56,20 +43,33 @@ export async function GET(
         {
           success: false,
           message: userError?.message || "Utilisateur non authentifié.",
+          data: { global: null, rubriques: [], membres: [] },
         },
         { status: 401 }
       );
     }
 
-    const userContext = await getUserContext(user);
+    const context = await getUserContext(user);
 
-    if (!userContext?.success || !userContext.membreId) {
+    if (!context?.success) {
       return NextResponse.json(
         {
           success: false,
-          message: userContext?.message || "Contexte utilisateur introuvable.",
+          message: context?.message || "Contexte utilisateur introuvable.",
+          data: { global: null, rubriques: [], membres: [] },
         },
         { status: 401 }
+      );
+    }
+
+    if (!isBureauRole(context.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Accès refusé. Page réservée au bureau.",
+          data: { global: null, rubriques: [], membres: [] },
+        },
+        { status: 403 }
       );
     }
 
@@ -79,48 +79,45 @@ export async function GET(
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
-    const { data: demande, error } = await supabaseAdmin
-      .from("demandes_prets")
+    const { data: global, error: globalError } = await supabaseAdmin
+      .from("v_bilan_general")
       .select("*")
-      .eq("id", demandeId)
       .maybeSingle();
 
-    if (error) {
-      throw error;
-    }
+    if (globalError) throw globalError;
 
-    if (!demande) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Demande de prêt introuvable.",
+    const { data: rubriques, error: rubriquesError } = await supabaseAdmin
+      .from("v_bilan_rubriques")
+      .select("*")
+      .order("rubrique_nom", { ascending: true });
+
+    if (rubriquesError) throw rubriquesError;
+
+    const { data: membres, error: membresError } = await supabaseAdmin
+      .from("v_bilan_membres")
+      .select("*")
+      .order("nom_complet", { ascending: true });
+
+    if (membresError) throw membresError;
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Bilan chargé",
+        data: {
+          global: global ?? null,
+          rubriques: rubriques ?? [],
+          membres: membres ?? [],
         },
-        { status: 404 }
-      );
-    }
-
-    const bureau = isBureauRole(userContext.role);
-    const proprietaire = String(demande.membre_id || "") === String(userContext.membreId || "");
-
-    if (!bureau && !proprietaire) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Accès refusé à cette demande.",
-        },
-        { status: 403 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: demande,
-    });
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Erreur lors du chargement de la demande de prêt.",
+        message: error?.message || "Erreur lors du chargement du bilan.",
+        data: { global: null, rubriques: [], membres: [] },
       },
       { status: 500 }
     );

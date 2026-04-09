@@ -43,9 +43,9 @@ type GagnantRow = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  PLANIFIEE: "PlanifiÃ©e",
+  PLANIFIEE: "PlanifiÃƒÂ©e",
   EN_COURS: "En cours",
-  TERMINEE: "TerminÃ©e",
+  TERMINEE: "TerminÃƒÂ©e",
 };
 
 function normalizeStatus(value: unknown): "PLANIFIEE" | "EN_COURS" | "TERMINEE" | "AUTRE" {
@@ -121,7 +121,7 @@ export default function TontinePage() {
     const res = await fetch("/api/tontine/cycle-parametres", { cache: "no-store" });
     const json = await readJsonSafe(res);
     if (!res.ok) {
-      throw new Error(json?.error || "Impossible de charger les paramÃ¨tres du cycle.");
+      throw new Error(json?.error || "Impossible de charger les paramÃƒÂ¨tres du cycle.");
     }
 
     const payload = extractObject<CycleParams>(json) ?? null;
@@ -151,7 +151,7 @@ export default function TontinePage() {
     const res = await fetch("/api/tontine/sessions-planifiees", { cache: "no-store" });
     const json = await readJsonSafe(res);
     if (!res.ok) {
-      throw new Error(json?.error || "Impossible de charger les sessions planifiées.");
+      throw new Error(json?.error || "Impossible de charger les sessions planifiÃ©es.");
     }
 
     const rows = extractRows<SessionRow>(json);
@@ -232,10 +232,10 @@ export default function TontinePage() {
 
       const json = await readJsonSafe(res);
       if (!res.ok) {
-        throw new Error(json?.error || "Impossible d'enregistrer les paramÃ¨tres du cycle.");
+        throw new Error(json?.error || "Impossible d'enregistrer les paramÃƒÂ¨tres du cycle.");
       }
 
-      setMessage("ParamÃ¨tres du cycle enregistrÃ©s avec succÃ¨s.");
+      setMessage("ParamÃƒÂ¨tres du cycle enregistrÃƒÂ©s avec succÃƒÂ¨s.");
       setRefreshKey((v) => v + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur pendant l'enregistrement du cycle.");
@@ -246,7 +246,7 @@ export default function TontinePage() {
 
   async function handleActiverSession() {
     if (!selectedSessionId) {
-      setError("Aucune session planifiÃ©e n'est disponible pour activation.");
+      setError("Aucune session planifiÃƒÂ©e n'est disponible pour activation.");
       setMessage("");
       return;
     }
@@ -267,7 +267,7 @@ export default function TontinePage() {
         throw new Error(json?.error || json?.message || "Activation de session impossible.");
       }
 
-      setMessage("Session activÃ©e avec succÃ¨s. Elle est maintenant disponible pour la page EnchÃ¨res.");
+      setMessage("Session activÃƒÂ©e avec succÃƒÂ¨s. Elle est maintenant disponible pour la page EnchÃƒÂ¨res.");
       setRefreshKey((v) => v + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur pendant l'activation de la session.");
@@ -286,11 +286,11 @@ export default function TontinePage() {
                 Tontine
               </p>
               <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-                ParamÃ©trage cycle & activation session
+                ParamÃƒÂ©trage cycle & activation session
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-600">
-                Cette page sert uniquement Ã  configurer le cycle et Ã  activer une session planifiÃ©e.
-                Le dÃ©marrage rÃ©el des enchÃ¨res se fait uniquement dans la page EnchÃ¨res.
+                Cette page sert uniquement ÃƒÂ  configurer le cycle et ÃƒÂ  activer une session planifiÃƒÂ©e.
+                Le dÃƒÂ©marrage rÃƒÂ©el des enchÃƒÂ¨res se fait uniquement dans la page EnchÃƒÂ¨res.
               </p>
             </div>
 
@@ -300,14 +300,14 @@ export default function TontinePage() {
                 onClick={() => setRefreshKey((v) => v + 1)}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
               >
-                RafraÃ®chir
+                RafraÃƒÂ®chir
               </button>
 
               <Link
                 href="/encheres"
                 className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
-                Aller Ã  la page EnchÃ¨res
+                Aller ÃƒÂ  la page EnchÃƒÂ¨res
               </Link>
             </div>
           </div>
@@ -335,17 +335,17 @@ export default function TontinePage() {
                 Bloc 1
               </p>
               <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-                ParamÃ©trage du cycle
+                ParamÃƒÂ©trage du cycle
               </h2>
               <p className="mt-2 text-sm text-slate-600">
                 La mise brute de chaque session et le nombre de tontineurs doivent venir du backend.
-                Ils sont affichÃ©s ici en lecture seule.
+                Ils sont affichÃƒÂ©s ici en lecture seule.
               </p>
             </div>
 
             <form onSubmit={handleSaveCycle} className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2">
-                <span className="text-sm font-semibold text-slate-700">LibellÃ© cycle</span>
+                <span className="text-sm font-semibold text-slate-700">LibellÃƒÂ© cycle</span>
                 <input
                   value={form.libelle_cycle}
                   onChange={(e) => setForm((v) => ({ ...v, libelle_cycle: e.target.value }))}
@@ -355,7 +355,7 @@ export default function TontinePage() {
               </label>
 
               <label className="grid gap-2">
-                <span className="text-sm font-semibold text-slate-700">AnnÃ©e cycle</span>
+                <span className="text-sm font-semibold text-slate-700">AnnÃƒÂ©e cycle</span>
                 <input
                   type="number"
                   value={form.annee_cycle}
@@ -377,7 +377,7 @@ export default function TontinePage() {
               </label>
 
               <label className="grid gap-2">
-                <span className="text-sm font-semibold text-slate-700">Date dÃ©but cycle</span>
+                <span className="text-sm font-semibold text-slate-700">Date dÃƒÂ©but cycle</span>
                 <input
                   type="date"
                   value={form.date_debut_cycle}
@@ -422,7 +422,7 @@ export default function TontinePage() {
                   disabled={savingCycle}
                   className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {savingCycle ? "Enregistrement..." : "Enregistrer paramÃ¨tres cycle"}
+                  {savingCycle ? "Enregistrement..." : "Enregistrer paramÃƒÂ¨tres cycle"}
                 </button>
 
                 <button
@@ -430,7 +430,7 @@ export default function TontinePage() {
                   onClick={() => setRefreshKey((v) => v + 1)}
                   className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
                 >
-                  RafraÃ®chir cycle
+                  RafraÃƒÂ®chir cycle
                 </button>
 
                 {typeof cycleParams?.fichier_suivi_url === "string" && cycleParams.fichier_suivi_url ? (
@@ -453,26 +453,26 @@ export default function TontinePage() {
                 Bloc 2
               </p>
               <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-                ParamÃ©trage session
+                ParamÃƒÂ©trage session
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Le bloc propose la premiÃ¨re session planifiÃ©e disponible pour activation.
+                Le bloc propose la premiÃƒÂ¨re session planifiÃƒÂ©e disponible pour activation.
               </p>
             </div>
 
             <div className="grid gap-4">
               <label className="grid gap-2">
-                <span className="text-sm font-semibold text-slate-700">Session Ã  activer</span>
+                <span className="text-sm font-semibold text-slate-700">Session ÃƒÂ  activer</span>
                 <select
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
                   className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
                 >
-                  <option value="">SÃ©lectionner une session planifiÃ©e</option>
+                  <option value="">SÃƒÂ©lectionner une session planifiÃƒÂ©e</option>
                   {sessionsPlanifiees.map((session) => (
                     <option key={session.id} value={session.id}>
-                      {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} â€”{" "}
-                      {session.periode_reference || "PÃ©riode non renseignÃ©e"}
+                      {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} Ã¢â‚¬â€{" "}
+                      {session.periode_reference || "PÃƒÂ©riode non renseignÃƒÂ©e"}
                     </option>
                   ))}
                 </select>
@@ -480,20 +480,20 @@ export default function TontinePage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Session ciblÃ©e
+                  Session ciblÃƒÂ©e
                 </p>
 
                 {selectedSession ? (
                   <div className="mt-3 grid gap-3">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-slate-700">LibellÃ©</span>
+                      <span className="text-sm font-semibold text-slate-700">LibellÃƒÂ©</span>
                       <span className="text-sm text-slate-900">
                         {selectedSession.libelle || `Session ${selectedSession.ordre_session ?? "-"}`}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-slate-700">PÃ©riode</span>
+                      <span className="text-sm font-semibold text-slate-700">PÃƒÂ©riode</span>
                       <span className="text-sm text-slate-900">
                         {selectedSession.periode_reference || "-"}
                       </span>
@@ -522,7 +522,7 @@ export default function TontinePage() {
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-slate-500">
-                    Aucune session planifiÃ©e n'est actuellement renvoyÃ©e par le backend pour activation.
+                    Aucune session planifiÃƒÂ©e n'est actuellement renvoyÃƒÂ©e par le backend pour activation.
                   </p>
                 )}
               </div>
@@ -537,9 +537,9 @@ export default function TontinePage() {
               </button>
 
               <p className="text-xs leading-6 text-slate-500">
-                Cette action ne dÃ©marre pas les enchÃ¨res. Le lancement rÃ©el reste portÃ© par le bouton
-                <span className="font-semibold text-slate-700"> Top dÃ©part chrono </span>
-                dans la page EnchÃ¨res.
+                Cette action ne dÃƒÂ©marre pas les enchÃƒÂ¨res. Le lancement rÃƒÂ©el reste portÃƒÂ© par le bouton
+                <span className="font-semibold text-slate-700"> Top dÃƒÂ©part chrono </span>
+                dans la page EnchÃƒÂ¨res.
               </p>
             </div>
           </section>
@@ -555,7 +555,7 @@ export default function TontinePage() {
                 Sessions du cycle
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Le tableau ci-dessous doit reflÃ©ter uniquement ce qui est fourni par le backend.
+                Le tableau ci-dessous doit reflÃƒÂ©ter uniquement ce qui est fourni par le backend.
               </p>
             </div>
 
@@ -569,12 +569,12 @@ export default function TontinePage() {
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
                   <th className="px-3 py-3 font-semibold">Ordre</th>
-                  <th className="px-3 py-3 font-semibold">PÃ©riode</th>
+                  <th className="px-3 py-3 font-semibold">PÃƒÂ©riode</th>
                   <th className="px-3 py-3 font-semibold">Mise brute session</th>
                   <th className="px-3 py-3 font-semibold">Nb lots</th>
                   <th className="px-3 py-3 font-semibold">Cumul caisse</th>
                   <th className="px-3 py-3 font-semibold">Statut session</th>
-                  <th className="px-3 py-3 font-semibold">Statut enchÃ¨res</th>
+                  <th className="px-3 py-3 font-semibold">Statut enchÃƒÂ¨res</th>
                 </tr>
               </thead>
               <tbody>
@@ -629,13 +629,13 @@ export default function TontinePage() {
         <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              RÃ©sultats
+              RÃƒÂ©sultats
             </p>
             <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-              Gagnants de la session sÃ©lectionnÃ©e
+              Gagnants de la session sÃƒÂ©lectionnÃƒÂ©e
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Ce bloc reste en lecture seule et dÃ©pend uniquement de l'API backend.
+              Ce bloc reste en lecture seule et dÃƒÂ©pend uniquement de l'API backend.
             </p>
           </div>
 
@@ -657,10 +657,10 @@ export default function TontinePage() {
                     Gagnant : <span className="font-semibold text-slate-900">{item.nom_complet || item.membre_nom || "-"}</span>
                   </p>
                   <p className="mt-2 text-sm text-slate-600">
-                    EnchÃ¨re : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
+                    EnchÃƒÂ¨re : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
                   </p>
                   <p className="mt-2 text-sm text-slate-600">
-                    Gain rÃ©el : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
+                    Gain rÃƒÂ©el : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
                   </p>
                 </article>
               ))
