@@ -1,697 +1,677 @@
-﻿"use client";
+"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type Session = {
-  id: string;
-  libelle: string;
-  periode: string;
-  ordre_session: number;
-  statut_session: string;
-  nombre_lots?: number;
-  statut_encheres?: string | null;
-  est_selectionnable?: boolean;
-  est_active?: boolean;
-};
-
-type Gagnant = {
-  id: string;
-  session_id: string;
-  lot: number;
-  nom_complet: string;
-  mise_brute: number;
-  total_relances: number;
-  gain_reel: number;
-  statut_gain: string;
-};
-
 type CycleParams = {
-  configured: boolean;
-  libelle_cycle?: string;
-  montant_fixe_par_tontineur?: number;
-  nb_tontineurs_inscrits?: number;
-  mise_brute_cycle?: number;
-  mise_brute_unitaire?: number;
-  contribution_globale_mensuelle?: number;
-  contribution_globale_cycle?: number;
-  calcul_detail?: string | null;
+  id?: string;
+  annee_cycle?: number | string | null;
+  libelle_cycle?: string | null;
+  montant_fixe_par_tontineur?: number | string | null;
+  nb_tontineurs_inscrits?: number | string | null;
   date_debut_cycle?: string | null;
   date_fin_cycle?: string | null;
-  annee_cycle?: number | null;
+  mise_brute_session?: number | string | null;
+  fichier_suivi_url?: string | null;
+  [key: string]: unknown;
 };
 
-function formatMontant(value: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "XOF",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
+type SessionRow = {
+  id: string;
+  cycle_id?: string | null;
+  ordre_session?: number | null;
+  libelle?: string | null;
+  periode_reference?: string | null;
+  statut_session?: string | null;
+  statut_encheres?: string | null;
+  mise_brute_session?: number | string | null;
+  nb_lots_effectif?: number | null;
+  montant_depart_enchere_session?: number | string | null;
+  cumul_caisse?: number | string | null;
+  [key: string]: unknown;
+};
+
+type GagnantRow = {
+  id?: string;
+  membre_nom?: string | null;
+  nom_complet?: string | null;
+  lot_libelle?: string | null;
+  lot_numero?: number | null;
+  montant_enchere?: number | string | null;
+  gain_reel?: number | string | null;
+  [key: string]: unknown;
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PLANIFIEE: "Planifiée",
+  EN_COURS: "En cours",
+  TERMINEE: "Terminée",
+};
+
+function normalizeStatus(value: unknown): "PLANIFIEE" | "EN_COURS" | "TERMINEE" | "AUTRE" {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (raw === "PLANIFIEE") return "PLANIFIEE";
+  if (raw === "EN_COURS") return "EN_COURS";
+  if (raw === "TERMINEE") return "TERMINEE";
+  return "AUTRE";
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  return new Date(value).toLocaleDateString("fr-FR");
+function formatStatus(value: unknown) {
+  const normalized = normalizeStatus(value);
+  return STATUS_LABELS[normalized] ?? String(value ?? "-");
 }
 
-function getBadgeClass(value?: string | null) {
-  const statut = String(value || "").toUpperCase();
+function formatMoney(value: unknown) {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return "-";
+  return new Intl.NumberFormat("fr-FR").format(num) + " FCFA";
+}
 
-  if (statut === "EN_COURS" || statut === "OUVERTE" || statut === "ACTIVE") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
+function formatDateInput(value: string | null | undefined) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
 
-  if (statut === "TERMINE" || statut === "CLOTUREE" || statut === "CLÔTURÉE") {
-    return "border-slate-300 bg-slate-100 text-slate-700";
-  }
+function extractRows<T>(payload: any): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (Array.isArray(payload?.data)) return payload.data as T[];
+  if (Array.isArray(payload?.sessions)) return payload.sessions as T[];
+  if (Array.isArray(payload?.items)) return payload.items as T[];
+  return [];
+}
 
-  if (statut === "PLANIFIEE" || statut === "PLANIFIÉE") {
-    return "border-amber-200 bg-amber-50 text-amber-800";
-  }
-
-  return "border-slate-200 bg-slate-50 text-slate-700";
+function extractObject<T>(payload: any): T | null {
+  if (!payload) return null;
+  if (payload.data && !Array.isArray(payload.data)) return payload.data as T;
+  if (!Array.isArray(payload)) return payload as T;
+  return null;
 }
 
 export default function TontinePage() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [sessionActive, setSessionActive] = useState<Session | null>(null);
-  const [gagnants, setGagnants] = useState<Gagnant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingCycle, setSavingCycle] = useState(false);
+  const [activatingSession, setActivatingSession] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [message, setMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
+
   const [cycleParams, setCycleParams] = useState<CycleParams | null>(null);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [gagnants, setGagnants] = useState<GagnantRow[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
 
-  const [montantFixeParTontineur, setMontantFixeParTontineur] = useState("");
-  const [dateDebutCycle, setDateDebutCycle] = useState("");
-  const [dureeSession, setDureeSession] = useState(4);
-  const [nbLotsSession, setNbLotsSession] = useState(5);
-  const [montantDepartSession, setMontantDepartSession] = useState(0);
+  const [form, setForm] = useState({
+    annee_cycle: "",
+    libelle_cycle: "",
+    montant_fixe_par_tontineur: "",
+    nb_tontineurs_inscrits: "",
+    date_debut_cycle: "",
+    date_fin_cycle: "",
+    mise_brute_session: "",
+  });
 
-  const [loadingSessions, setLoadingSessions] = useState(false);
-  const [loadingGagnants, setLoadingGagnants] = useState(false);
-  const [loadingCycle, setLoadingCycle] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const selectableSessions = useMemo(() => {
-    const sorted = [...sessions].sort((a, b) => (a.ordre_session ?? 0) - (b.ordre_session ?? 0));
-    const flagged = sorted.filter((s) => s.est_selectionnable === true);
-    return flagged.length > 0 ? flagged : sorted;
-  }, [sessions]);
-
-  const loadSessions = async () => {
-    setLoadingSessions(true);
+  async function readJsonSafe(response: Response) {
     try {
-      const res = await fetch("/api/tontine/sessions");
-      const data = await res.json();
-
-      const loadedSessions: Session[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.sessions)
-          ? data.sessions
-          : [];
-
-      setSessions(loadedSessions);
-
-      const resolvedSessionActive =
-        data?.session_active
-          ? loadedSessions.find((s) => s.id === data.session_active.id) ??
-            {
-              id: data.session_active.id,
-              libelle: data.session_active.libelle ?? "Session active",
-              periode: data.session_active.periode ?? "-",
-              ordre_session: Number(data.session_active.ordre_session ?? 0),
-              statut_session: data.session_active.statut_session ?? "OUVERTE",
-              statut_encheres: data.session_active.statut_encheres ?? null,
-              est_selectionnable: true,
-              est_active: true,
-              nombre_lots: Number(data.session_active.nombre_lots ?? 0),
-            }
-          : loadedSessions.find((s) => s.est_active) ??
-            loadedSessions.find((s) => s.est_selectionnable) ??
-            loadedSessions.find(
-              (s) =>
-                (s.statut_session === "EN_COURS" || s.statut_session === "OUVERTE") &&
-                s.statut_encheres !== "TERMINE"
-            ) ??
-            loadedSessions[0] ??
-            null;
-
-      setSessionActive(resolvedSessionActive);
-    } catch (err) {
-      console.error("Erreur chargement sessions:", err);
-      setSessions([]);
-      setSessionActive(null);
-    } finally {
-      setLoadingSessions(false);
+      return await response.json();
+    } catch {
+      return null;
     }
-  };
+  }
 
-  const loadCycleParams = async () => {
-    setLoadingCycle(true);
-    try {
-      const res = await fetch("/api/tontine/cycle-parametres");
-      const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        console.error(data?.error || "Erreur chargement paramètres cycle");
-        setCycleParams({ configured: false });
-        return;
-      }
-
-      const normalized: CycleParams = {
-        configured: Boolean(data?.configured),
-        libelle_cycle: data?.libelle_cycle ?? "CYCLE ACTIF",
-        montant_fixe_par_tontineur: Number(data?.montant_fixe_par_tontineur || 0),
-        nb_tontineurs_inscrits: Number(data?.nb_tontineurs_inscrits || 0),
-        mise_brute_cycle: Number(data?.mise_brute_cycle || 0),
-        mise_brute_unitaire: Number(data?.mise_brute_unitaire || 0),
-        contribution_globale_mensuelle: Number(data?.contribution_globale_mensuelle || 0),
-        contribution_globale_cycle: Number(data?.contribution_globale_cycle || 0),
-        calcul_detail: data?.calcul_detail ?? null,
-        date_debut_cycle: data?.date_debut_cycle ?? null,
-        date_fin_cycle: data?.date_fin_cycle ?? null,
-        annee_cycle: data?.annee_cycle != null ? Number(data.annee_cycle) : null,
-      };
-
-      setCycleParams(normalized);
-      setMontantFixeParTontineur(
-        normalized.configured && normalized.montant_fixe_par_tontineur
-          ? String(normalized.montant_fixe_par_tontineur)
-          : ""
-      );
-      setDateDebutCycle(normalized.date_debut_cycle ?? "");
-    } catch (err) {
-      console.error("Erreur chargement paramètres cycle:", err);
-      setCycleParams({ configured: false });
-    } finally {
-      setLoadingCycle(false);
+  async function loadCycleParams() {
+    const res = await fetch("/api/tontine/cycle-parametres", { cache: "no-store" });
+    const json = await readJsonSafe(res);
+    if (!res.ok) {
+      throw new Error(json?.error || "Impossible de charger les paramètres du cycle.");
     }
-  };
 
-  const sessionReferenceForWinners = sessionActive || sessions[0] || null;
+    const payload = extractObject<CycleParams>(json) ?? null;
+    setCycleParams(payload);
 
-  const loadGagnants = async (sessionId?: string | null) => {
+    setForm({
+      annee_cycle: payload?.annee_cycle ? String(payload.annee_cycle) : "",
+      libelle_cycle: payload?.libelle_cycle ? String(payload.libelle_cycle) : "",
+      montant_fixe_par_tontineur: payload?.montant_fixe_par_tontineur ? String(payload.montant_fixe_par_tontineur) : "",
+      nb_tontineurs_inscrits: payload?.nb_tontineurs_inscrits ? String(payload.nb_tontineurs_inscrits) : "",
+      date_debut_cycle: formatDateInput(payload?.date_debut_cycle as string | null | undefined),
+      date_fin_cycle: formatDateInput(payload?.date_fin_cycle as string | null | undefined),
+      mise_brute_session: payload?.mise_brute_session ? String(payload.mise_brute_session) : "",
+    });
+  }
+
+  async function loadSessions() {
+    const res = await fetch("/api/tontine/sessions", { cache: "no-store" });
+    const json = await readJsonSafe(res);
+    if (!res.ok) {
+      throw new Error(json?.error || "Impossible de charger les sessions.");
+    }
+
+    const rows = extractRows<SessionRow>(json);
+    setSessions(rows);
+
+    const firstPlanned = rows.find((row) => normalizeStatus(row.statut_session) === "PLANIFIEE");
+    const firstNonFinished = rows.find((row) => normalizeStatus(row.statut_session) !== "TERMINEE");
+    const target = firstPlanned ?? firstNonFinished ?? null;
+
+    setSelectedSessionId((current) => {
+      if (current && rows.some((row) => row.id === current)) return current;
+      return target?.id ?? "";
+    });
+  }
+
+  async function loadGagnants(sessionId?: string) {
     if (!sessionId) {
       setGagnants([]);
       return;
     }
 
-    setLoadingGagnants(true);
-    try {
-      const res = await fetch(`/api/tontine/gagnants-session?session_id=${sessionId}`);
-      const data = await res.json();
-      setGagnants(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Erreur chargement gagnants:", err);
+    const res = await fetch(`/api/tontine/gagnants-session?session_id=${encodeURIComponent(sessionId)}`, {
+      cache: "no-store",
+    });
+
+    const json = await readJsonSafe(res);
+    if (!res.ok) {
       setGagnants([]);
-    } finally {
-      setLoadingGagnants(false);
+      return;
     }
-  };
 
-  useEffect(() => {
-    loadSessions();
-    loadCycleParams();
-  }, []);
+    setGagnants(extractRows<GagnantRow>(json));
+  }
 
-  useEffect(() => {
-    loadGagnants(sessionReferenceForWinners?.id);
-  }, [sessionReferenceForWinners?.id, sessionReferenceForWinners?.statut_encheres]);
+  async function reloadAll() {
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-  const saveCycleParams = async () => {
     try {
-      const montant = Number(montantFixeParTontineur);
+      await Promise.all([loadCycleParams(), loadSessions()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur de chargement.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      if (!montant || montant <= 0) {
-        alert("Le montant fixe par tontineur doit être supérieur à 0 FCFA.");
-        return;
-      }
+  useEffect(() => {
+    void reloadAll();
+  }, [refreshKey]);
 
-      if (!dateDebutCycle) {
-        alert("La date de début du cycle est obligatoire.");
-        return;
-      }
+  useEffect(() => {
+    void loadGagnants(selectedSessionId);
+  }, [selectedSessionId]);
 
-      setActionLoading(true);
+  const selectedSession = useMemo(
+    () => sessions.find((row) => row.id === selectedSessionId) ?? null,
+    [sessions, selectedSessionId]
+  );
 
+  const sessionsPlanifiees = useMemo(
+    () => sessions.filter((row) => normalizeStatus(row.statut_session) === "PLANIFIEE"),
+    [sessions]
+  );
+
+  async function handleSaveCycle(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSavingCycle(true);
+    setError("");
+    setMessage("");
+
+    try {
       const res = await fetch("/api/tontine/cycle-parametres", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          montant_fixe_par_tontineur: montant,
-          libelle_cycle: "CYCLE ACTIF",
-          date_debut_cycle: dateDebutCycle,
+          annee_cycle: form.annee_cycle ? Number(form.annee_cycle) : null,
+          libelle_cycle: form.libelle_cycle || null,
+          montant_fixe_par_tontineur: form.montant_fixe_par_tontineur ? Number(form.montant_fixe_par_tontineur) : null,
+          nb_tontineurs_inscrits: form.nb_tontineurs_inscrits ? Number(form.nb_tontineurs_inscrits) : null,
+          date_debut_cycle: form.date_debut_cycle || null,
+          date_fin_cycle: form.date_fin_cycle || null,
+          mise_brute_session: form.mise_brute_session ? Number(form.mise_brute_session) : null,
         }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur enregistrement paramètres cycle");
-        return;
+      const json = await readJsonSafe(res);
+      if (!res.ok) {
+        throw new Error(json?.error || "Impossible d'enregistrer les paramètres du cycle.");
       }
 
-      await loadCycleParams();
-      await loadSessions();
-      alert("Paramètres du cycle enregistrés avec succès");
+      setMessage("Paramètres du cycle enregistrés avec succès.");
+      setRefreshKey((v) => v + 1);
     } catch (err) {
-      console.error(err);
-      alert("Erreur enregistrement paramètres cycle");
+      setError(err instanceof Error ? err.message : "Erreur pendant l'enregistrement du cycle.");
     } finally {
-      setActionLoading(false);
+      setSavingCycle(false);
     }
-  };
+  }
 
-  const createSession = async () => {
+  async function handleActiverSession() {
+    if (!selectedSessionId) {
+      setError("Aucune session planifiée n'est sélectionnée.");
+      setMessage("");
+      return;
+    }
+
+    setActivatingSession(true);
+    setError("");
+    setMessage("");
+
     try {
-      if (!cycleParams?.configured) {
-        alert("Configure d'abord le cycle de tontine.");
-        return;
-      }
-
-      if (!cycleParams.nb_tontineurs_inscrits || cycleParams.nb_tontineurs_inscrits <= 0) {
-        alert("Aucun tontineur inscrit n'a été trouvé.");
-        return;
-      }
-
-      if (!cycleParams.mise_brute_cycle || cycleParams.mise_brute_cycle <= 0) {
-        alert("La mise brute du cycle est invalide.");
-        return;
-      }
-
-      if (montantDepartSession < 0) {
-        alert("Le montant minimum du départ des enchères ne peut pas être négatif.");
-        return;
-      }
-
-      setActionLoading(true);
-
-      const nextOrder =
-        sessions.length > 0 ? Math.max(...sessions.map((s) => s.ordre_session || 0)) + 1 : 1;
-
-      const month = String(Math.min(nextOrder + 4, 12)).padStart(2, "0");
-      const annee = cycleParams.annee_cycle || new Date().getFullYear();
-
-      const res = await fetch("/api/tontine/create-session", {
+      const res = await fetch("/api/tontine/activer-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          libelle: `SESSION ${nextOrder}`,
-          periode: `${annee}-${month}`,
-          ordre_session: nextOrder,
-          mise: cycleParams.mise_brute_cycle,
-          nb_lots: Number(nbLotsSession),
-          montant_depart_enchere: Number(montantDepartSession || 0),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: selectedSessionId }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur création session");
-        return;
+      const json = await readJsonSafe(res);
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || json?.message || "Activation de session impossible.");
       }
 
-      await loadSessions();
-      alert("Session créée avec succès");
+      setMessage("Session activée avec succès. Elle est maintenant disponible pour la page Enchères.");
+      setRefreshKey((v) => v + 1);
     } catch (err) {
-      console.error(err);
-      alert("Erreur création session");
+      setError(err instanceof Error ? err.message : "Erreur pendant l'activation de la session.");
     } finally {
-      setActionLoading(false);
+      setActivatingSession(false);
     }
-  };
-
-  const startGlobalEncheres = async () => {
-    try {
-      if (!sessionActive?.id) {
-        alert("Aucune session sélectionnée");
-        return;
-      }
-
-      setActionLoading(true);
-
-      const res = await fetch("/api/tontine/start-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          session_id: sessionActive.id,
-          duree: Number(dureeSession),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur démarrage enchères");
-        return;
-      }
-
-      await loadSessions();
-      alert("Enchères globales démarrées pour tous les lots");
-    } catch (err) {
-      console.error(err);
-      alert("Erreur démarrage enchères");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white px-4 py-6 md:px-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 xl:px-8">
+        <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
                 Tontine
+              </p>
+              <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+                Paramétrage cycle & activation session
               </h1>
-              <p className="mt-2 text-sm text-emerald-900/70 md:text-base">
-                Paramétrage du cycle, création de session, lancement des enchères et suivi des résultats.
+              <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                Cette page sert uniquement à configurer le cycle et à activer une session planifiée.
+                Le démarrage réel des enchères se fait uniquement dans la page Enchères.
               </p>
             </div>
 
-            <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm">
-              Pilotage administratif
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setRefreshKey((v) => v + 1)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+              >
+                Rafraîchir
+              </button>
+
+              <Link
+                href="/encheres"
+                className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Aller à la page Enchères
+              </Link>
             </div>
           </div>
-        </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
+          {(message || error) && (
+            <div className="mt-4">
+              {message ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                  {message}
+                </div>
+              ) : null}
+              {error ? (
+                <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                  {error}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-emerald-950">Paramétrage du cycle de tontine</h2>
-                <p className="text-sm text-emerald-900/70">
-                  Les montants et le calcul du cycle sont affichés automatiquement selon la logique du backend.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={loadCycleParams}
-                disabled={loadingCycle || actionLoading}
-                className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {loadingCycle ? "Chargement..." : "Rafraîchir cycle"}
-              </button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <label className="text-sm font-medium text-emerald-900">
-                  Montant fixe de la tontine par tontineur
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={montantFixeParTontineur}
-                  onChange={(e) => setMontantFixeParTontineur(e.target.value)}
-                  placeholder="Ex: 100000"
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                />
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <label className="text-sm font-medium text-emerald-900">
-                  Date de début du cycle
-                </label>
-                <input
-                  type="date"
-                  value={dateDebutCycle}
-                  onChange={(e) => setDateDebutCycle(e.target.value)}
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                />
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Tontineurs inscrits</p>
-                <p className="mt-2 text-2xl font-bold text-emerald-950">
-                  {loadingCycle ? "..." : cycleParams?.nb_tontineurs_inscrits ?? 0}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Mise brute du cycle</p>
-                <p className="mt-2 text-xl font-bold text-emerald-950">
-                  {formatMontant(cycleParams?.mise_brute_cycle ?? cycleParams?.mise_brute_unitaire ?? 0)}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Début du cycle</p>
-                <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {formatDate(cycleParams?.date_debut_cycle)}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Fin du cycle</p>
-                <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {formatDate(cycleParams?.date_fin_cycle)}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={saveCycleParams}
-                disabled={actionLoading}
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {actionLoading ? "Traitement..." : "Enregistrer paramètres cycle"}
-              </button>
-
-              <a
-                href="/tontine/suivi-cycle"
-                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-              >
-                Consulter le tableau de suivi du cycle
-              </a>
-            </div>
-
-            <div className="mt-4 rounded-[28px] border border-emerald-200/70 bg-emerald-50/70 p-5 shadow-sm">
-              <p className="text-sm text-emerald-900/65">Calcul du cycle</p>
-              <p className="mt-3 text-sm font-semibold text-slate-900">
-                {cycleParams?.calcul_detail || "Calcul non disponible"}
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                Bloc 1
+              </p>
+              <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                Paramétrage du cycle
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                La mise brute à afficher ici est celle de chaque session. L'enregistrement du cycle
+                doit générer les sessions planifiées du cycle et alimenter le tableau de suivi.
               </p>
             </div>
+
+            <form onSubmit={handleSaveCycle} className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Libellé cycle</span>
+                <input
+                  value={form.libelle_cycle}
+                  onChange={(e) => setForm((v) => ({ ...v, libelle_cycle: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  placeholder="Cycle 2026"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Année cycle</span>
+                <input
+                  type="number"
+                  value={form.annee_cycle}
+                  onChange={(e) => setForm((v) => ({ ...v, annee_cycle: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  placeholder="2026"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Montant fixe par tontineur</span>
+                <input
+                  type="number"
+                  value={form.montant_fixe_par_tontineur}
+                  onChange={(e) => setForm((v) => ({ ...v, montant_fixe_par_tontineur: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  placeholder="20000"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Nombre de tontineurs</span>
+                <input
+                  type="number"
+                  value={form.nb_tontineurs_inscrits}
+                  onChange={(e) => setForm((v) => ({ ...v, nb_tontineurs_inscrits: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  placeholder="12"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Date début cycle</span>
+                <input
+                  type="date"
+                  value={form.date_debut_cycle}
+                  onChange={(e) => setForm((v) => ({ ...v, date_debut_cycle: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Date fin cycle</span>
+                <input
+                  type="date"
+                  value={form.date_fin_cycle}
+                  onChange={(e) => setForm((v) => ({ ...v, date_fin_cycle: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                />
+              </label>
+
+              <label className="grid gap-2 md:col-span-2">
+                <span className="text-sm font-semibold text-slate-700">Mise brute de chaque session</span>
+                <input
+                  type="number"
+                  value={form.mise_brute_session}
+                  onChange={(e) => setForm((v) => ({ ...v, mise_brute_session: e.target.value }))}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  placeholder="240000"
+                />
+              </label>
+
+              <div className="md:col-span-2 flex flex-wrap gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingCycle}
+                  className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingCycle ? "Enregistrement..." : "Enregistrer paramètres cycle"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRefreshKey((v) => v + 1)}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+                >
+                  Rafraîchir cycle
+                </button>
+
+                {typeof cycleParams?.fichier_suivi_url === "string" && cycleParams.fichier_suivi_url ? (
+                  <a
+                    href={cycleParams.fichier_suivi_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                  >
+                    Ouvrir le fichier de suivi
+                  </a>
+                ) : null}
+              </div>
+            </form>
           </section>
 
           <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-emerald-950">Paramétrage de session</h2>
-                <p className="text-sm text-emerald-900/70">
-                  Préparation de la session et lancement global des enchères.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={loadSessions}
-                disabled={loadingSessions || actionLoading}
-                className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {loadingSessions ? "Chargement..." : "Rafraîchir"}
-              </button>
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                Bloc 2
+              </p>
+              <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                Paramétrage session
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                La session proposée doit être la première session planifiée disponible. Le bouton
+                ci-dessous active une session planifiée, prépare ses lots et la rend disponible pour la page Enchères.
+              </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4 md:col-span-2">
-                <label className="text-sm font-medium text-emerald-900">
-                  Session à piloter
-                </label>
+            <div className="grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Session à activer</span>
                 <select
-                  value={sessionActive?.id || ""}
-                  onChange={(e) => {
-                    const nextSession = sessions.find((s) => s.id === e.target.value) || null;
-                    setSessionActive(nextSession);
-                  }}
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
+                  value={selectedSessionId}
+                  onChange={(e) => setSelectedSessionId(e.target.value)}
+                  className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
                 >
                   <option value="">Sélectionner une session</option>
-                  {selectableSessions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.libelle} — {s.periode}
-                      {s.est_active ? " (première disponible)" : ""}
+                  {sessionsPlanifiees.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} —{" "}
+                      {session.periode_reference || "Période non renseignée"}
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-xs text-emerald-800/80">
-                  La première session non clôturée du cycle est préchargée automatiquement depuis le backend.
+              </label>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Session ciblée
                 </p>
+
+                {selectedSession ? (
+                  <div className="mt-3 grid gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-700">Libellé</span>
+                      <span className="text-sm text-slate-900">
+                        {selectedSession.libelle || `Session ${selectedSession.ordre_session ?? "-"}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-700">Période</span>
+                      <span className="text-sm text-slate-900">
+                        {selectedSession.periode_reference || "-"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-700">Mise brute session</span>
+                      <span className="text-sm text-slate-900">
+                        {formatMoney(selectedSession.mise_brute_session)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-700">Nombre de lots</span>
+                      <span className="text-sm text-slate-900">
+                        {selectedSession.nb_lots_effectif ?? "-"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-700">Statut</span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                        {formatStatus(selectedSession.statut_session)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">
+                    Aucune session planifiée disponible pour le moment.
+                  </p>
+                )}
               </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <p className="text-sm text-emerald-900/65">Session sélectionnée</p>
-                <p className="mt-2 text-base font-semibold text-emerald-950">
-                  {sessionActive?.libelle ? `${sessionActive.libelle} — ${sessionActive.periode}` : "Aucune"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {sessionActive?.statut_session || "-"} / {sessionActive?.statut_encheres || "-"}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <label className="text-sm font-medium text-emerald-900">
-                  Nombre de lots de la session
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={nbLotsSession}
-                  onChange={(e) => setNbLotsSession(Number(e.target.value))}
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                />
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4">
-                <label className="text-sm font-medium text-emerald-900">
-                  Durée d'inactivité avant clôture (minutes)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={dureeSession}
-                  onChange={(e) => setDureeSession(Number(e.target.value))}
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                />
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/50 p-4 md:col-span-2">
-                <label className="text-sm font-medium text-emerald-900">
-                  Montant minimum du départ des enchères
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={montantDepartSession}
-                  onChange={(e) => setMontantDepartSession(Number(e.target.value))}
-                  className="mt-3 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-3xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-              Le bloc Session active et les lots actifs sont désormais transférés dans la page Enchères. C’est là que les utilisateurs renchérissent.
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={createSession}
-                disabled={actionLoading || !cycleParams?.configured}
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {actionLoading ? "Traitement..." : "+ Nouvelle session"}
-              </button>
 
               <button
                 type="button"
-                onClick={startGlobalEncheres}
-                disabled={actionLoading || !sessionActive?.id}
-                className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-400"
+                onClick={handleActiverSession}
+                disabled={activatingSession || !selectedSessionId}
+                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {actionLoading ? "Traitement..." : "Démarrer enchères (global)"}
+                {activatingSession ? "Activation..." : "Activer session"}
               </button>
+
+              <p className="text-xs leading-6 text-slate-500">
+                Cette action ne démarre pas les enchères. Le lancement réel reste porté par le bouton
+                <span className="font-semibold text-slate-700"> Top départ chrono </span>
+                dans la page Enchères.
+              </p>
             </div>
           </section>
+        </div>
+
+        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                Suivi du cycle
+              </p>
+              <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                Sessions du cycle
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Le tableau ci-dessous doit refléter uniquement ce qui est fourni par le backend.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              Total sessions : <span className="font-bold text-slate-900">{sessions.length}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="px-3 py-3 font-semibold">Ordre</th>
+                  <th className="px-3 py-3 font-semibold">Période</th>
+                  <th className="px-3 py-3 font-semibold">Mise brute session</th>
+                  <th className="px-3 py-3 font-semibold">Nb lots</th>
+                  <th className="px-3 py-3 font-semibold">Cumul caisse</th>
+                  <th className="px-3 py-3 font-semibold">Statut session</th>
+                  <th className="px-3 py-3 font-semibold">Statut enchères</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                      Chargement...
+                    </td>
+                  </tr>
+                ) : sessions.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                      Aucune session disponible.
+                    </td>
+                  </tr>
+                ) : (
+                  sessions.map((session) => (
+                    <tr key={session.id} className="border-b border-slate-100 last:border-b-0">
+                      <td className="px-3 py-4 font-semibold text-slate-900">
+                        {session.ordre_session ?? "-"}
+                      </td>
+                      <td className="px-3 py-4 text-slate-700">
+                        {session.periode_reference || "-"}
+                      </td>
+                      <td className="px-3 py-4 text-slate-700">
+                        {formatMoney(session.mise_brute_session)}
+                      </td>
+                      <td className="px-3 py-4 text-slate-700">
+                        {session.nb_lots_effectif ?? "-"}
+                      </td>
+                      <td className="px-3 py-4 text-slate-700">
+                        {formatMoney(session.cumul_caisse)}
+                      </td>
+                      <td className="px-3 py-4">
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                          {formatStatus(session.statut_session)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4">
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                          {formatStatus(session.statut_encheres)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-emerald-950">Gagnants de la session</h2>
-            <p className="text-sm text-emerald-900/70">
-              Résultats renvoyés par le backend pour la session active ou, à défaut, pour la dernière session disponible.
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+              Résultats
             </p>
-            {sessionReferenceForWinners && (
-              <p className="mt-1 text-sm font-medium text-emerald-800">
-                Session affichée : {sessionReferenceForWinners.libelle} — {sessionReferenceForWinners.periode}
-              </p>
+            <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+              Gagnants de la session sélectionnée
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Ce bloc reste en lecture seule et dépend uniquement de l'API backend.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {gagnants.length === 0 ? (
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                Aucun gagnant disponible pour cette session.
+              </div>
+            ) : (
+              gagnants.map((item, index) => (
+                <article key={item.id ?? `${item.nom_complet ?? "gagnant"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Lot
+                  </p>
+                  <h3 className="mt-2 text-lg font-black text-slate-900">
+                    {item.lot_libelle || `Lot ${item.lot_numero ?? index + 1}`}
+                  </h3>
+                  <p className="mt-3 text-sm text-slate-600">
+                    Gagnant : <span className="font-semibold text-slate-900">{item.nom_complet || item.membre_nom || "-"}</span>
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Enchère : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Gain réel : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
+                  </p>
+                </article>
+              ))
             )}
           </div>
-
-          {!sessionReferenceForWinners ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucune session disponible.
-            </div>
-          ) : loadingGagnants ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/40 px-6 py-8 text-sm text-emerald-900/70">
-              Chargement des gagnants...
-            </div>
-          ) : gagnants.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucun gagnant attribué pour le moment.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {gagnants.map((g) => (
-                <div
-                  key={g.id}
-                  className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/40 p-4 shadow-sm"
-                >
-                  <p className="text-base font-semibold text-emerald-950">
-                    Lot {g.lot} — {g.nom_complet}
-                  </p>
-                  <div className="mt-3 space-y-1 text-sm text-slate-600">
-                    <p>Mise brute : {formatMontant(g.mise_brute)}</p>
-                    <p>Relances : {formatMontant(g.total_relances)}</p>
-                    <p>Montant net : {formatMontant(g.gain_reel)}</p>
-                    <p>Statut : {g.statut_gain}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-emerald-950">Historique sessions</h2>
-            <p className="text-sm text-emerald-900/70">Liste des sessions déjà présentes dans le système.</p>
-          </div>
-
-          {loadingSessions ? (
-            <p className="text-sm text-emerald-900/70">Chargement...</p>
-          ) : sessions.length === 0 ? (
-            <p className="text-sm text-emerald-900/70">Aucune session disponible.</p>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((s) => (
-                <div key={s.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-semibold text-emerald-950">{s.libelle}</p>
-                      <p className="text-sm text-slate-500">{s.periode}</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(
-                          s.statut_session
-                        )}`}
-                      >
-                        {s.statut_session}
-                      </span>
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(
-                          s.statut_encheres
-                        )}`}
-                      >
-                        {s.statut_encheres ?? "Non démarrées"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }
