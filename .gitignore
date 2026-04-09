@@ -13,3 +13,4 @@ utf8-scan-report-*.txt
 
 # VS Code local
 .vscode/*.log
+node_modules

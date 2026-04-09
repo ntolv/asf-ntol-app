@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         libelle: body.libelle,
         periode_reference: body.periode,
         ordre_session: body.ordre_session,
-        statut_session: "OUVERTE",
+        statut_session: "PLANIFIEE",
         mise_brute_session: body.mise,
         nb_lots_effectif: body.nb_lots,
         montant_depart_enchere_session: montantDepartEnchere
