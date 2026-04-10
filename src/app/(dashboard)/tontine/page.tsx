@@ -29,7 +29,7 @@ type SessionRow = {
   mise_brute_cycle?: number | string | null;
   nb_lots_effectif?: number | null;
   montant_depart_enchere_session?: number | string | null;
-  cumul_caisse?: number | string | null;
+  cumul_caisse_progressif?: number | string | null;
   [key: string]: unknown;
 };
 
@@ -89,6 +89,19 @@ function extractObject<T>(payload: any): T | null {
   return null;
 }
 
+function normalizeSuiviCycleRow(row: any) {
+  return {
+    ...row,
+    ordre_session: Number(row?.ordre_session ?? 0),
+    periode_reference: row?.periode_reference ?? row?.periode ?? "-",
+    mise_brute_session: Number(row?.mise_brute_session ?? 0),
+    nb_lots_effectif: Number(row?.nb_lots_effectif ?? row?.nb_lots ?? 1),
+    cumul_caisse: Number(row?.cumul_caisse ?? 0),
+    cumul_caisse_progressif: Number(row?.cumul_caisse_progressif ?? row?.cumul_caisse ?? 0),
+    statut_session: row?.statut_session ?? "PLANIFIEE",
+    statut_encheres: row?.statut_encheres ?? "PLANIFIEE",
+  };
+}
 export default function TontinePage() {
   const [loading, setLoading] = useState(true);
   const [savingCycle, setSavingCycle] = useState(false);
@@ -633,7 +646,7 @@ export default function TontinePage() {
                             {session.nb_lots_effectif ?? "-"}
                           </td>
                           <td className="px-3 py-4 text-slate-700">
-                            {formatMoney(session.cumul_caisse)}
+                            {formatMoney(session.cumul_caisse_progressif)}
                           </td>
                           <td className="px-3 py-4">
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
@@ -712,3 +725,4 @@ export default function TontinePage() {
     </div>
   );
 }
+
