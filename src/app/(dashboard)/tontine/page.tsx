@@ -12,6 +12,7 @@ type CycleParams = {
   date_debut_cycle?: string | null;
   date_fin_cycle?: string | null;
   mise_brute_cycle?: number | string | null;
+  mise_brute_session?: number | string | null;
   fichier_suivi_url?: string | null;
   [key: string]: unknown;
 };
@@ -301,7 +302,7 @@ export default function TontinePage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50">
+    <div className="w-full bg-slate-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 pb-28 md:px-6 md:pb-12 xl:px-8">
         <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -711,6 +712,3 @@ export default function TontinePage() {
     </div>
   );
 }
-
-
-
