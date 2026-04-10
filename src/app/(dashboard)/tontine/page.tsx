@@ -125,6 +125,11 @@ export default function TontinePage() {
     }
 
     const payload = extractObject<CycleParams>(json) ?? null;
+    
+    // DEBUG - Tracer les valeurs exactes reçues du backend
+    console.log("DEBUG loadCycleParams - GET json:", json);
+    console.log("DEBUG loadCycleParams - payload extrait:", payload);
+    
     setCycleParams(payload);
 
     setForm({
@@ -134,6 +139,9 @@ export default function TontinePage() {
       date_debut_cycle: formatDateInput(payload?.date_debut_cycle as string | null | undefined),
       date_fin_cycle: formatDateInput(payload?.date_fin_cycle as string | null | undefined),
     });
+
+    // DEBUG - Tracer l'état après setCycleParams
+    console.log("DEBUG loadCycleParams - après setCycleParams:", payload);
 
     return payload;
   }
@@ -157,9 +165,18 @@ export default function TontinePage() {
     }
 
     const rows = extractRows<SessionRow>(json);
+    
+    // DEBUG - Tracer les valeurs exactes reçues du backend
+    console.log("DEBUG loadSessionsPlanifiees - json:", json);
+    console.log("DEBUG loadSessionsPlanifiees - rows:", rows);
+    
     setSessionsPlanifiees(rows);
 
     const firstPlanned = rows.find((row) => normalizeStatus(row.statut_session) === "PLANIFIEE");
+    
+    // DEBUG - Tracer la session sélectionnée automatiquement
+    console.log("DEBUG loadSessionsPlanifiees - firstPlanned:", firstPlanned);
+    
     setSelectedSessionId((current) => {
       if (current && rows.some((row) => row.id === current)) return current;
       return firstPlanned?.id ?? "";
@@ -242,6 +259,11 @@ export default function TontinePage() {
       });
 
       const json = await readJsonSafe(res);
+      
+      // DEBUG - Tracer la réponse exacte du POST
+      console.log("DEBUG handleSaveCycle - POST response status:", res.status);
+      console.log("DEBUG handleSaveCycle - POST response json:", json);
+      
       if (!res.ok) {
         throw new Error(json?.error || "Impossible d'enregistrer les paramètres du cycle.");
       }
@@ -286,6 +308,11 @@ export default function TontinePage() {
       setActivatingSession(false);
     }
   }
+
+  // DEBUG - Tracer les états React dans le rendu
+  console.log("DEBUG RENDER - cycleParams:", cycleParams);
+  console.log("DEBUG RENDER - selectedSessionId:", selectedSessionId);
+  console.log("DEBUG RENDER - selectedSession:", selectedSession);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -422,7 +449,7 @@ export default function TontinePage() {
                     Mise brute de chaque session
                   </p>
                   <p className="mt-2 text-xl font-black text-slate-900">
-                    {formatMoney(cycleParams?.mise_brute_session)}
+                    {formatMoney(cycleParams?.mise_brute_cycle)}
                   </p>
                 </div>
               </div>
