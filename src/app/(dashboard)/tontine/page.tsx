@@ -432,10 +432,10 @@ export default function TontinePage() {
 
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Mise brute du cycle
+                    Mise brute de la session
                   </p>
                   <p className="mt-2 text-xl font-black text-slate-900">
-                    {formatMoney(cycleParams?.mise_brute_cycle)}
+                    {formatMoney(cycleParams?.mise_brute_session)}
                   </p>
                 </div>
               </div>
@@ -711,3 +711,4 @@ export default function TontinePage() {
     </div>
   );
 }
+
