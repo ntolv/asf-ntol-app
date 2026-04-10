@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -24,6 +24,7 @@ type SessionRow = {
   periode_reference?: string | null;
   statut_session?: string | null;
   statut_encheres?: string | null;
+  mise_brute_session?: number | string | null;
   mise_brute_cycle?: number | string | null;
   nb_lots_effectif?: number | null;
   montant_depart_enchere_session?: number | string | null;
@@ -120,28 +121,23 @@ export default function TontinePage() {
   async function loadCycleParams() {
     const res = await fetch("/api/tontine/cycle-parametres", { cache: "no-store" });
     const json = await readJsonSafe(res);
+
     if (!res.ok) {
       throw new Error(json?.error || "Impossible de charger les paramètres du cycle.");
     }
 
     const payload = extractObject<CycleParams>(json) ?? null;
-    
-    // DEBUG - Tracer les valeurs exactes reçues du backend
-    console.log("DEBUG loadCycleParams - GET json:", json);
-    console.log("DEBUG loadCycleParams - payload extrait:", payload);
-    
     setCycleParams(payload);
 
     setForm({
       annee_cycle: payload?.annee_cycle ? String(payload.annee_cycle) : "",
       libelle_cycle: payload?.libelle_cycle ? String(payload.libelle_cycle) : "",
-      montant_fixe_par_tontineur: payload?.montant_fixe_par_tontineur ? String(payload.montant_fixe_par_tontineur) : "",
+      montant_fixe_par_tontineur: payload?.montant_fixe_par_tontineur
+        ? String(payload.montant_fixe_par_tontineur)
+        : "",
       date_debut_cycle: formatDateInput(payload?.date_debut_cycle as string | null | undefined),
       date_fin_cycle: formatDateInput(payload?.date_fin_cycle as string | null | undefined),
     });
-
-    // DEBUG - Tracer l'état après setCycleParams
-    console.log("DEBUG loadCycleParams - après setCycleParams:", payload);
 
     return payload;
   }
@@ -149,34 +145,27 @@ export default function TontinePage() {
   async function loadSessions() {
     const res = await fetch("/api/tontine/sessions", { cache: "no-store" });
     const json = await readJsonSafe(res);
+
     if (!res.ok) {
       throw new Error(json?.error || "Impossible de charger les sessions.");
     }
 
-    const rows = extractRows<SessionRow>(json);
-    setSessions(rows);
+    setSessions(extractRows<SessionRow>(json));
   }
 
   async function loadSessionsPlanifiees() {
     const res = await fetch("/api/tontine/sessions-planifiees", { cache: "no-store" });
     const json = await readJsonSafe(res);
+
     if (!res.ok) {
       throw new Error(json?.error || "Impossible de charger les sessions planifiées.");
     }
 
     const rows = extractRows<SessionRow>(json);
-    
-    // DEBUG - Tracer les valeurs exactes reçues du backend
-    console.log("DEBUG loadSessionsPlanifiees - json:", json);
-    console.log("DEBUG loadSessionsPlanifiees - rows:", rows);
-    
     setSessionsPlanifiees(rows);
 
     const firstPlanned = rows.find((row) => normalizeStatus(row.statut_session) === "PLANIFIEE");
-    
-    // DEBUG - Tracer la session sélectionnée automatiquement
-    console.log("DEBUG loadSessionsPlanifiees - firstPlanned:", firstPlanned);
-    
+
     setSelectedSessionId((current) => {
       if (current && rows.some((row) => row.id === current)) return current;
       return firstPlanned?.id ?? "";
@@ -194,6 +183,7 @@ export default function TontinePage() {
     });
 
     const json = await readJsonSafe(res);
+
     if (!res.ok) {
       setGagnants([]);
       return;
@@ -213,6 +203,8 @@ export default function TontinePage() {
       if (!cycle) {
         setSessions([]);
         setSessionsPlanifiees([]);
+        setSelectedSessionId("");
+        setGagnants([]);
         return;
       }
 
@@ -235,8 +227,8 @@ export default function TontinePage() {
   }, [selectedSessionId]);
 
   const selectedSession = useMemo(
-    () => sessions.find((row) => row.id === selectedSessionId) ?? null,
-    [sessions, selectedSessionId]
+    () => sessionsPlanifiees.find((row) => row.id === selectedSessionId) ?? null,
+    [sessionsPlanifiees, selectedSessionId]
   );
 
   async function handleSaveCycle(e: React.FormEvent<HTMLFormElement>) {
@@ -252,18 +244,16 @@ export default function TontinePage() {
         body: JSON.stringify({
           annee_cycle: form.annee_cycle ? Number(form.annee_cycle) : null,
           libelle_cycle: form.libelle_cycle || null,
-          montant_fixe_par_tontineur: form.montant_fixe_par_tontineur ? Number(form.montant_fixe_par_tontineur) : null,
+          montant_fixe_par_tontineur: form.montant_fixe_par_tontineur
+            ? Number(form.montant_fixe_par_tontineur)
+            : null,
           date_debut_cycle: form.date_debut_cycle || null,
-          date_fin_cycle: form.date_fin_cycle || null
+          date_fin_cycle: form.date_fin_cycle || null,
         }),
       });
 
       const json = await readJsonSafe(res);
-      
-      // DEBUG - Tracer la réponse exacte du POST
-      console.log("DEBUG handleSaveCycle - POST response status:", res.status);
-      console.log("DEBUG handleSaveCycle - POST response json:", json);
-      
+
       if (!res.ok) {
         throw new Error(json?.error || "Impossible d'enregistrer les paramètres du cycle.");
       }
@@ -296,6 +286,7 @@ export default function TontinePage() {
       });
 
       const json = await readJsonSafe(res);
+
       if (!res.ok || json?.success === false) {
         throw new Error(json?.error || json?.message || "Activation de session impossible.");
       }
@@ -308,11 +299,6 @@ export default function TontinePage() {
       setActivatingSession(false);
     }
   }
-
-  // DEBUG - Tracer les états React dans le rendu
-  console.log("DEBUG RENDER - cycleParams:", cycleParams);
-  console.log("DEBUG RENDER - selectedSessionId:", selectedSessionId);
-  console.log("DEBUG RENDER - selectedSession:", selectedSession);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -376,8 +362,8 @@ export default function TontinePage() {
                 Paramétrage du cycle
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                La mise brute de chaque session et le nombre de tontineurs doivent venir du backend.
-                Ils sont affichés ici en lecture seule.
+                Ce bloc reste aligné sur les données réelles du backend. Les valeurs calculées métier
+                ne sont pas faites dans le frontend.
               </p>
             </div>
 
@@ -446,7 +432,7 @@ export default function TontinePage() {
 
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Mise brute de chaque session
+                    Mise brute du cycle
                   </p>
                   <p className="mt-2 text-xl font-black text-slate-900">
                     {formatMoney(cycleParams?.mise_brute_cycle)}
@@ -509,7 +495,7 @@ export default function TontinePage() {
                   <option value="">Sélectionner une session planifiée</option>
                   {sessionsPlanifiees.map((session) => (
                     <option key={session.id} value={session.id}>
-                      {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} —{" "}
+                      {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} {" "}
                       {session.periode_reference || "Période non renseignée"}
                     </option>
                   ))}
@@ -686,7 +672,10 @@ export default function TontinePage() {
                   </div>
                 ) : (
                   gagnants.map((item, index) => (
-                    <article key={item.id ?? `${item.nom_complet ?? "gagnant"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                    <article
+                      key={item.id ?? `${item.nom_complet ?? "gagnant"}-${index}`}
+                      className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+                    >
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                         Lot
                       </p>
@@ -694,13 +683,22 @@ export default function TontinePage() {
                         {item.lot_libelle || `Lot ${item.lot_numero ?? index + 1}`}
                       </h3>
                       <p className="mt-3 text-sm text-slate-600">
-                        Gagnant : <span className="font-semibold text-slate-900">{item.nom_complet || item.membre_nom || "-"}</span>
+                        Gagnant :{" "}
+                        <span className="font-semibold text-slate-900">
+                          {item.nom_complet || item.membre_nom || "-"}
+                        </span>
                       </p>
                       <p className="mt-2 text-sm text-slate-600">
-                        Enchère : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
+                        Enchère :{" "}
+                        <span className="font-semibold text-slate-900">
+                          {formatMoney(item.montant_enchere)}
+                        </span>
                       </p>
                       <p className="mt-2 text-sm text-slate-600">
-                        Gain réel : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
+                        Gain réel :{" "}
+                        <span className="font-semibold text-slate-900">
+                          {formatMoney(item.gain_reel)}
+                        </span>
                       </p>
                     </article>
                   ))
