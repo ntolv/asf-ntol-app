@@ -11,7 +11,7 @@ type CycleParams = {
   nb_tontineurs_inscrits?: number | string | null;
   date_debut_cycle?: string | null;
   date_fin_cycle?: string | null;
-  mise_brute_session?: number | string | null;
+  mise_brute_cycle?: number | string | null;
   fichier_suivi_url?: string | null;
   [key: string]: unknown;
 };
@@ -24,7 +24,7 @@ type SessionRow = {
   periode_reference?: string | null;
   statut_session?: string | null;
   statut_encheres?: string | null;
-  mise_brute_session?: number | string | null;
+  mise_brute_cycle?: number | string | null;
   nb_lots_effectif?: number | null;
   montant_depart_enchere_session?: number | string | null;
   cumul_caisse?: number | string | null;
@@ -134,6 +134,8 @@ export default function TontinePage() {
       date_debut_cycle: formatDateInput(payload?.date_debut_cycle as string | null | undefined),
       date_fin_cycle: formatDateInput(payload?.date_fin_cycle as string | null | undefined),
     });
+
+    return payload;
   }
 
   async function loadSessions() {
@@ -189,9 +191,19 @@ export default function TontinePage() {
     setMessage("");
 
     try {
-      await Promise.all([loadCycleParams(), loadSessions(), loadSessionsPlanifiees()]);
+      const cycle = await loadCycleParams();
+
+      if (!cycle) {
+        setSessions([]);
+        setSessionsPlanifiees([]);
+        return;
+      }
+
+      await loadSessions();
+      await loadSessionsPlanifiees();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement.");
+      return;
     } finally {
       setLoading(false);
     }
@@ -544,128 +556,132 @@ export default function TontinePage() {
           </section>
         </div>
 
-        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                Suivi du cycle
-              </p>
-              <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-                Sessions du cycle
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Le tableau ci-dessous doit refléter uniquement ce qui est fourni par le backend.
-              </p>
-            </div>
+        {cycleParams && (
+          <>
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                    Suivi du cycle
+                  </p>
+                  <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                    Sessions du cycle
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Le tableau ci-dessous doit refléter uniquement ce qui est fourni par le backend.
+                  </p>
+                </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              Total sessions : <span className="font-bold text-slate-900">{sessions.length}</span>
-            </div>
-          </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  Total sessions : <span className="font-bold text-slate-900">{sessions.length}</span>
+                </div>
+              </div>
 
-          <div className="mt-5 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="px-3 py-3 font-semibold">Ordre</th>
-                  <th className="px-3 py-3 font-semibold">Période</th>
-                  <th className="px-3 py-3 font-semibold">Mise brute session</th>
-                  <th className="px-3 py-3 font-semibold">Nb lots</th>
-                  <th className="px-3 py-3 font-semibold">Cumul caisse</th>
-                  <th className="px-3 py-3 font-semibold">Statut session</th>
-                  <th className="px-3 py-3 font-semibold">Statut enchères</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
-                      Chargement...
-                    </td>
-                  </tr>
-                ) : sessions.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
-                      Aucune session disponible.
-                    </td>
-                  </tr>
-                ) : (
-                  sessions.map((session) => (
-                    <tr key={session.id} className="border-b border-slate-100 last:border-b-0">
-                      <td className="px-3 py-4 font-semibold text-slate-900">
-                        {session.ordre_session ?? "-"}
-                      </td>
-                      <td className="px-3 py-4 text-slate-700">
-                        {session.periode_reference || "-"}
-                      </td>
-                      <td className="px-3 py-4 text-slate-700">
-                        {formatMoney(session.mise_brute_session)}
-                      </td>
-                      <td className="px-3 py-4 text-slate-700">
-                        {session.nb_lots_effectif ?? "-"}
-                      </td>
-                      <td className="px-3 py-4 text-slate-700">
-                        {formatMoney(session.cumul_caisse)}
-                      </td>
-                      <td className="px-3 py-4">
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                          {formatStatus(session.statut_session)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-4">
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
-                          {formatStatus(session.statut_encheres)}
-                        </span>
-                      </td>
+              <div className="mt-5 overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-3 py-3 font-semibold">Ordre</th>
+                      <th className="px-3 py-3 font-semibold">Période</th>
+                      <th className="px-3 py-3 font-semibold">Mise brute session</th>
+                      <th className="px-3 py-3 font-semibold">Nb lots</th>
+                      <th className="px-3 py-3 font-semibold">Cumul caisse</th>
+                      <th className="px-3 py-3 font-semibold">Statut session</th>
+                      <th className="px-3 py-3 font-semibold">Statut enchères</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                          Chargement...
+                        </td>
+                      </tr>
+                    ) : sessions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                          Aucune session disponible.
+                        </td>
+                      </tr>
+                    ) : (
+                      sessions.map((session) => (
+                        <tr key={session.id} className="border-b border-slate-100 last:border-b-0">
+                          <td className="px-3 py-4 font-semibold text-slate-900">
+                            {session.ordre_session ?? "-"}
+                          </td>
+                          <td className="px-3 py-4 text-slate-700">
+                            {session.periode_reference || "-"}
+                          </td>
+                          <td className="px-3 py-4 text-slate-700">
+                            {formatMoney(session.mise_brute_session)}
+                          </td>
+                          <td className="px-3 py-4 text-slate-700">
+                            {session.nb_lots_effectif ?? "-"}
+                          </td>
+                          <td className="px-3 py-4 text-slate-700">
+                            {formatMoney(session.cumul_caisse)}
+                          </td>
+                          <td className="px-3 py-4">
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                              {formatStatus(session.statut_session)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4">
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                              {formatStatus(session.statut_encheres)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                  Résultats
+                </p>
+                <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                  Gagnants de la session sélectionnée
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Ce bloc reste en lecture seule et dépend uniquement de l'API backend.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {gagnants.length === 0 ? (
+                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                    Aucun gagnant disponible pour cette session.
+                  </div>
+                ) : (
+                  gagnants.map((item, index) => (
+                    <article key={item.id ?? `${item.nom_complet ?? "gagnant"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Lot
+                      </p>
+                      <h3 className="mt-2 text-lg font-black text-slate-900">
+                        {item.lot_libelle || `Lot ${item.lot_numero ?? index + 1}`}
+                      </h3>
+                      <p className="mt-3 text-sm text-slate-600">
+                        Gagnant : <span className="font-semibold text-slate-900">{item.nom_complet || item.membre_nom || "-"}</span>
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Enchère : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Gain réel : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
+                      </p>
+                    </article>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              Résultats
-            </p>
-            <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-              Gagnants de la session sélectionnée
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Ce bloc reste en lecture seule et dépend uniquement de l'API backend.
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {gagnants.length === 0 ? (
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-                Aucun gagnant disponible pour cette session.
               </div>
-            ) : (
-              gagnants.map((item, index) => (
-                <article key={item.id ?? `${item.nom_complet ?? "gagnant"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Lot
-                  </p>
-                  <h3 className="mt-2 text-lg font-black text-slate-900">
-                    {item.lot_libelle || `Lot ${item.lot_numero ?? index + 1}`}
-                  </h3>
-                  <p className="mt-3 text-sm text-slate-600">
-                    Gagnant : <span className="font-semibold text-slate-900">{item.nom_complet || item.membre_nom || "-"}</span>
-                  </p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Enchère : <span className="font-semibold text-slate-900">{formatMoney(item.montant_enchere)}</span>
-                  </p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Gain réel : <span className="font-semibold text-slate-900">{formatMoney(item.gain_reel)}</span>
-                  </p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+            </section>
+          </>
+        )}
       </div>
     </div>
   );
