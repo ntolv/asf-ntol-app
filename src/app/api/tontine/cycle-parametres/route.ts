@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -16,7 +16,6 @@ type CycleRow = {
   date_debut_cycle?: string | null;
   date_fin_cycle?: string | null;
   annee_cycle?: number | null;
-  calcul_detail?: string | null;
   created_at?: string | null;
 };
 
@@ -44,7 +43,6 @@ function buildCyclePayload(row: CycleRow | null) {
       date_debut_cycle: null,
       date_fin_cycle: null,
       annee_cycle: null,
-      calcul_detail: null,
     };
   }
 
@@ -58,7 +56,6 @@ function buildCyclePayload(row: CycleRow | null) {
     date_debut_cycle: row.date_debut_cycle ?? null,
     date_fin_cycle: row.date_fin_cycle ?? null,
     annee_cycle: row.annee_cycle ?? null,
-    calcul_detail: row.calcul_detail ?? null,
   };
 }
 
@@ -76,7 +73,6 @@ async function getLatestCycleParams(): Promise<CycleRow | null> {
         "date_debut_cycle",
         "date_fin_cycle",
         "annee_cycle",
-        "calcul_detail",
         "created_at",
       ].join(",")
     )
@@ -176,12 +172,6 @@ export async function POST(request: NextRequest) {
     const miseBruteCycle = montant * nbTontineursInscrits * 12;
     const miseBruteSession =
       nbTontineursInscrits > 0 ? miseBruteCycle / nbTontineursInscrits : 0;
-    const calculDetail = buildCalculDetail(
-      montant,
-      nbTontineursInscrits,
-      dateDebutCycle,
-      dateFinCycle
-    );
 
     const rowToSave = {
       libelle_cycle: libelleCycle,
@@ -192,7 +182,6 @@ export async function POST(request: NextRequest) {
       date_debut_cycle: dateDebutCycle,
       date_fin_cycle: dateFinCycle,
       annee_cycle: anneeCycle,
-      calcul_detail: calculDetail,
     };
 
     const existing = await getLatestCycleParams();
@@ -215,7 +204,6 @@ export async function POST(request: NextRequest) {
             "date_debut_cycle",
             "date_fin_cycle",
             "annee_cycle",
-            "calcul_detail",
             "created_at",
           ].join(",")
         )
@@ -241,7 +229,6 @@ export async function POST(request: NextRequest) {
             "date_debut_cycle",
             "date_fin_cycle",
             "annee_cycle",
-            "calcul_detail",
             "created_at",
           ].join(",")
         )
