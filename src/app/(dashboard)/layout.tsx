@@ -5,7 +5,7 @@ import MobileBottomNav from "@/components/ui/MobileBottomNav";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <div className="mx-auto flex min-h-screen max-w-[1800px]">
+      <div className="mx-auto flex min-h-0 flex-1 max-w-[1800px]">
         <AppSidebar />
 
         <div className="flex min-w-0 flex-1 flex-col">
