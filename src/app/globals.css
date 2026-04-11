@@ -1,3 +1,21 @@
+﻿
+/* ================================
+   SCROLL GLOBAL STABLE
+   ================================ */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Le body ne scrolle pas : le scroll est délégué au layout principal */
+body {
+  overflow: hidden;
+}
+
 @import "tailwindcss";
 
 :root {
@@ -1469,3 +1487,4 @@ body {
   }
 }
 /* === ASF-NTOL MOBILE SCROLL RESTORE END === */
+
