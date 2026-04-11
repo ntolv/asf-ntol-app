@@ -1488,3 +1488,124 @@ body {
 }
 /* === ASF-NTOL MOBILE SCROLL RESTORE END === */
 
+
+/* === ASF-NTOL ANDROID SCROLL FINAL PATCH START === */
+
+:root {
+  --app-height: 100dvh;
+}
+
+/* Viewport stable */
+html {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  margin: 0;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: none !important;
+  -webkit-overflow-scrolling: auto !important;
+}
+
+@supports not (height: 100dvh) {
+  html,
+  body {
+    height: 100vh !important;
+    min-height: 100vh !important;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    min-height: -webkit-fill-available !important;
+  }
+}
+
+/* Dashboard = seul conteneur scrollable */
+[data-dashboard-layout-root="true"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+[data-dashboard-shell="true"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+[data-dashboard-main="true"] {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
+}
+
+/* Mobile/tablette */
+@media (max-width: 1279px) {
+  [data-dashboard-main="true"] {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 160px) !important;
+  }
+
+  [data-dashboard-layout-root="true"],
+  [data-dashboard-shell="true"] {
+    height: 100dvh !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1280px) {
+  [data-dashboard-main="true"] {
+    padding-bottom: 40px !important;
+  }
+
+  [data-dashboard-layout-root="true"],
+  [data-dashboard-shell="true"] {
+    height: 100% !important;
+  }
+}
+
+/* On neutralise les vieux overrides qui remettaient body/html en scroll auto */
+@media (min-width: 1280px) {
+  html,
+  body {
+    overflow-y: hidden !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  html,
+  body {
+    overflow-y: hidden !important;
+  }
+
+  body > div,
+  body > main,
+  #__next {
+    overflow: hidden !important;
+  }
+
+  [data-mobile-page-shell="true"] {
+    overflow: hidden !important;
+  }
+
+  [data-mobile-page-shell="true"] main,
+  [data-page-shell="true"],
+  [data-caisse-page-root="true"] {
+    touch-action: pan-y !important;
+  }
+}
+
+/* === ASF-NTOL ANDROID SCROLL FINAL PATCH END === */

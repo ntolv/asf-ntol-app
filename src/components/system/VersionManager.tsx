@@ -1,36 +1,27 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
+
+const VERSION_CHECK_URL = "/api/version";
+const VERSION_STORAGE_KEY = "asf-ntol-app-version";
 
 type VersionPayload = {
   version?: string;
 };
 
-const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
-
 export default function VersionManager() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const isRefreshingRef = useRef(false);
-
   useEffect(() => {
     let isMounted = true;
-    let initialTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
-    let intervalId: ReturnType<typeof window.setInterval> | null = null;
+
+    // Forcé navigateur uniquement
+    let intervalId: number | null = null;
+    let initialTimeoutId: number | null = null;
 
     async function checkVersion() {
-      if (!isMounted || isRefreshingRef.current) {
-        return;
-      }
-
       try {
-        const response = await fetch(`/version.json?ts=${Date.now()}`, {
+        const response = await fetch(VERSION_CHECK_URL, {
           method: "GET",
           cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
         });
 
         if (!response.ok) {
@@ -38,17 +29,27 @@ export default function VersionManager() {
         }
 
         const data = (await response.json()) as VersionPayload;
-        const remoteVersion = data.version?.trim();
+        const nextVersion = data?.version?.trim();
 
-        if (!remoteVersion) {
+        if (!nextVersion) {
           return;
         }
 
-        if (remoteVersion !== CURRENT_VERSION) {
-          setUpdateAvailable(true);
+        const currentVersion = window.localStorage.getItem(
+          VERSION_STORAGE_KEY
+        );
+
+        if (!currentVersion) {
+          window.localStorage.setItem(VERSION_STORAGE_KEY, nextVersion);
+          return;
+        }
+
+        if (currentVersion !== nextVersion && isMounted) {
+          window.localStorage.setItem(VERSION_STORAGE_KEY, nextVersion);
+          window.location.reload();
         }
       } catch {
-        // Ne jamais casser l'application si version.json ne répond pas
+        // no-op
       }
     }
 
@@ -58,7 +59,7 @@ export default function VersionManager() {
 
     intervalId = window.setInterval(() => {
       void checkVersion();
-    }, 30000);
+    }, 60000);
 
     return () => {
       isMounted = false;
@@ -73,52 +74,5 @@ export default function VersionManager() {
     };
   }, []);
 
-  function handleRefresh() {
-    if (isRefreshingRef.current) {
-      return;
-    }
-
-    isRefreshingRef.current = true;
-    window.location.reload();
-  }
-
-  function dismissUpdate() {
-    setUpdateAvailable(false);
-  }
-
-  if (!updateAvailable) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-x-0 top-0 z-[9999] flex justify-center px-4 pt-4">
-      <div className="flex w-full max-w-xl items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-lg">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-900">Nouvelle version disponible</p>
-          <p className="text-xs text-slate-600">
-            Une mise à jour de lapplication est prête. Recharge pour appliquer la dernière
-            version.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={dismissUpdate}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
-          >
-            Plus tard
-          </button>
-
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
-          >
-            Recharger
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
