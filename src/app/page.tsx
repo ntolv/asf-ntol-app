@@ -1,5 +1,3 @@
-"use client";
-
 import { MobileHomeProHeader, MobilePageShell, MobileTopBar, MobileBankBottomNav } from "@/components/mobile";
 import Link from "next/link";
 import PushNotificationPanel from "@/components/push/PushNotificationPanel";
