@@ -1479,9 +1479,16 @@ body {
   }
 
   [data-mobile-page-shell="true"] main,
-  [data-page-shell="true"],
   [data-caisse-page-root="true"] {
     overflow: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  [data-page-shell="true"] {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-y !important;
   }
@@ -1609,3 +1616,4 @@ body {
 }
 
 /* === ASF-NTOL ANDROID SCROLL FINAL PATCH END === */
+
