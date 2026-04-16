@@ -11,31 +11,39 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Accueil", icon: "ðŸ " },
-  { href: "/dashboard", label: "Dashboard", icon: "ðŸ“Š" },
-  { href: "/tontine", label: "Tontine", icon: "ðŸ’š" },
-  { href: "/encheres", label: "EnchÃ¨res", icon: "ðŸ”¥" },
-  { href: "/membres", label: "Membres", icon: "ðŸ‘¥" },
-  { href: "/contributions", label: "Contrib.", icon: "ðŸ’°" },
-  { href: "/imputations", label: "Imput.", icon: "ðŸ§¾" },
-  { href: "/caisse", label: "Caisse", icon: "ðŸ¦" },
-  { href: "/aides", label: "Aides / Secours / Prêts / Prêts", icon: "ðŸ¤" },
-  { href: "/prets-aides", label: "Invest.", icon: "ðŸ“ˆ" },
-  { href: "/documents", label: "Docs", icon: "ðŸ“‚" },
-  { href: "/admin/roles", label: "Admin", icon: "âš™ï¸" }
+  { href: "/", label: "Accueil", icon: "🏠" },
+  { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/tontine", label: "Tontine", icon: "💚" },
+  { href: "/encheres", label: "Enchères", icon: "🔥" },
+  { href: "/membres", label: "Membres", icon: "👥" },
+  { href: "/contributions", label: "Contrib.", icon: "💰" },
+  { href: "/imputations", label: "Imput.", icon: "🧾" },
+  { href: "/caisse", label: "Caisse", icon: "🏦" },
+  { href: "/aides", label: "Aides", icon: "🤝" },
+  { href: "/prets-aides", label: "Invest.", icon: "📈" },
+  { href: "/documents", label: "Docs", icon: "📂" },
+  { href: "/admin/roles", label: "Admin", icon: "⚙️" },
 ];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-100 bg-white/95 backdrop-blur xl:hidden">
+    <div
+      data-mobile-bottom-nav="true"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-100 bg-white/95 backdrop-blur xl:hidden"
+    >
       <div className="flex items-center gap-2 overflow-x-auto px-3 py-3">
         <button
           type="button"
           onClick={() => window.history.back()}
           className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-900 shadow-sm"
-        ><span className="mobile-bottom-nav-icon" aria-hidden="true">←</span><span className="mobile-bottom-nav-label">Retour</span></button>
+        >
+          <span className="mobile-bottom-nav-icon mr-1" aria-hidden="true">
+            ←
+          </span>
+          <span className="mobile-bottom-nav-label">Retour</span>
+        </button>
 
         {navItems.map((item) => {
           const active =
@@ -63,5 +71,3 @@ export default function MobileBottomNav() {
     </div>
   );
 }
-
-

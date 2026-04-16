@@ -14,3 +14,22 @@ utf8-scan-report-*.txt
 # VS Code local
 .vscode/*.log
 node_modules
+
+.next
+out
+.turbo
+
+.next/
+.vercel/
+.env.local
+debug-scroll.html
+scroll-debug.js
+fix-android-scroll.ps1
+fix-android-scroll-final.ps1
+src/app/layout-final.tsx
+src/app/globals-final.css
+src/app/(dashboard)/layout-final.tsx
+src/components/ui/MobileBottomNav-final.tsx
+.next/
+.vercel/
+.env.local
