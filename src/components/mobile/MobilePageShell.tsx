@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 
 type MobilePageShellProps = {
   children: ReactNode;
@@ -40,7 +40,7 @@ export default function MobilePageShell({
           data-page-shell="true"
           aria-label={pageTitle || "Contenu mobile"}
           className={[
-            "flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-1",
+            "flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-1",
             contentClassName,
           ].join(" ")}
         >
