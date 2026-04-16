@@ -30,9 +30,9 @@ const allPages = [
 
 export default function HomePage() {
   return (
-    <>
+    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden">
       <div className="xl:hidden">
-        <div className="mx-auto w-full max-w-5xl px-4 py-4 pb-10">
+        <div className="mx-auto w-full max-w-5xl px-4 py-4 pb-[150px]">
           <div className="flex flex-col gap-4">
             <section className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -132,6 +132,6 @@ export default function HomePage() {
           </section>
         </div>
       </div>
-    </>
+    </div>
   );
 }
