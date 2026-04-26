@@ -1,9 +1,12 @@
 "use client";
 import EnablePushButton from "@/components/push/EnablePushButton";
-
-
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState, useRef } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import ActionButton from "@/components/ui/ActionButton";
+import LoadingState from "@/components/ui/LoadingState";
+import EmptyState from "@/components/ui/EmptyState";
 
 type MembreData = {
   id: string;
@@ -402,48 +405,46 @@ export default function MembresPage() {
 
   if (loading) {
     return (
-      <main className="p-4 md:p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          Chargement des membres...
-        </div>
-      </main>
+      <LoadingState 
+        message="Chargement des membres..." 
+        size="md" 
+        variant="default" 
+      />
     );
   }
 
   if (error) {
     return (
-      <main className="p-4 md:p-6">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+      <div className="p-4 md:p-6">
+        <div className="rounded-[20px] border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
           <p className="font-semibold">Erreur lors du chargement des données</p>
           <p className="mt-2 text-sm">{error}</p>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="bg-slate-50 p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section>
-          <h1 className="text-3xl font-bold text-slate-900">Membres</h1>
-          <p className="mt-2 text-slate-600">
-            Consultez la liste complète des membres de l'association.
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        title="Membres"
+        subtitle="Consultez la liste complète des membres de l'association."
+        size="lg"
+      />
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Liste des membres ({membres.length})
-            </h2>
-          </div>
-
-          {membres.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucun membre trouvé.
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <SectionCard 
+        title={`Liste des membres (${membres.length})`}
+        padding="md"
+      >
+        {membres.length === 0 ? (
+          <EmptyState
+            icon="👥"
+            title="Aucun membre trouvé"
+            description="Aucun membre n'a été trouvé dans l'association."
+            size="md"
+          />
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {membres.map((membre) => (
                 <div 
                   key={membre.id} 
@@ -540,8 +541,7 @@ export default function MembresPage() {
               ))}
             </div>
           )}
-        </section>
-      </div>
+        </SectionCard>
 
       {/* Input file caché pour l'upload */}
       <input
@@ -556,7 +556,7 @@ export default function MembresPage() {
         }}
         className="hidden"
       />
-    </main>
+    </div>
   );
 }
 
