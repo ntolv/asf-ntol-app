@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import ActionButton from "@/components/ui/ActionButton";
 
 type Rubrique = {
   id: string;
@@ -81,96 +84,106 @@ export default function DecaissementPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-              Décaissement
-            </h1>
-            <p className="text-sm text-slate-600">
-              Effectuer une sortie de fonds depuis une caisse.
-            </p>
-          </div>
-
-          <Link
-            href="/caisse"
-            className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-          >
-            ← Retour à Caisse
+    <div className="space-y-6">
+      <PageHeader
+        title="Décaissement"
+        subtitle="Effectuer une sortie de fonds depuis une caisse."
+        actions={
+          <Link href="/caisse">
+            <ActionButton variant="secondary" size="md">
+              ← Retour à Caisse
+            </ActionButton>
           </Link>
-        </div>
-      </section>
+        }
+        size="md"
+      />
 
       {message && (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+        <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
           {message}
         </div>
       )}
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Caisse (rubrique)
-          </label>
-          <select
-            value={rubriqueId}
-            onChange={(e) => setRubriqueId(e.target.value)}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-          >
-            <option value="">Sélectionner une caisse</option>
-            {rubriques.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.nom}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Montant
-          </label>
-          <input
-            type="number"
-            value={montant}
-            onChange={(e) => setMontant(Number(e.target.value))}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-          />
-
-          <div className="flex gap-2 mt-3">
-            <button onClick={() => addMontant(1000)} className="rounded-full border px-4 py-2 text-sm">
-              +1000
-            </button>
-            <button onClick={() => addMontant(5000)} className="rounded-full border px-4 py-2 text-sm">
-              +5000
-            </button>
-            <button onClick={() => addMontant(10000)} className="rounded-full border px-4 py-2 text-sm">
-              +10000
-            </button>
+      <SectionCard title="Formulaire de décaissement" padding="md">
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Caisse (rubrique)
+            </label>
+            <select
+              value={rubriqueId}
+              onChange={(e) => setRubriqueId(e.target.value)}
+              className="w-full rounded-[12px] border border-slate-300 px-4 py-3"
+            >
+              <option value="">Sélectionner une caisse</option>
+              {rubriques.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nom}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Motif
-          </label>
-          <input
-            type="text"
-            value={motif}
-            onChange={(e) => setMotif(e.target.value)}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Montant
+            </label>
+            <input
+              type="number"
+              value={montant}
+              onChange={(e) => setMontant(Number(e.target.value))}
+              className="w-full rounded-[12px] border border-slate-300 px-4 py-3"
+            />
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !rubriqueId || montant <= 0}
-          className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-white font-semibold"
-        >
-          {loading ? "Traitement..." : "Valider décaissement"}
-        </button>
-      </section>
+            <div className="flex gap-2 mt-3">
+              <ActionButton 
+                variant="outline" 
+                size="sm"
+                onClick={() => addMontant(1000)}
+              >
+                +1000
+              </ActionButton>
+              <ActionButton 
+                variant="outline" 
+                size="sm"
+                onClick={() => addMontant(5000)}
+              >
+                +5000
+              </ActionButton>
+              <ActionButton 
+                variant="outline" 
+                size="sm"
+                onClick={() => addMontant(10000)}
+              >
+                +10000
+              </ActionButton>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Motif
+            </label>
+            <input
+              type="text"
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              className="w-full rounded-[12px] border border-slate-300 px-4 py-3"
+            />
+          </div>
+
+          <ActionButton
+            onClick={handleSubmit}
+            disabled={loading || !rubriqueId || montant <= 0}
+            variant="primary"
+            size="md"
+            fullWidth
+            loading={loading}
+          >
+            Valider décaissement
+          </ActionButton>
+        </div>
+      </SectionCard>
     </div>
   );
 }

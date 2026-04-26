@@ -1,6 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import StatCard from "@/components/ui/StatCard";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingState from "@/components/ui/LoadingState";
 
 type DocumentData = {
   id: string;
@@ -155,22 +160,22 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <main className="p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          Chargement des documents...
-        </div>
-      </main>
+      <LoadingState 
+        message="Chargement des documents..." 
+        size="md" 
+        variant="default" 
+      />
     );
   }
 
   if (error) {
     return (
-      <main className="p-6">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+      <div className="p-4 md:p-6">
+        <div className="rounded-[20px] border border-red-200 bg-red-50 p-6 text-red-700">
           <p className="font-semibold">Erreur lors du chargement des données</p>
           <p className="mt-2 text-sm">{error}</p>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -178,39 +183,42 @@ export default function DocumentsPage() {
   const documentsMembre = documents.filter((doc) => !doc.dossier_general);
 
   return (
-    <main className="bg-green-50/20 p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section>
-          <h1 className="text-3xl font-bold text-slate-900">Documents</h1>
-          <p className="mt-2 text-slate-600">
-            Consultez les documents accessibles de l'association et vos documents personnels.
-          </p>
-        </section>
+    <div className="space-y-6">
+      <PageHeader
+        title="Documents"
+        subtitle="Consultez les documents accessibles de l'association et vos documents personnels."
+        size="lg"
+      />
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Total documents</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{resume.totalDocuments}</p>
-          </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Total documents"
+          value={resume.totalDocuments}
+          icon="📄"
+          size="md"
+        />
+        <StatCard
+          label="Dossier général"
+          value={resume.totalDocumentsGeneraux}
+          icon="📁"
+          size="md"
+        />
+        <StatCard
+          label="Dossier membre"
+          value={resume.totalDocumentsMembre}
+          icon="👤"
+          size="md"
+        />
+      </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Dossier général</p>
-            <p className="mt-2 text-2xl font-bold text-purple-700">{resume.totalDocumentsGeneraux}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Dossier membre</p>
-            <p className="mt-2 text-2xl font-bold text-green-700">{resume.totalDocumentsMembre}</p>
-          </div>
-        </section>
-
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Dossier général</h2>
-
+        <SectionCard title="Dossier général" padding="md">
           {documentsGeneraux.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucun document dans le dossier général.
-            </div>
+            <EmptyState
+              icon="📁"
+              title="Aucun document"
+              description="Aucun document dans le dossier général."
+              size="md"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -246,15 +254,16 @@ export default function DocumentsPage() {
               </table>
             </div>
           )}
-        </section>
+        </SectionCard>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Dossier membre</h2>
-
+        <SectionCard title="Dossier membre" padding="md">
           {documentsMembre.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucun document dans votre dossier personnel.
-            </div>
+            <EmptyState
+              icon="👤"
+              title="Aucun document"
+              description="Aucun document dans votre dossier personnel."
+              size="md"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -290,11 +299,16 @@ export default function DocumentsPage() {
               </table>
             </div>
           )}
-        </section>
+        </SectionCard>
 
-        <section className="rounded-3xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-sm">
+        <SectionCard 
+          title="Fonctionnalités à venir"
+          subtitle="Ce module est actuellement en mode visualisation. Les fonctionnalités interactives (ouverture, téléchargement, signatures numériques, génération PDF) seront intégrées ensuite."
+          variant="gradient"
+          padding="md"
+        >
           <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-blue-100 p-3">
+            <div className="rounded-[12px] bg-blue-100 p-3">
               <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -305,16 +319,10 @@ export default function DocumentsPage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-slate-900">Fonctionnalités à venir</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Ce module est actuellement en mode visualisation. Les fonctionnalités interactives
-                (ouverture, téléchargement, signatures numériques, génération PDF)
-                seront intégrées ensuite.
-              </p>
+              <h3 className="text-lg font-semibold text-slate-900">Information</h3>
             </div>
           </div>
-        </section>
-      </div>
-    </main>
+        </SectionCard>
+    </div>
   );
 }
