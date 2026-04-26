@@ -1,4 +1,3 @@
-import { MobileHomeProHeader, MobilePageShell, MobileTopBar, MobileBankBottomNav } from "@/components/mobile";
 import Link from "next/link";
 import PushNotificationPanel from "@/components/push/PushNotificationPanel";
 
@@ -31,13 +30,9 @@ const allPages = [
 export default function HomePage() {
   return (
     <>
-      <MobilePageShell
-        pageTitle="Accueil"
-        topBar={<MobileTopBar title="Accueil" subtitle="Association Famille NTOL" />}
-        bottomNav={<MobileBankBottomNav />}
-      >
+      {/* Mobile version */}
+      <div className="xl:hidden">
         <div className="flex flex-col gap-4">
-          <MobileHomeProHeader />
           <PushNotificationPanel />
 
           <section className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
@@ -79,7 +74,7 @@ export default function HomePage() {
                 Accès complet
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Retrouvez ici toutes les pages de l’application, au-delà de la navigation basse.
+                Retrouvez ici toutes les pages de l'application, au-delà de la navigation basse.
               </p>
             </div>
 
@@ -97,8 +92,9 @@ export default function HomePage() {
             </div>
           </section>
         </div>
-      </MobilePageShell>
+      </div>
 
+      {/* Desktop version */}
       <div className="hidden xl:block">
         <div className="space-y-6 p-4 md:p-6">
           <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
