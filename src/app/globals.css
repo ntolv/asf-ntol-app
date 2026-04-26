@@ -1604,9 +1604,7 @@ body {
     overflow: hidden !important;
   }
 
-  [data-mobile-page-shell="true"] {
-    overflow: hidden !important;
-  }
+  /* Supprimé : overflow: hidden !important bloquait le scroll sur MobilePageShell */
 
   [data-mobile-page-shell="true"] main,
   [data-page-shell="true"],

@@ -139,23 +139,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    const { error: syncError } = await supabase.rpc(
-      "fn_sync_attendus_contributions_membre",
-      {
-        p_membre_id: membreId,
-        p_periode: periodeReference,
-      }
-    );
-
-    if (syncError) {
-      return NextResponse.json(
-        { success: false, message: syncError.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
+return NextResponse.json({
       success: true,
       message: "Montants attendus enregistrés avec succès.",
       data: {
@@ -177,3 +161,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
