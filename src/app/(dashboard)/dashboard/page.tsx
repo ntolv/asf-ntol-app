@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingState from "@/components/ui/LoadingState";
 
 type LigneDashboard = {
   membre_id: string;
@@ -108,19 +110,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-            Dashboard
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-            Situation réelle du membre
-          </h1>
-          <p className="mt-3 text-sm text-slate-600 md:text-base">
-            Cette page affiche la réalité des rubriques, des aides et des prêts du membre connecté.
-          </p>
-        </div>
-      </section>
+      <PageHeader
+        title="Situation réelle du membre"
+        subtitle="Cette page affiche la réalité des rubriques, des aides et des prêts du membre connecté."
+        size="lg"
+      />
 
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -129,9 +123,11 @@ export default function DashboardPage() {
       ) : null}
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
-          Chargement du dashboard...
-        </div>
+        <LoadingState 
+          message="Chargement du dashboard..." 
+          size="md" 
+          variant="default" 
+        />
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
