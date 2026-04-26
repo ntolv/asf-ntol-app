@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import ActionButton from "@/components/ui/ActionButton";
+import LoadingState from "@/components/ui/LoadingState";
 
 type MembreOption = {
   id: string;
@@ -236,47 +240,41 @@ export default function MontantsAttendusPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Montants attendus
-            </p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-              Paramétrage initial par membre et par rubrique
-            </h1>
-            <p className="mt-3 text-sm text-slate-600 md:text-base">
-              Sélectionne un membre, puis une rubrique, renseigne le montant
-              initial et enregistre. Ce montant sert de base au calcul des
-              retards.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/contributions"
-              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-            >
+    <div className="space-y-6">
+      <PageHeader
+        title="Paramétrage initial par membre et par rubrique"
+        subtitle="Sélectionne un membre, puis une rubrique, renseigne le montant initial et enregistre. Ce montant sert de base au calcul des retards."
+        actions={
+          <Link href="/contributions">
+            <ActionButton variant="secondary" size="md">
               Retour à Contributions
-            </Link>
-          </div>
-        </div>
-      </section>
+            </ActionButton>
+          </Link>
+        }
+        size="lg"
+      />
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {error && (
+        <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
-      ) : null}
+      )}
 
-      {success ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      {success && (
+        <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {success}
         </div>
-      ) : null}
+      )}
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+      {loadingMembres && (
+        <LoadingState 
+          message="Chargement des membres..." 
+          size="md" 
+          variant="default" 
+        />
+      )}
+
+      <SectionCard padding="md">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -290,7 +288,7 @@ export default function MontantsAttendusPage() {
                 setMembreId(e.target.value);
               }}
               disabled={loadingMembres || saving}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
               <option value="">Sélectionner un membre</option>
               {membres.map((membre) => (
@@ -311,7 +309,7 @@ export default function MontantsAttendusPage() {
               disabled={
                 saving || loadingMembres || loadingRubriques || !membreId || lignes.length === 0
               }
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
               <option value="">Sélectionner une rubrique</option>
               {lignes.map((ligne) => (
@@ -335,79 +333,80 @@ export default function MontantsAttendusPage() {
               value={montant}
               onChange={(e) => handleMontantChange(e.target.value)}
               disabled={saving || !rubriqueId}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
               placeholder="Saisir un montant"
             />
           </div>
 
-          <button
-            type="button"
+          <ActionButton
             onClick={handleSave}
             disabled={saving || loadingMembres || loadingRubriques || !membreId || !rubriqueId}
-            className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 lg:w-[220px]"
+            variant="primary"
+            size="md"
+            loading={saving}
           >
-            {saving ? "Enregistrement..." : "Enregistrer"}
-          </button>
+            Enregistrer
+          </ActionButton>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
+          <ActionButton
+            variant="outline"
+            size="sm"
             onClick={() => incrementMontant(1000)}
             disabled={saving || !rubriqueId}
-            className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400 disabled:opacity-60"
           >
             +1000 FCFA
-          </button>
+          </ActionButton>
 
-          <button
-            type="button"
+          <ActionButton
+            variant="outline"
+            size="sm"
             onClick={() => incrementMontant(5000)}
             disabled={saving || !rubriqueId}
-            className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400 disabled:opacity-60"
           >
             +5000 FCFA
-          </button>
+          </ActionButton>
 
-          <button
-            type="button"
+          <ActionButton
+            variant="ghost"
+            size="sm"
             onClick={resetMontant}
             disabled={saving || !rubriqueId}
-            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:opacity-60"
           >
             Réinitialiser
-          </button>
+          </ActionButton>
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[20px] border border-emerald-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Membre sélectionné
           </p>
           <p className="mt-2 text-xl font-bold text-slate-900">
             {membreActuel?.nom_complet || "-"}
           </p>
-        </article>
+        </div>
 
-        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="rounded-[20px] border border-emerald-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Rubrique sélectionnée
           </p>
           <p className="mt-2 text-xl font-bold text-slate-900">
             {rubriqueActuelle?.rubrique_nom || "-"}
           </p>
-        </article>
+        </div>
 
-        <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="rounded-[20px] border border-emerald-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Montant saisi
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatFcfa(montant)}
           </p>
-        </article>
-      </section>
+        </div>
+      </div>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
         {loadingMembres ? (

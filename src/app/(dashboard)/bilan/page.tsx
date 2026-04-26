@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import StatCard from "@/components/ui/StatCard";
+import ActionButton from "@/components/ui/ActionButton";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingState from "@/components/ui/LoadingState";
 
 type BilanGlobal = {
   total_entrees: number;
@@ -126,160 +132,118 @@ export default function BilanPage() {
   }, [membres, selectedMembreId]);
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-4xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Bilan
-            </p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-              Synthèse des entrées, sorties et bilan par membre
-            </h1>
-            <p className="mt-3 text-sm text-slate-600 md:text-base">
-              Cette page présente le bilan global de l'association puis le bilan détaillé
-              d'un seul membre sélectionné.
-            </p>
-          </div>
-
+    <div className="space-y-6">
+      <PageHeader
+        title="Synthèse des entrées, sorties et bilan par membre"
+        subtitle="Cette page présente le bilan global de l'association puis le bilan détaillé d'un seul membre sélectionné."
+        actions={
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-            >
-              ← Retour au Dashboard
+            <Link href="/dashboard">
+              <ActionButton variant="secondary" size="md">
+                ← Retour au Dashboard
+              </ActionButton>
             </Link>
-
-            <button
-              type="button"
+            <ActionButton 
+              variant="primary" 
+              size="md"
               onClick={loadData}
-              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Actualiser
-            </button>
+            </ActionButton>
           </div>
-        </div>
-      </section>
+        }
+        size="lg"
+      />
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {error && (
+        <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
-      ) : null}
+      )}
 
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
-          Chargement du bilan...
-        </div>
-      ) : !globalData ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-          Aucune donnée de bilan disponible.
-        </div>
-      ) : (
+      {loading && (
+        <LoadingState 
+          message="Chargement du bilan..." 
+          size="md" 
+          variant="default" 
+        />
+      )}
+
+      {!globalData && !loading && (
+        <EmptyState
+          icon="📊"
+          title="Aucune donnée de bilan"
+          description="Aucune donnée de bilan disponible."
+          size="md"
+        />
+      )}
+
+      {globalData && !loading && (
         <>
-          <section className="grid gap-6 md:grid-cols-2">
-            <article className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                Entrées
-              </p>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-                  <span className="text-sm text-slate-600">Total entrées</span>
-                  <span className="text-sm font-bold text-emerald-700">
-                    {formatMoney(globalData.total_entrees)}
-                  </span>
-                </div>
-              </div>
-            </article>
+          <div className="grid gap-6 md:grid-cols-2">
+            <StatCard
+              label="Total entrées"
+              value={formatMoney(globalData.total_entrees)}
+              trend="up"
+              icon="💰"
+              size="md"
+              variant="elevated"
+            />
+            <StatCard
+              label="Total sorties"
+              value={formatMoney(globalData.total_sorties)}
+              trend="down"
+              icon="💸"
+              size="md"
+              variant="elevated"
+            />
+          </div>
 
-            <article className="rounded-[24px] border border-red-200 bg-red-50 p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
-                Sorties
-              </p>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-                  <span className="text-sm text-slate-600">Total sorties</span>
-                  <span className="text-sm font-bold text-red-700">
-                    {formatMoney(globalData.total_sorties)}
-                  </span>
-                </div>
-              </div>
-            </article>
-          </section>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Caisses suivies"
+              value={globalData.nb_caisses}
+              icon="🏦"
+              size="md"
+            />
+            <StatCard
+              label="Solde global"
+              value={formatMoney(globalData.solde_global)}
+              icon="📈"
+              size="md"
+            />
+          </div>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Caisses suivies
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {globalData.nb_caisses}
-              </p>
-            </article>
-
-            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Solde global
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMoney(globalData.solde_global)}
-              </p>
-            </article>
-          </section>
-
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                Détail par rubrique
-              </p>
-              <h2 className="mt-2 text-xl font-bold text-slate-900">
-                Solde par caisse
-              </h2>
-            </div>
-
+          <SectionCard title="Solde par caisse" subtitle="Détail par rubrique" padding="md">
             {!rubriques.length ? (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                Aucune rubrique disponible.
-              </div>
+              <EmptyState
+                icon="📁"
+                title="Aucune rubrique"
+                description="Aucune rubrique disponible."
+                size="md"
+              />
             ) : (
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {rubriques.map((item) => (
-                  <article
+                  <StatCard
                     key={item.caisse_id}
-                    className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                      {item.rubrique_nom}
-                    </p>
-                    <h3 className="mt-2 text-lg font-bold text-slate-900">
-                      {item.caisse_libelle}
-                    </h3>
-
-                    <div className="mt-5">
-                      <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <span className="text-sm text-slate-600">Solde</span>
-                        <span className="text-sm font-bold text-slate-900">
-                          {formatMoney(item.solde_disponible)}
-                        </span>
-                      </div>
-                    </div>
-                  </article>
+                    label={item.rubrique_nom}
+                    value={formatMoney(item.solde_disponible)}
+                    description={item.caisse_libelle}
+                    icon="💵"
+                    size="md"
+                  />
                 ))}
               </div>
             )}
-          </section>
+          </SectionCard>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <SectionCard 
+            title="Sélection d'un membre" 
+            subtitle="Bilan complet" 
+            padding="md"
+          >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Bilan complet
-                </p>
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
-                  Sélection d'un membre
-                </h2>
-              </div>
-
               <div className="w-full lg:w-[420px]">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Choisir un membre
@@ -287,7 +251,7 @@ export default function BilanPage() {
                 <select
                   value={selectedMembreId}
                   onChange={(e) => setSelectedMembreId(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                  className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                 >
                   {membres.map((item) => (
                     <option key={item.membre_id} value={item.membre_id}>
@@ -299,11 +263,14 @@ export default function BilanPage() {
             </div>
 
             {!selectedMembre ? (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                Aucun membre sélectionné.
-              </div>
+              <EmptyState
+                icon="👤"
+                title="Aucun membre sélectionné"
+                description="Veuillez sélectionner un membre pour voir son bilan détaillé."
+                size="md"
+              />
             ) : (
-              <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mt-5 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-bold text-slate-900">
@@ -315,82 +282,59 @@ export default function BilanPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                      Contributions
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">
-                      {formatMoney(selectedMembre.total_contributions)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                      Demandes aides
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">
-                      {selectedMembre.nb_demandes_aides}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
-                      Aides accordées
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-emerald-700">
-                      {formatMoney(selectedMembre.total_aides_accorde)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                      Demandes prêts
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">
-                      {selectedMembre.nb_demandes_prets}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
-                      Total prêts accordés
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-emerald-700">
-                      {formatMoney(selectedMembre.total_prets_accorde)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-amber-700">
-                      Solde prêt restant
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-amber-700">
-                      {formatMoney(selectedMembre.total_solde_restant)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                      Prêts en cours
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">
-                      {selectedMembre.nb_prets_en_cours}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                      Prêts remboursés
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">
-                      {selectedMembre.nb_prets_rembourses}
-                    </p>
-                  </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <StatCard
+                    label="Contributions"
+                    value={formatMoney(selectedMembre.total_contributions)}
+                    icon="💰"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Demandes aides"
+                    value={selectedMembre.nb_demandes_aides}
+                    icon="🤝"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Aides accordées"
+                    value={formatMoney(selectedMembre.total_aides_accorde)}
+                    icon="✅"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Demandes prêts"
+                    value={selectedMembre.nb_demandes_prets}
+                    icon="📋"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Total prêts accordés"
+                    value={formatMoney(selectedMembre.total_prets_accorde)}
+                    icon="💸"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Solde prêt restant"
+                    value={formatMoney(selectedMembre.total_solde_restant)}
+                    icon="⚖️"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Prêts en cours"
+                    value={selectedMembre.nb_prets_en_cours}
+                    icon="🔄"
+                    size="sm"
+                  />
+                  <StatCard
+                    label="Prêts remboursés"
+                    value={selectedMembre.nb_prets_rembourses}
+                    icon="✅"
+                    size="sm"
+                  />
                 </div>
               </div>
             )}
-          </section>
+          </SectionCard>
         </>
       )}
     </div>

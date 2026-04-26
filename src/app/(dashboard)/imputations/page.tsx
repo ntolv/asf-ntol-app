@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import ActionButton from "@/components/ui/ActionButton";
+import LoadingState from "@/components/ui/LoadingState";
 
 type MembreOption = {
   id: string;
@@ -153,21 +157,14 @@ export default function ImputationsPage() {
   }, [contributions]);
 
   return (
-    <main className="space-y-6 p-4 md:p-6">
-      <section className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-          ASF-NTOL
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-          Imputations
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
-          Lecture des imputations générées automatiquement par le backend à partir
-          des contributions enregistrées.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <PageHeader
+        title="Imputations"
+        subtitle="Lecture des imputations générées automatiquement par le backend à partir des contributions enregistrées."
+        size="lg"
+      />
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <SectionCard padding="md">
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-700">Membre</span>
@@ -175,7 +172,7 @@ export default function ImputationsPage() {
               value={membreId}
               onChange={(e) => setMembreId(e.target.value)}
               disabled={loadingFilters}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
               <option value="">Tous les membres</option>
               {membres.map((membre) => (
@@ -192,7 +189,7 @@ export default function ImputationsPage() {
               value={periode}
               onChange={(e) => setPeriode(e.target.value)}
               disabled={loadingFilters}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
               <option value="">Toutes les périodes</option>
               {periodes.map((item) => (
@@ -204,36 +201,47 @@ export default function ImputationsPage() {
           </label>
 
           <div className="flex items-end">
-            <button
-              type="button"
+            <ActionButton
+              variant="outline"
+              size="md"
+              fullWidth
               onClick={() => {
                 setMembreId("");
                 setPeriode("");
               }}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
             >
               Réinitialiser les filtres
-            </button>
+            </ActionButton>
           </div>
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Contributions affichées</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{contributions.length}</p>
-        </div>
+      {(loadingFilters || loadingData) && (
+        <LoadingState 
+          message="Chargement des données..." 
+          size="md" 
+          variant="default" 
+        />
+      )}
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Montant total contributions</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-700">{formatFcfa(totalGlobal)}</p>
-        </div>
+      {!loadingFilters && !loadingData && (
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Contributions affichées</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{contributions.length}</p>
+          </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Somme des lignes imputées</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{formatFcfa(totalLignes)}</p>
+          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Montant total contributions</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-700">{formatFcfa(totalGlobal)}</p>
+          </div>
+
+          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Somme des lignes imputées</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{formatFcfa(totalLignes)}</p>
+          </div>
         </div>
-      </section>
+      )}
 
       {error ? (
         <section className="rounded-3xl border border-red-200 bg-red-50 p-4 shadow-sm">
@@ -241,20 +249,19 @@ export default function ImputationsPage() {
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-900">Historique des imputations</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Chaque contribution ci-dessous affiche automatiquement ses lignes d&apos;imputation.
-          </p>
-        </div>
-
+      <SectionCard 
+        title="Historique des imputations" 
+        subtitle="Chaque contribution ci-dessous affiche automatiquement ses lignes d'imputation." 
+        padding="md"
+      >
         {loadingData ? (
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-            <p className="text-sm text-slate-600">Chargement des imputations...</p>
-          </div>
+          <LoadingState 
+            message="Chargement des imputations..." 
+            size="md" 
+            variant="default" 
+          />
         ) : contributions.length === 0 ? (
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+          <div className="rounded-[20px] border border-slate-100 bg-slate-50 p-5">
             <p className="text-sm text-slate-600">Aucune imputation trouvée pour ces filtres.</p>
           </div>
         ) : (
@@ -268,7 +275,7 @@ export default function ImputationsPage() {
               return (
                 <article
                   key={item.contribution_id}
-                  className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                  className="rounded-[20px] border border-slate-200 bg-slate-50 p-4"
                 >
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-1">
@@ -282,17 +289,17 @@ export default function ImputationsPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
-                      <div className="rounded-2xl border border-white bg-white p-4">
+                      <div className="rounded-[12px] border border-white bg-white p-4">
                         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Statut</p>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{item.statut}</p>
                       </div>
-                      <div className="rounded-2xl border border-white bg-white p-4">
+                      <div className="rounded-[12px] border border-white bg-white p-4">
                         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total contribution</p>
                         <p className="mt-2 text-sm font-semibold text-emerald-700">
                           {formatFcfa(item.montant_total)}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-white bg-white p-4">
+                      <div className="rounded-[12px] border border-white bg-white p-4">
                         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total lignes</p>
                         <p className="mt-2 text-sm font-semibold text-slate-900">
                           {formatFcfa(totalLignesContribution)}
@@ -316,10 +323,10 @@ export default function ImputationsPage() {
                       <tbody>
                         {item.lignes.map((ligne) => (
                           <tr key={ligne.ligne_id}>
-                            <td className="rounded-l-2xl border border-slate-200 border-r-0 bg-white px-3 py-3 text-sm font-medium text-slate-700">
+                            <td className="rounded-l-[12px] border border-slate-200 border-r-0 bg-white px-3 py-3 text-sm font-medium text-slate-700">
                               {ligne.rubrique_nom}
                             </td>
-                            <td className="rounded-r-2xl border border-slate-200 border-l-0 bg-white px-3 py-3 text-right text-sm font-semibold text-slate-900">
+                            <td className="rounded-r-[12px] border border-slate-200 border-l-0 bg-white px-3 py-3 text-right text-sm font-semibold text-slate-900">
                               {formatFcfa(ligne.montant_ligne)}
                             </td>
                           </tr>
@@ -332,7 +339,7 @@ export default function ImputationsPage() {
             })}
           </div>
         )}
-      </section>
-    </main>
+      </SectionCard>
+    </div>
   );
 }

@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionCard from "@/components/ui/SectionCard";
+import ActionButton from "@/components/ui/ActionButton";
+import LoadingState from "@/components/ui/LoadingState";
 
 type MembreOption = {
   id: string;
@@ -200,52 +204,45 @@ export default function ContributionsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-          ASF-NTOL
-        </p>
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-              Contributions
-            </h1>
-            <p className="mt-2 text-sm text-slate-600 md:text-base">
-              Saisie d'une participation financière par membre, ventilée sur plusieurs rubriques.
-              La logique métier reste côté backend.
-            </p>
-          </div>
-
+    <div className="space-y-6">
+      <PageHeader
+        title="Contributions"
+        subtitle="Saisie d'une participation financière par membre, ventilée sur plusieurs rubriques. La logique métier reste côté backend."
+        actions={
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/montants-attendus"
-              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-            >
-              Ouvrir Montants attendus
+            <Link href="/montants-attendus">
+              <ActionButton variant="secondary" size="md">
+                Ouvrir Montants attendus
+              </ActionButton>
             </Link>
-
-            <Link
-              href="/montants-attendus"
-              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            >
-              Aligner les retards
+            <Link href="/montants-attendus">
+              <ActionButton variant="primary" size="md">
+                Aligner les retards
+              </ActionButton>
             </Link>
           </div>
-        </div>
-      </div>
+        }
+        size="lg"
+      />
 
-      {loading ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-600">Chargement du formulaire...</p>
-        </div>
-      ) : error && membres.length === 0 && rubriques.length === 0 ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
+      {loading && (
+        <LoadingState 
+          message="Chargement du formulaire..." 
+          size="md" 
+          variant="default" 
+        />
+      )}
+
+      {error && membres.length === 0 && rubriques.length === 0 && (
+        <div className="rounded-[20px] border border-red-200 bg-red-50 p-6 shadow-sm">
           <p className="text-sm font-medium text-red-700">{error}</p>
         </div>
-      ) : (
+      )}
+
+      {!loading && !error && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <SectionCard padding="md">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-700">
@@ -254,7 +251,7 @@ export default function ContributionsPage() {
                   <select
                     value={membreId}
                     onChange={(e) => setMembreId(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                    className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                   >
                     <option value="">Sélectionner un membre</option>
                     {membres.map((membre) => (
@@ -267,130 +264,128 @@ export default function ContributionsPage() {
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-700">
-                    Date de contribution
+                    Date contribution
                   </span>
                   <input
                     type="date"
                     value={dateContribution}
                     onChange={(e) => setDateContribution(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-emerald-500"
+                    className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                   />
                 </label>
               </div>
 
-              <div className="mt-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Rubriques disponibles</h2>
-                    <p className="text-sm text-slate-500">
-                      Saisis les montants par rubrique puis enregistre l'opération.
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-6 space-y-4">
+                {lignes.map((ligne) => (
+                  <div
+                    key={ligne.rubrique_id}
+                    className="rounded-[20px] border border-slate-100 bg-slate-50 p-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-base font-semibold text-slate-900">
+                          {ligne.rubrique_nom}
+                        </p>
+                      </div>
 
-                <div className="space-y-4">
-                  {lignes.map((ligne) => (
-                    <div
-                      key={ligne.rubrique_id}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
-                    >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                          <p className="text-base font-semibold text-slate-900">
-                            {ligne.rubrique_nom}
-                          </p>
-                        </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          value={ligne.montant}
+                          onChange={(e) =>
+                            setLigneMontant(
+                              ligne.rubrique_id,
+                              Math.max(0, Number(e.target.value || 0))
+                            )
+                          }
+                          className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 sm:w-[180px]"
+                        />
 
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <input
-                            type="number"
-                            min="0"
-                            step="100"
-                            value={ligne.montant}
-                            onChange={(e) =>
-                              setLigneMontant(
-                                ligne.rubrique_id,
-                                Math.max(0, Number(e.target.value || 0))
-                              )
-                            }
-                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 sm:w-[180px]"
-                          />
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => incrementLigne(ligne.rubrique_id, 1000)}
-                              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400"
-                            >
-                              +1000 FCFA
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => incrementLigne(ligne.rubrique_id, 5000)}
-                              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:border-emerald-400"
-                            >
-                              +5000 FCFA
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setLigneMontant(ligne.rubrique_id, 0)}
-                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
-                            >
-                              Réinitialiser
-                            </button>
-                          </div>
+                        <div className="flex flex-wrap gap-2">
+                          <ActionButton 
+                            type="button"
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => incrementLigne(ligne.rubrique_id, 1000)}
+                          >
+                            +1000 FCFA
+                          </ActionButton>
+                          <ActionButton 
+                            type="button"
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => incrementLigne(ligne.rubrique_id, 5000)}
+                          >
+                            +5000 FCFA
+                          </ActionButton>
+                          <ActionButton 
+                            type="button"
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setLigneMontant(ligne.rubrique_id, 0)}
+                          >
+                            Réinitialiser
+                          </ActionButton>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
 
-                  {rubriques.length === 0 ? (
-                    <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
-                      <p className="text-sm font-medium text-amber-700">
-                        Aucune rubrique active disponible.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
+                {rubriques.length === 0 && (
+                  <div className="rounded-[20px] border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-medium text-amber-700">
+                      Aucune rubrique active disponible.
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            </SectionCard>
 
             <div className="space-y-4">
-              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Résumé
-                </p>
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+              <SectionCard 
+                title="Résumé" 
+                variant="gradient" 
+                padding="md"
+              >
+                <div className="space-y-4">
+                  <div className="rounded-[20px] border border-white/80 bg-white p-4">
                     <p className="text-sm text-slate-500">Nombre de lignes actives</p>
                     <p className="mt-1 text-2xl font-bold text-slate-900">{lignesActives.length}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/80 bg-white p-4">
+                  <div className="rounded-[20px] border border-white/80 bg-white p-4">
                     <p className="text-sm text-slate-500">Montant total saisi</p>
                     <p className="mt-1 text-2xl font-bold text-emerald-700">
                       {formatFcfa(total)}
                     </p>
                   </div>
 
-                  <button
+                  <ActionButton
                     type="submit"
                     disabled={submitting || rubriques.length === 0}
-                    className="w-full rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    loading={submitting}
                   >
-                    {submitting ? "Enregistrement..." : "Enregistrer"}
-                  </button>
+                    Enregistrer
+                  </ActionButton>
 
-                  <button
+                  <ActionButton
                     type="button"
                     onClick={resetFormMontants}
                     disabled={submitting}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    variant="outline"
+                    size="md"
+                    fullWidth
                   >
                     Réinitialiser tous les montants
-                  </button>
+                  </ActionButton>
                 </div>
-              </div>
+              </SectionCard>
 
               {success ? (
                 <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
@@ -404,9 +399,8 @@ export default function ContributionsPage() {
                 </div>
               ) : null}
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Aperçu des lignes actives</h3>
-                <div className="mt-4 space-y-3">
+              <SectionCard title="Aperçu des lignes actives" padding="md">
+                <div className="space-y-3">
                   {lignesActives.length === 0 ? (
                     <p className="text-sm text-slate-500">Aucune ligne saisie pour le moment.</p>
                   ) : (
@@ -415,19 +409,21 @@ export default function ContributionsPage() {
                       .map((ligne) => (
                         <div
                           key={ligne.rubrique_id}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                          className="rounded-[20px] border border-slate-100 bg-slate-50 p-3"
                         >
-                          <span className="text-sm font-medium text-slate-700">
-                            {ligne.rubrique_nom}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-900">
-                            {formatFcfa(ligne.montant)}
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-900">
+                              {ligne.rubrique_nom}
+                            </span>
+                            <span className="text-sm font-bold text-emerald-700">
+                              {formatFcfa(ligne.montant)}
+                            </span>
+                          </div>
                         </div>
                       ))
                   )}
                 </div>
-              </div>
+              </SectionCard>
             </div>
           </div>
         </form>
