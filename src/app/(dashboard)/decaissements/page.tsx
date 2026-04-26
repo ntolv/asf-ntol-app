@@ -99,7 +99,7 @@ export default function DecaissementPage() {
       />
 
       {message && (
-        <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+        <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
           {message}
         </div>
       )}

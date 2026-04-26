@@ -10,7 +10,7 @@ export default function CaissePage() {
       <PageHeader
         title="Pilotage des fonds"
         subtitle="Vue réelle des montants attendus, versés, restes à payer, rubriques, mouvements récents et total des enchères."
-        size="md"
+        size="lg"
       />
 
       <MobileCaisseBankingConnected />
