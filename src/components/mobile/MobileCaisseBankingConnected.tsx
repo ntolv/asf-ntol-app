@@ -225,7 +225,7 @@ export default function MobileCaisseBankingConnected() {
             .from("v_contributions")
             .select("*")
             .eq("membre_id", membreId)
-            .order("date_contribution", { ascending: false })
+            .order("date_paiement", { ascending: false })
             .limit(5),
 
           supabase
