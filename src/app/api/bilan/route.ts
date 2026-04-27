@@ -1,6 +1,5 @@
 ﻿import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
 
@@ -15,40 +14,60 @@ function isBureauRole(role: { code?: string | null; libelle?: string | null } | 
   );
 }
 
-export async function GET() {
+async function getAuthenticatedUser() {
+  const cookieStore = await cookies();
+
+  const authCookie = cookieStore
+    .getAll()
+    .find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+
+  const authTokenCookie = authCookie?.value;
+
+  if (!authTokenCookie) {
+    throw new Error("Cookie d'authentification manquant");
+  }
+
+  let accessToken: string | null = null;
+
   try {
-    const cookieStore = await cookies();
+    let session: any;
 
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAuth.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: userError?.message || "Utilisateur non authentifié.",
-          data: { global: null, rubriques: [], membres: [] },
-        },
-        { status: 401 }
-      );
+    if (authTokenCookie.startsWith("base64-")) {
+      const encoded = authTokenCookie.replace(/^base64-/, "");
+      session = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+    } else {
+      session = JSON.parse(atob(authTokenCookie));
     }
 
+    accessToken = session.access_token ?? null;
+  } catch {
+    throw new Error("Cookie d'authentification invalide");
+  }
+
+  if (!accessToken) {
+    throw new Error("Access token manquant dans le cookie");
+  }
+
+  const supabaseAuth = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }
+  );
+
+  const { data, error } = await supabaseAuth.auth.getUser(accessToken);
+
+  if (error || !data.user) {
+    throw new Error(error?.message || "Utilisateur non connecté");
+  }
+
+  return data.user;
+}
+
+export async function GET() {
+  try {
+    const user = await getAuthenticatedUser();
     const context = await getUserContext(user);
 
     if (!context?.success) {
@@ -100,14 +119,48 @@ export async function GET() {
 
     if (membresError) throw membresError;
 
-    return NextResponse.json(
-      {
-        success: true,
+    const { data: bilanPro, error: bilanProError } = await supabaseAdmin
+      .from("v_bilan_asf_ntol_pro_max")
+      .select("*")
+      .maybeSingle();
+
+    if (bilanProError) throw bilanProError;
+
+    const { data: flux, error: fluxError } = await supabaseAdmin
+      .from("v_bilan_asf_ntol_flux")
+      .select("*")
+      .order("type_flux", { ascending: true })
+      .order("categorie", { ascending: true });
+
+    if (fluxError) throw fluxError;
+
+    const { data: tontineKpi, error: tontineKpiError } = await supabaseAdmin
+      .from("v_tontine_kpi")
+      .select("*")
+      .maybeSingle();
+
+    if (tontineKpiError) throw tontineKpiError;
+
+    const { data: details, error: detailsError } = await supabaseAdmin
+      .from("v_bilan_asf_ntol_details")
+      .select("*")
+      .order("type_flux", { ascending: true })
+      .order("categorie", { ascending: true })
+      .order("date_operation", { ascending: false });
+
+    if (detailsError) throw detailsError;
+
+    return NextResponse.json({
+      success: true,
         message: "Bilan chargé",
         data: {
           global: global ?? null,
           rubriques: rubriques ?? [],
           membres: membres ?? [],
+          bilanPro: bilanPro ?? null,
+          flux: flux ?? [],
+          tontineKpi: tontineKpi ?? null,
+          details: details ?? [],
         },
       },
       { status: 200 }
@@ -119,7 +172,9 @@ export async function GET() {
         message: error?.message || "Erreur lors du chargement du bilan.",
         data: { global: null, rubriques: [], membres: [] },
       },
-      { status: 500 }
+      { status: 401 }
     );
   }
 }
+
+
