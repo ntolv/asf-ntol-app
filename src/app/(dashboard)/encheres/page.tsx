@@ -14,6 +14,9 @@ type SessionRow = {
   date_debut_encheres?: string | null;
   duree_par_lot_minutes?: number | null;
   lot_en_cours_index?: number | null;
+  montant_depart_enchere_session?: number | string | null;
+  mise_brute_session?: number | string | null;
+  nb_lots_effectif?: number | string | null;
   [key: string]: unknown;
 };
 
@@ -80,7 +83,7 @@ function readRows<T>(payload: any): T[] {
 function getSessionLabel(session: SessionRow | null) {
   if (!session) return "Aucune session active";
   const base = session.libelle || `Session ${session.ordre_session ?? "-"}`;
-  const periode = session.periode_reference ? ` — ${session.periode_reference}` : "";
+  const periode = session.periode_reference ? ` â€” ${session.periode_reference}` : "";
   return `${base}${periode}`;
 }
 
@@ -295,7 +298,7 @@ export default function EncheresPage() {
 
   async function handleStartEncheres() {
     if (!sessionActive?.id) {
-      setMessages({ success: "", error: "Aucune session active à démarrer." });
+      setMessages({ success: "", error: "Aucune session active Ã  dÃ©marrer." });
       return;
     }
 
@@ -311,19 +314,19 @@ export default function EncheresPage() {
 
       const json = await readJsonSafe(res);
       if (!res.ok || json?.success === false) {
-        throw new Error(json?.error || json?.message || "Impossible de démarrer les enchères.");
+        throw new Error(json?.error || json?.message || "Impossible de dÃ©marrer les enchÃ¨res.");
       }
 
       autoCloseLock.current = false;
       setMessages({
-        success: "Top départ chrono lancé avec succès.",
+        success: "Top dÃ©part chrono lancÃ© avec succÃ¨s.",
         error: "",
       });
       setRefreshKey((v) => v + 1);
     } catch (err) {
       setMessages({
         success: "",
-        error: err instanceof Error ? err.message : "Erreur pendant le démarrage des enchères.",
+        error: err instanceof Error ? err.message : "Erreur pendant le dÃ©marrage des enchÃ¨res.",
       });
     } finally {
       setStarting(false);
@@ -332,7 +335,7 @@ export default function EncheresPage() {
 
   async function handleCloseSession(fromTimer = false) {
     if (!sessionActive?.id) {
-      setMessages({ success: "", error: "Aucune session active à clôturer." });
+      setMessages({ success: "", error: "Aucune session active Ã  clÃ´turer." });
       autoCloseLock.current = false;
       return;
     }
@@ -351,20 +354,20 @@ export default function EncheresPage() {
 
       const json = await readJsonSafe(res);
       if (!res.ok || json?.success === false) {
-        throw new Error(json?.error || json?.message || "Impossible de clôturer la session.");
+        throw new Error(json?.error || json?.message || "Impossible de clÃ´turer la session.");
       }
 
       setMessages({
         success: fromTimer
-          ? "Le chrono est arrivé à zéro. La clôture globale a été déclenchée."
-          : "Session clôturée avec succès.",
+          ? "Le chrono est arrivÃ© Ã  zÃ©ro. La clÃ´ture globale a Ã©tÃ© dÃ©clenchÃ©e."
+          : "Session clÃ´turÃ©e avec succÃ¨s.",
         error: "",
       });
       setRefreshKey((v) => v + 1);
     } catch (err) {
       setMessages({
         success: "",
-        error: err instanceof Error ? err.message : "Erreur pendant la clôture de la session.",
+        error: err instanceof Error ? err.message : "Erreur pendant la clÃ´ture de la session.",
       });
     } finally {
       setClosing(false);
@@ -382,7 +385,7 @@ export default function EncheresPage() {
     if (!Number.isFinite(montantRelance) || montantRelance < 500) {
       setMessages({
         success: "",
-        error: "Le renchérissement minimum est de 500 FCFA.",
+        error: "Le renchÃ©rissement minimum est de 500 FCFA.",
       });
       return;
     }
@@ -403,12 +406,12 @@ export default function EncheresPage() {
 
       const json = await readJsonSafe(res);
       if (!res.ok || json?.success === false) {
-        throw new Error(json?.error || json?.message || "Impossible d'enregistrer l'enchère.");
+        throw new Error(json?.error || json?.message || "Impossible d'enregistrer l'enchÃ¨re.");
       }
 
       setCurrentBidValue(lotId, "");
       setMessages({
-        success: "Enchère enregistrée avec succès.",
+        success: "EnchÃ¨re enregistrÃ©e avec succÃ¨s.",
         error: "",
       });
 
@@ -417,7 +420,7 @@ export default function EncheresPage() {
     } catch (err) {
       setMessages({
         success: "",
-        error: err instanceof Error ? err.message : "Erreur pendant l'enchère.",
+        error: err instanceof Error ? err.message : "Erreur pendant l'enchÃ¨re.",
       });
     } finally {
       setPostingBid(false);
@@ -431,14 +434,14 @@ export default function EncheresPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
-                Enchères
+                EnchÃ¨res
               </p>
               <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-                Exécution réelle des enchères
+                ExÃ©cution rÃ©elle des enchÃ¨res
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-600">
-                Cette page pilote uniquement l'exécution réelle : chargement de la session active,
-                top départ du chrono, enchères et clôture globale.
+                Cette page pilote uniquement l'exÃ©cution rÃ©elle : chargement de la session active,
+                top dÃ©part du chrono, enchÃ¨res et clÃ´ture globale.
               </p>
             </div>
 
@@ -455,7 +458,7 @@ export default function EncheresPage() {
                 href="/tontine"
                 className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Retour à la page Tontine
+                Retour Ã  la page Tontine
               </Link>
             </div>
           </div>
@@ -497,7 +500,7 @@ export default function EncheresPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Statut enchères
+                  Statut enchÃ¨res
                 </p>
                 <p className="mt-2 text-base font-black text-slate-900">
                   {sessionActive ? normalizeStatus(sessionActive.statut_encheres) : "-"}
@@ -506,7 +509,7 @@ export default function EncheresPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Démarrage enchères
+                  DÃ©marrage enchÃ¨res
                 </p>
                 <p className="mt-2 text-base font-black text-slate-900">
                   {formatDateTime(sessionActive?.date_debut_encheres)}
@@ -515,12 +518,30 @@ export default function EncheresPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Durée par lot
+                  DurÃ©e par lot
                 </p>
                 <p className="mt-2 text-base font-black text-slate-900">
                   {Number(sessionActive?.duree_par_lot_minutes ?? 0) > 0
                     ? `${sessionActive?.duree_par_lot_minutes} min`
                     : "-"}
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Mise brute session
+                </p>
+                <p className="mt-2 text-base font-black text-slate-900">
+                  {formatMoney(sessionActive?.mise_brute_session)}
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Montant départ enchères
+                </p>
+                <p className="mt-2 text-base font-black text-slate-900">
+                  {formatMoney(sessionActive?.montant_depart_enchere_session)}
                 </p>
               </div>
             </div>
@@ -532,7 +553,7 @@ export default function EncheresPage() {
                 disabled={!sessionReadyToStart || starting || loading}
                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {starting ? "Démarrage..." : "Top départ chrono"}
+                {starting ? "DÃ©marrage..." : "Top dÃ©part chrono"}
               </button>
 
               <button
@@ -541,13 +562,13 @@ export default function EncheresPage() {
                 disabled={!encheresRunning || closing || loading}
                 className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {closing ? "Clôture..." : "Clôturer globalement"}
+                {closing ? "ClÃ´ture..." : "ClÃ´turer globalement"}
               </button>
             </div>
 
             <p className="mt-3 text-xs leading-6 text-slate-500">
-              Le bouton <span className="font-semibold text-slate-700">Top départ chrono</span> reprend
-              le rôle de l'ancien démarrage global. Cette page ne crée aucune session.
+              Le bouton <span className="font-semibold text-slate-700">Top dÃ©part chrono</span> reprend
+              le rÃ´le de l'ancien dÃ©marrage global. Cette page ne crÃ©e aucune session.
             </p>
           </div>
 
@@ -556,7 +577,7 @@ export default function EncheresPage() {
               Chrono global
             </p>
             <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-              {encheresRunning ? "Enchères en cours" : "En attente de démarrage"}
+              {encheresRunning ? "EnchÃ¨res en cours" : "En attente de dÃ©marrage"}
             </h2>
 
             <div className="mt-5 rounded-[28px] border border-slate-200 bg-slate-50 p-6 text-center">
@@ -567,15 +588,15 @@ export default function EncheresPage() {
                 {formatCountdown(countdown)}
               </p>
               <p className="mt-3 text-sm text-slate-600">
-                Le chrono affiché est une visualisation frontend. La clôture effective doit rester
-                validée par le backend.
+                Le chrono affichÃ© est une visualisation frontend. La clÃ´ture effective doit rester
+                validÃ©e par le backend.
               </p>
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Lots chargés
+                  Lots chargÃ©s
                 </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{lots.length}</p>
               </div>
@@ -602,7 +623,7 @@ export default function EncheresPage() {
                 Lots de la session active
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Les lots affichés ici doivent venir uniquement du backend.
+                Les lots affichÃ©s ici doivent venir uniquement du backend.
               </p>
             </div>
 
@@ -650,7 +671,7 @@ export default function EncheresPage() {
                         onClick={() => setSelectedLotId(lot.id)}
                         className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
                       >
-                        Voir détails
+                        Voir dÃ©tails
                       </button>
                     </div>
 
@@ -668,7 +689,7 @@ export default function EncheresPage() {
                       </div>
 
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-slate-700">Montant départ</span>
+                        <span className="text-sm font-semibold text-slate-700">Montant dÃ©part</span>
                         <span className="text-sm text-slate-900">{formatMoney(lot.montant_depart_enchere)}</span>
                       </div>
 
@@ -711,7 +732,7 @@ export default function EncheresPage() {
                         disabled={!encheresRunning || postingBid}
                         className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {postingBid ? "Enregistrement..." : "Enchérir sur ce lot"}
+                        {postingBid ? "Enregistrement..." : "EnchÃ©rir sur ce lot"}
                       </button>
                     </div>
                   </article>
@@ -727,16 +748,16 @@ export default function EncheresPage() {
               Classement live
             </p>
             <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">
-              Enchères du lot sélectionné
+              EnchÃ¨res du lot sÃ©lectionnÃ©
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Les données ci-dessous sont rafraîchies depuis le backend pour le lot ciblé.
+              Les donnÃ©es ci-dessous sont rafraÃ®chies depuis le backend pour le lot ciblÃ©.
             </p>
           </div>
 
           <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-700">
-              Lot sélectionné :{" "}
+              Lot sÃ©lectionnÃ© :{" "}
               <span className="text-slate-900">
                 {selectedLot?.libelle || (selectedLot ? `Lot ${selectedLot.numero_lot ?? "-"}` : "-")}
               </span>
@@ -758,7 +779,7 @@ export default function EncheresPage() {
                 {encheres.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
-                      Aucune enchère pour ce lot.
+                      Aucune enchÃ¨re pour ce lot.
                     </td>
                   </tr>
                 ) : (
