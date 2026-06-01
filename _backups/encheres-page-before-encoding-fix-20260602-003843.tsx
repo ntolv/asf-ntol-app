@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,78 +6,89 @@ import { supabase } from "@/lib/supabaseClient";
 
 type Session = {
   id: string;
-  libelle: string;
-  periode: string;
-  ordre_session: number;
-  statut_session: string;
-  nombre_lots: number;
+  cycle_id?: string | null;
+  libelle?: string | null;
+  periode?: string | null;
+  periode_reference?: string | null;
+  ordre_session?: number | null;
+  statut_session?: string | null;
+  statut_encheres?: string | null;
+  nombre_lots?: number | null;
+  nb_lots_effectif?: number | null;
   date_debut_encheres?: string | null;
   duree_par_lot_minutes?: number | null;
   lot_en_cours_index?: number | null;
-  statut_encheres?: string | null;
-  montant_depart_enchere_session?: number | null;
+  montant_depart_enchere_session?: number | string | null;
+  mise_brute_session?: number | string | null;
   derniere_enchere_at?: string | null;
 };
 
 type Lot = {
   id: string;
   session_id: string;
-  periode: string;
-  lot: number;
-  libelle: string | null;
-  montant_depart_enchere: number;
-  mise_brute_lot: number;
-  statut_lot: string;
-  gagnant: string | null;
-  montant_total_relances: number;
-  gain_reel: number;
+  periode?: string | null;
+  numero_lot?: number | null;
+  lot?: number | null;
+  libelle?: string | null;
+  montant_depart_enchere?: number | string | null;
+  mise_brute_lot?: number | string | null;
+  statut_lot?: string | null;
+  gagnant?: string | null;
+  montant_total_relances?: number | string | null;
+  gain_reel?: number | string | null;
 };
 
 type Enchere = {
   id: string;
   lot_id: string;
-  nom_complet: string;
-  montant_total_offert: number;
-  montant_relance: number;
-  rang: number | null;
-  statut: string;
+  nom_complet?: string | null;
+  membre_nom?: string | null;
+  montant_total_offert?: number | string | null;
+  montant_relance?: number | string | null;
+  rang?: number | null;
+  statut?: string | null;
 };
 
-function formatMontant(value: number | null | undefined) {
+function normalize(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function formatMontant(value: unknown) {
+  const n = Number(value ?? 0);
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "XOF",
     maximumFractionDigits: 0,
-  }).format(value || 0);
+  }).format(Number.isFinite(n) ? n : 0);
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return "Non démarré";
+  if (!value) return "Non dÃ©marrÃ©";
   return new Date(value).toLocaleString("fr-FR");
 }
 
-function getBadgeClass(value?: string | null) {
-  const statut = String(value || "").toUpperCase();
+function readRows<T>(payload: any): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (Array.isArray(payload?.data)) return payload.data as T[];
+  if (Array.isArray(payload?.items)) return payload.items as T[];
+  if (Array.isArray(payload?.lots)) return payload.lots as T[];
+  if (Array.isArray(payload?.encheres)) return payload.encheres as T[];
+  if (Array.isArray(payload?.sessions)) return payload.sessions as T[];
+  return [];
+}
 
-  if (
-    statut === "EN_COURS" ||
-    statut === "OUVERTE" ||
-    statut === "ACTIVE" ||
-    statut === "OUVERT"
-  ) {
+function getBadgeClass(value?: string | null) {
+  const statut = normalize(value);
+
+  if (statut === "EN_COURS" || statut === "OUVERT") {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
-  if (
-    statut === "TERMINE" ||
-    statut === "CLOTUREE" ||
-    statut === "CLÔTURÉE" ||
-    statut === "CLOTURE"
-  ) {
+  if (statut === "TERMINEE" || statut === "CLOTURE") {
     return "border-slate-300 bg-slate-100 text-slate-700";
   }
 
-  if (statut === "PLANIFIEE" || statut === "PLANIFIÉE") {
+  if (statut === "PLANIFIEE") {
     return "border-amber-200 bg-amber-50 text-amber-800";
   }
 
@@ -92,18 +103,12 @@ function getRankTone(rank: number) {
 }
 
 function formatCountdown(ms: number | null) {
-  if (ms === null) return "Non démarré";
+  if (ms === null) return "Non dÃ©marrÃ©";
   const safeMs = Math.max(0, ms);
   const totalSeconds = Math.floor(safeMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function secondsSince(dateIso?: string | null) {
-  if (!dateIso) return null;
-  const diffMs = Date.now() - new Date(dateIso).getTime();
-  return Math.max(0, Math.floor(diffMs / 1000));
 }
 
 function getTimerProgressPercent(remainingMs: number | null, totalMs: number | null) {
@@ -140,6 +145,22 @@ function getTimerTone(progressPercent: number) {
     bar: "bg-emerald-500",
     chip: "border-emerald-200 bg-white text-emerald-700",
   };
+}
+
+function secondsSince(dateIso?: string | null) {
+  if (!dateIso) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(dateIso).getTime()) / 1000));
+}
+
+function getSessionLabel(session: Session | null) {
+  if (!session) return "Aucune session active";
+  const libelle = session.libelle || `Session ${session.ordre_session ?? "-"}`;
+  const periode = session.periode_reference || session.periode;
+  return periode ? `${libelle} â€” ${periode}` : libelle;
+}
+
+function getLotNumber(lot: Lot) {
+  return lot.numero_lot ?? lot.lot ?? null;
 }
 
 function buildLotCardClass(isSelected: boolean, isCurrentLot: boolean, isClosed: boolean) {
@@ -189,7 +210,7 @@ export default function EncheresPage() {
         headers: { Accept: "application/json" },
       });
       const data = await res.json();
-      setSessions(Array.isArray(data) ? data : []);
+      setSessions(readRows<Session>(data));
     } catch (err) {
       console.error("Erreur chargement sessions:", err);
       if (!silent) setSessions([]);
@@ -199,11 +220,11 @@ export default function EncheresPage() {
   }, []);
 
   const sessionActive =
-    sessions.find(
-      (s) =>
-        (s.statut_session === "EN_COURS" || s.statut_session === "OUVERTE") &&
-        s.statut_encheres !== "TERMINE"
-    ) || null;
+    sessions.find((s) => {
+      const statutSession = normalize(s.statut_session);
+      const statutEncheres = normalize(s.statut_encheres);
+      return statutSession === "EN_COURS" && statutEncheres !== "TERMINEE";
+    }) || null;
 
   const loadLots = useCallback(async (sessionId?: string | null, silent = false) => {
     if (!sessionId) {
@@ -219,7 +240,14 @@ export default function EncheresPage() {
         headers: { Accept: "application/json" },
       });
       const data = await res.json();
-      setLots(Array.isArray(data) ? data : []);
+      const rows = readRows<Lot>(data);
+      setLots(rows);
+
+      setSelectedLot((current) => {
+        if (current && rows.some((lot) => lot.id === current)) return current;
+        const currentLot = rows.find((lot) => normalize(lot.statut_lot) === "EN_COURS");
+        return currentLot?.id ?? rows[0]?.id ?? null;
+      });
     } catch (err) {
       console.error("Erreur chargement lots:", err);
       if (!silent) setLots([]);
@@ -237,11 +265,11 @@ export default function EncheresPage() {
         headers: { Accept: "application/json" },
       });
       const data = await res.json();
-      setEncheres(Array.isArray(data) ? data : []);
+      setEncheres(readRows<Enchere>(data));
       setSelectedLot(lotId);
       setLastClassementUpdateAt(new Date().toISOString());
     } catch (err) {
-      console.error("Erreur chargement enchères:", err);
+      console.error("Erreur chargement enchÃ¨res:", err);
       if (!silent) setEncheres([]);
       setSelectedLot(lotId);
     } finally {
@@ -289,9 +317,7 @@ export default function EncheresPage() {
         async () => {
           await loadSessions(true);
           await loadLots(sessionActive.id, true);
-          if (selectedLot) {
-            await loadEncheres(selectedLot, true);
-          }
+          if (selectedLot) await loadEncheres(selectedLot, true);
         }
       )
       .on(
@@ -305,9 +331,7 @@ export default function EncheresPage() {
         async () => {
           await loadLots(sessionActive.id, true);
           await loadSessions(true);
-          if (selectedLot) {
-            await loadEncheres(selectedLot, true);
-          }
+          if (selectedLot) await loadEncheres(selectedLot, true);
         }
       )
       .subscribe();
@@ -361,27 +385,18 @@ export default function EncheresPage() {
   }, [referenceTimerAt, inactivityLimitMs, nowMs]);
 
   const timerText = useMemo(() => formatCountdown(remainingMs), [remainingMs]);
-  const liveAgeSeconds = useMemo(
-    () => secondsSince(lastClassementUpdateAt),
-    [lastClassementUpdateAt, nowMs]
-  );
-
+  const liveAgeSeconds = useMemo(() => secondsSince(lastClassementUpdateAt), [lastClassementUpdateAt, nowMs]);
   const timerProgressPercent = useMemo(
     () => getTimerProgressPercent(remainingMs, inactivityLimitMs),
     [remainingMs, inactivityLimitMs]
   );
-
-  const timerTone = useMemo(
-    () => getTimerTone(timerProgressPercent),
-    [timerProgressPercent]
-  );
+  const timerTone = useMemo(() => getTimerTone(timerProgressPercent), [timerProgressPercent]);
 
   useEffect(() => {
     const autoCloseSession = async () => {
       if (!sessionActive?.id) return;
-      if (sessionActive.statut_encheres !== "EN_COURS") return;
-      if (remainingMs === null) return;
-      if (remainingMs > 0) return;
+      if (normalize(sessionActive.statut_encheres) !== "EN_COURS") return;
+      if (remainingMs === null || remainingMs > 0) return;
       if (autoClosing) return;
 
       setAutoClosing(true);
@@ -393,29 +408,25 @@ export default function EncheresPage() {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({
-            session_id: sessionActive.id,
-          }),
+          body: JSON.stringify({ session_id: sessionActive.id }),
         });
 
         const data = await res.json();
 
         if (!res.ok || data?.error) {
-          alert(data?.error || "Erreur clôture automatique de la session");
+          alert(data?.error || "Erreur clÃ´ture automatique de la session");
           setAutoClosing(false);
           return;
         }
 
         await loadSessions(true);
         await loadLots(sessionActive.id, true);
-        if (selectedLot) {
-          await loadEncheres(selectedLot, true);
-        }
+        if (selectedLot) await loadEncheres(selectedLot, true);
 
-        alert("Le délai sans nouvelle enchère est dépassé. La session a été clôturée automatiquement.");
+        alert("Le dÃ©lai sans nouvelle enchÃ¨re est dÃ©passÃ©. La session a Ã©tÃ© clÃ´turÃ©e automatiquement.");
       } catch (err) {
         console.error(err);
-        alert("Erreur clôture automatique de la session");
+        alert("Erreur clÃ´ture automatique de la session");
         setAutoClosing(false);
       }
     };
@@ -433,18 +444,12 @@ export default function EncheresPage() {
   ]);
 
   const updateLotBidValue = (lotId: string, value: string) => {
-    setLotBidValues((prev) => ({
-      ...prev,
-      [lotId]: value,
-    }));
+    setLotBidValues((prev) => ({ ...prev, [lotId]: value }));
   };
 
   const incrementLotBidValue = (lotId: string, increment: number) => {
     const current = Number(lotBidValues[lotId] || 0);
-    setLotBidValues((prev) => ({
-      ...prev,
-      [lotId]: String(current + increment),
-    }));
+    setLotBidValues((prev) => ({ ...prev, [lotId]: String(current + increment) }));
   };
 
   const encherirSurLot = async (lotId: string) => {
@@ -455,12 +460,12 @@ export default function EncheresPage() {
       }
 
       if (!member?.id) {
-        alert("Membre connecté introuvable.");
+        alert("Membre connectÃ© introuvable.");
         return;
       }
 
-      if (!sessionActive?.id || sessionActive.statut_encheres !== "EN_COURS") {
-        alert("Les enchères ne sont pas en cours.");
+      if (!sessionActive?.id || normalize(sessionActive.statut_encheres) !== "EN_COURS") {
+        alert("Les enchÃ¨res ne sont pas en cours.");
         return;
       }
 
@@ -473,12 +478,12 @@ export default function EncheresPage() {
       }
 
       if (!montantRelance || montantRelance <= 0) {
-        alert("Saisis un montant de renchérissement supérieur à 0 FCFA.");
+        alert("Saisis un montant de renchÃ©rissement supÃ©rieur Ã  0 FCFA.");
         return;
       }
 
       if (montantRelance < 500) {
-        alert("Le renchérissement minimum est de 500 FCFA.");
+        alert("Le renchÃ©rissement minimum est de 500 FCFA.");
         return;
       }
 
@@ -499,7 +504,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur création enchère");
+        alert(data?.error || "Erreur crÃ©ation enchÃ¨re");
         return;
       }
 
@@ -509,22 +514,83 @@ export default function EncheresPage() {
       await loadEncheres(lotId, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur création enchère");
+      alert("Erreur crÃ©ation enchÃ¨re");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const selectedLotData = useMemo(
-    () => lots.find((item) => item.id === selectedLot) ?? null,
-    [lots, selectedLot]
-  );
+  const startSession = async () => {
+    if (!sessionActive?.id) return;
 
+    setActionLoading(true);
+
+    try {
+      const res = await fetch("/api/tontine/start-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ session_id: sessionActive.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data?.error) {
+        alert(data?.error || "Erreur dÃ©marrage enchÃ¨res");
+        return;
+      }
+
+      await loadSessions(true);
+      await loadLots(sessionActive.id, true);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur dÃ©marrage enchÃ¨res");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const closeSession = async () => {
+    if (!sessionActive?.id) return;
+
+    setActionLoading(true);
+
+    try {
+      const res = await fetch("/api/tontine/close-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ session_id: sessionActive.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data?.error) {
+        alert(data?.error || "Erreur clÃ´ture session");
+        return;
+      }
+
+      await loadSessions(true);
+      await loadLots(sessionActive.id, true);
+      if (selectedLot) await loadEncheres(selectedLot, true);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur clÃ´ture session");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const selectedLotData = useMemo(() => lots.find((item) => item.id === selectedLot) ?? null, [lots, selectedLot]);
   const leader = encheres.length > 0 ? encheres[0] : null;
 
   const selectedLotIsCurrent = useMemo(() => {
     if (!selectedLotData || !sessionActive?.lot_en_cours_index) return false;
-    return selectedLotData.lot === sessionActive.lot_en_cours_index;
+    return getLotNumber(selectedLotData) === sessionActive.lot_en_cours_index;
   }, [selectedLotData, sessionActive?.lot_en_cours_index]);
 
   return (
@@ -534,20 +600,17 @@ export default function EncheresPage() {
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">
-                Enchères en ligne
+                EnchÃ¨res en ligne
               </p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
-                Salle d’enchères Pro ++
+                Salle dâ€™enchÃ¨res ASF-NTOL
               </h1>
               <p className="mt-3 text-sm text-emerald-900/70 md:text-base">
-                Session active, lots disponibles, renchérissement rapide et classement live.
+                Session active, lots disponibles, renchÃ©rissement rapide et classement live.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm">
-                Salle membre
-              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -563,81 +626,84 @@ export default function EncheresPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Session active
-            </p>
-            <p className="mt-2 text-lg font-bold text-slate-900">
-              {sessionActive?.libelle || "Aucune"}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {sessionActive?.periode || "Aucune période"}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Session active</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">{getSessionLabel(sessionActive)}</p>
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Statut enchères
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchÃ¨res</p>
             <div className="mt-2">
-              <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(
-                  sessionActive?.statut_encheres
-                )}`}
-              >
+              <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(sessionActive?.statut_encheres)}`}>
                 {sessionActive?.statut_encheres || "Indisponible"}
               </span>
             </div>
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Lots session
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Lots session</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              {sessionActive?.nombre_lots ?? 0}
+              {sessionActive?.nb_lots_effectif ?? sessionActive?.nombre_lots ?? 0}
             </p>
           </article>
 
-          <article className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-              Dernière enchère
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-900">
-              {formatDateTime(sessionActive?.derniere_enchere_at || sessionActive?.date_debut_encheres)}
-            </p>
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Mise brute session</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">{formatMontant(sessionActive?.mise_brute_session)}</p>
+          </article>
+
+          <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">DÃ©part enchÃ¨res</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">{formatMontant(sessionActive?.montant_depart_enchere_session)}</p>
           </article>
 
           <article className={`rounded-[24px] border p-5 shadow-sm transition ${timerTone.card}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${timerTone.text}`}>
-                  Timer global
-                </p>
-                <p className={`mt-2 text-3xl font-black tracking-tight ${timerTone.text}`}>
-                  {timerText}
-                </p>
-              </div>
+            <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${timerTone.text}`}>Timer global</p>
+            <p className={`mt-2 text-3xl font-black tracking-tight ${timerTone.text}`}>{timerText}</p>
+          </article>
+        </section>
 
-              <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${timerTone.chip}`}>
-                {remainingMs === null
-                  ? "Inactif"
-                  : timerProgressPercent <= 20
-                  ? "Fin proche"
-                  : timerProgressPercent <= 45
-                  ? "À surveiller"
-                  : "Stable"}
+        <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-emerald-950">Pilotage session</h2>
+              <p className="text-sm text-emerald-900/70">DÃ©marrage du chrono et clÃ´ture globale.</p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={startSession}
+                disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "PLANIFIEE" || actionLoading}
+                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                Top dÃ©part chrono
+              </button>
+
+              <button
+                type="button"
+                onClick={closeSession}
+                disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "EN_COURS" || actionLoading}
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                ClÃ´turer globalement
+              </button>
+            </div>
+          </div>
+
+          <div className={`rounded-[24px] border p-5 ${timerTone.card}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className={`text-sm font-semibold ${timerTone.text}`}>Temps restant</span>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${timerTone.chip}`}>
+                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "Ã€ surveiller" : "Stable"}
               </span>
             </div>
 
             <div className={`mt-4 h-2.5 overflow-hidden rounded-full ${timerTone.track}`}>
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${timerTone.bar}`}
-                style={{ width: `${timerProgressPercent}%` }}
-              />
+              <div className={`h-full rounded-full transition-all duration-1000 ${timerTone.bar}`} style={{ width: `${timerProgressPercent}%` }} />
             </div>
-          </article>
+          </div>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -645,24 +711,14 @@ export default function EncheresPage() {
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>
-                <p className="text-sm text-emerald-900/70">
-                  Sélectionne un lot pour voir le classement live et enchérir.
-                </p>
+                <p className="text-sm text-emerald-900/70">SÃ©lectionne un lot pour voir le classement live et enchÃ©rir.</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {sessionActive?.lot_en_cours_index ? (
-                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                    Lot courant : {sessionActive.lot_en_cours_index}
-                  </span>
-                ) : null}
-
-                {loadingLots || loadingSessions ? (
-                  <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                    Chargement...
-                  </span>
-                ) : null}
-              </div>
+              {(loadingLots || loadingSessions) && (
+                <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  Chargement...
+                </span>
+              )}
             </div>
 
             {!sessionActive ? (
@@ -671,17 +727,15 @@ export default function EncheresPage() {
               </div>
             ) : lots.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                Aucun lot trouvé pour cette session.
+                Aucun lot trouvÃ© pour cette session.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {lots.map((lot) => {
+                  const lotNumber = getLotNumber(lot);
                   const isSelected = selectedLot === lot.id;
-                  const isCurrentLot =
-                    !!sessionActive?.lot_en_cours_index &&
-                    lot.lot === sessionActive.lot_en_cours_index;
-                  const isClosed =
-                    String(lot.statut_lot || "").toUpperCase() === "CLOTURE";
+                  const isCurrentLot = !!sessionActive?.lot_en_cours_index && lotNumber === sessionActive.lot_en_cours_index;
+                  const isClosed = normalize(lot.statut_lot) === "CLOTURE";
 
                   return (
                     <button
@@ -692,82 +746,47 @@ export default function EncheresPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-lg font-bold text-emerald-950">
-                              Lot {lot.lot}{lot.libelle ? ` — ${lot.libelle}` : ""}
-                            </p>
-
-                            {isCurrentLot ? (
-                              <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                                En focus
-                              </span>
-                            ) : null}
-
-                            {isSelected ? (
-                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                                Sélectionné
-                              </span>
-                            ) : null}
-                          </div>
-
+                          <p className="text-lg font-bold text-emerald-950">
+                            Lot {lotNumber ?? "-"}{lot.libelle ? ` â€” ${lot.libelle}` : ""}
+                          </p>
                           <p className="mt-1 text-sm text-emerald-900/65">
-                            Période : {lot.periode}
+                            PÃ©riode : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}
                           </p>
                         </div>
 
-                        <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(
-                            lot.statut_lot
-                          )}`}
-                        >
-                          {lot.statut_lot}
+                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(lot.statut_lot)}`}>
+                          {lot.statut_lot || "-"}
                         </span>
                       </div>
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                            Départ
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(lot.montant_depart_enchere)}
-                          </p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">DÃ©part</p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.montant_depart_enchere)}</p>
                         </div>
 
                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                            Mise brute
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(lot.mise_brute_lot)}
-                          </p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Mise brute</p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.mise_brute_lot)}</p>
                         </div>
 
                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                            Total relances
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(lot.montant_total_relances)}
-                          </p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Total relances</p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.montant_total_relances)}</p>
                         </div>
 
                         <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-amber-700">
-                            Gain net
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-amber-700">
-                            {formatMontant(lot.gain_reel)}
-                          </p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-amber-700">Gain net</p>
+                          <p className="mt-1 text-sm font-bold text-amber-700">{formatMontant(lot.gain_reel)}</p>
                         </div>
                       </div>
 
-                      {lot.gagnant ? (
+                      {lot.gagnant && (
                         <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-900">
                           <span className="font-medium text-emerald-800">Gagnant : </span>
                           <strong>{lot.gagnant}</strong>
                         </div>
-                      ) : null}
+                      )}
                     </button>
                   );
                 })}
@@ -782,24 +801,19 @@ export default function EncheresPage() {
                   <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>
                   <p className="text-sm text-emerald-900/70">
                     {selectedLotData
-                      ? `Lot ${selectedLotData.lot}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`
-                      : "Sélectionne un lot pour afficher le classement"}
+                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` â€” ${selectedLotData.libelle}` : ""}`
+                      : "SÃ©lectionne un lot pour afficher le classement"}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                    Live
-                  </span>
-                  <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                    {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
-                  </span>
-                </div>
+                <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                  {liveAgeSeconds === null ? "Mise Ã  jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
+                </span>
               </div>
 
               {!selectedLot ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucun lot sélectionné.
+                  Aucun lot sÃ©lectionnÃ©.
                 </div>
               ) : loadingEncheres ? (
                 <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
@@ -807,33 +821,19 @@ export default function EncheresPage() {
                 </div>
               ) : encheres.length === 0 ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucune enchère pour ce lot.
+                  Aucune enchÃ¨re pour ce lot.
                 </div>
               ) : (
                 <div className="mt-5 space-y-3">
-                  {leader ? (
+                  {leader && (
                     <div className="rounded-[24px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-white p-5 shadow-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                            Leader actuel
-                          </p>
-                          <p className="mt-2 text-xl font-bold text-emerald-950">
-                            {leader.nom_complet}
-                          </p>
-                        </div>
-
-                        <div className="text-right">
-                          <p className="text-2xl font-black tracking-tight text-emerald-950">
-                            {formatMontant(leader.montant_total_offert)}
-                          </p>
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-emerald-700">
-                            meilleure offre
-                          </p>
-                        </div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Leader actuel</p>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-xl font-bold text-emerald-950">{leader.nom_complet || leader.membre_nom || "-"}</p>
+                        <p className="text-2xl font-black tracking-tight text-emerald-950">{formatMontant(leader.montant_total_offert)}</p>
                       </div>
                     </div>
-                  ) : null}
+                  )}
 
                   {encheres.map((e, index) => {
                     const rank = e.rang ?? index + 1;
@@ -842,40 +842,20 @@ export default function EncheresPage() {
                     return (
                       <div
                         key={e.id}
-                        className={
-                          isLeader
-                            ? "rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"
-                            : "rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
-                        }
+                        className={isLeader ? "rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm" : "rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getRankTone(rank)}`}>
-                                #{rank}
-                              </span>
-                              {isLeader ? (
-                                <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                                  En tête
-                                </span>
-                              ) : null}
-                            </div>
-
-                            <p className="mt-3 text-base font-bold text-slate-900">
-                              {e.nom_complet}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              Ajout : {formatMontant(e.montant_relance)}
-                            </p>
+                            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getRankTone(rank)}`}>#{rank}</span>
+                            <p className="mt-3 text-base font-bold text-slate-900">{e.nom_complet || e.membre_nom || "-"}</p>
+                            <p className="mt-1 text-sm text-slate-500">Ajout : {formatMontant(e.montant_relance)}</p>
                           </div>
 
                           <div className="text-right">
                             <p className={isLeader ? "text-2xl font-black tracking-tight text-emerald-950" : "text-xl font-bold text-slate-900"}>
                               {formatMontant(e.montant_total_offert)}
                             </p>
-                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                              {e.statut}
-                            </p>
+                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">{e.statut || "-"}</p>
                           </div>
                         </div>
                       </div>
@@ -887,53 +867,38 @@ export default function EncheresPage() {
 
             <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>
-                <p className="text-sm text-emerald-900/70">
-                  Tu ajoutes un montant au meilleur total actuel.
-                </p>
+                <h2 className="text-xl font-semibold text-emerald-950">RenchÃ©rissement rapide</h2>
+                <p className="text-sm text-emerald-900/70">Tu ajoutes un montant au meilleur total actuel.</p>
               </div>
 
               {!selectedLotData ? (
                 <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Sélectionne d’abord un lot.
+                  SÃ©lectionne dâ€™abord un lot.
                 </div>
-              ) : sessionActive?.statut_encheres !== "EN_COURS" ? (
+              ) : normalize(sessionActive?.statut_encheres) !== "EN_COURS" ? (
                 <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
-                  Les enchères ne sont pas en cours.
+                  Les enchÃ¨res ne sont pas en cours.
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                        Lot sélectionné
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sÃ©lectionnÃ©</p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` â€” ${selectedLotData.libelle}` : ""}
                       </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-bold text-slate-900">
-                          Lot {selectedLotData.lot}{selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}
-                        </p>
-                        {selectedLotIsCurrent ? (
-                          <span className="inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                            Lot en focus
-                          </span>
-                        ) : null}
-                      </div>
                     </div>
 
                     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
-                        Meilleure offre
-                      </p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">Meilleure offre</p>
                       <p className="mt-1 text-sm font-bold text-emerald-700">
                         {formatMontant(leader?.montant_total_offert ?? selectedLotData.montant_depart_enchere)}
                       </p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      Montant d’ajout
-                    </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant dâ€™ajout</span>
                     <input
                       type="number"
                       min={500}
@@ -943,30 +908,19 @@ export default function EncheresPage() {
                       placeholder="Ex : 500"
                       className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-400"
                     />
-                  </div>
+                  </label>
 
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => incrementLotBidValue(selectedLotData.id, 500)}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-                    >
-                      +500 FCFA
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => incrementLotBidValue(selectedLotData.id, 1000)}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-                    >
-                      +1000 FCFA
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => incrementLotBidValue(selectedLotData.id, 2000)}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-                    >
-                      +2000 FCFA
-                    </button>
+                    {[500, 1000, 2000].map((amount) => (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => incrementLotBidValue(selectedLotData.id, amount)}
+                        className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                      >
+                        +{amount} FCFA
+                      </button>
+                    ))}
                   </div>
 
                   <button
@@ -975,11 +929,11 @@ export default function EncheresPage() {
                     disabled={actionLoading || authLoading || !member?.id}
                     className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
+                    {actionLoading ? "Traitement..." : "EnchÃ©rir sur ce lot"}
                   </button>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Le renchérissement minimum reste de 500 FCFA.
+                    Le renchÃ©rissement minimum reste de 500 FCFA.
                   </div>
                 </div>
               )}
