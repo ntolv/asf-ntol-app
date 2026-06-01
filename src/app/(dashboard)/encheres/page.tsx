@@ -63,7 +63,7 @@ function formatMontant(value: unknown) {
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return "Non dÃƒÂ©marrÃƒÂ©";
+  if (!value) return "Non démarré";
   return new Date(value).toLocaleString("fr-FR");
 }
 
@@ -103,7 +103,7 @@ function getRankTone(rank: number) {
 }
 
 function formatCountdown(ms: number | null) {
-  if (ms === null) return "Non dÃƒÂ©marrÃƒÂ©";
+  if (ms === null) return "Non démarré";
   const safeMs = Math.max(0, ms);
   const totalSeconds = Math.floor(safeMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -156,7 +156,7 @@ function getSessionLabel(session: Session | null) {
   if (!session) return "Aucune session active";
   const libelle = session.libelle || `Session ${session.ordre_session ?? "-"}`;
   const periode = session.periode_reference || session.periode;
-  return periode ? `${libelle} Ã¢â‚¬â€ ${periode}` : libelle;
+  return periode ? `${libelle} — ${periode}` : libelle;
 }
 
 function getLotNumber(lot: Lot) {
@@ -269,7 +269,7 @@ export default function EncheresPage() {
       setSelectedLot(lotId);
       setLastClassementUpdateAt(new Date().toISOString());
     } catch (err) {
-      console.error("Erreur chargement enchÃƒÂ¨res:", err);
+      console.error("Erreur chargement enchères:", err);
       if (!silent) setEncheres([]);
       setSelectedLot(lotId);
     } finally {
@@ -414,7 +414,7 @@ export default function EncheresPage() {
         const data = await res.json();
 
         if (!res.ok || data?.error) {
-          alert(data?.error || "Erreur clÃƒÂ´ture automatique de la session");
+          alert(data?.error || "Erreur clôture automatique de la session");
           setAutoClosing(false);
           return;
         }
@@ -423,10 +423,10 @@ export default function EncheresPage() {
         await loadLots(sessionActive.id, true);
         if (selectedLot) await loadEncheres(selectedLot, true);
 
-        alert("Le dÃƒÂ©lai sans nouvelle enchÃƒÂ¨re est dÃƒÂ©passÃƒÂ©. La session a ÃƒÂ©tÃƒÂ© clÃƒÂ´turÃƒÂ©e automatiquement.");
+        alert("Le délai sans nouvelle enchère est dépassé. La session a été clôturée automatiquement.");
       } catch (err) {
         console.error(err);
-        alert("Erreur clÃƒÂ´ture automatique de la session");
+        alert("Erreur clôture automatique de la session");
         setAutoClosing(false);
       }
     };
@@ -460,12 +460,12 @@ export default function EncheresPage() {
       }
 
       if (!member?.id) {
-        alert("Membre connectÃƒÂ© introuvable.");
+        alert("Membre connecté introuvable.");
         return;
       }
 
       if (!sessionActive?.id || normalize(sessionActive.statut_encheres) !== "EN_COURS") {
-        alert("Les enchÃƒÂ¨res ne sont pas en cours.");
+        alert("Les enchères ne sont pas en cours.");
         return;
       }
 
@@ -478,12 +478,12 @@ export default function EncheresPage() {
       }
 
       if (!montantRelance || montantRelance <= 0) {
-        alert("Saisis un montant de renchÃƒÂ©rissement supÃƒÂ©rieur ÃƒÂ  0 FCFA.");
+        alert("Saisis un montant de renchérissement supérieur à 0 FCFA.");
         return;
       }
 
       if (montantRelance < 500) {
-        alert("Le renchÃƒÂ©rissement minimum est de 500 FCFA.");
+        alert("Le renchérissement minimum est de 500 FCFA.");
         return;
       }
 
@@ -504,7 +504,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur crÃƒÂ©ation enchÃƒÂ¨re");
+        alert(data?.error || "Erreur création enchère");
         return;
       }
 
@@ -514,7 +514,7 @@ export default function EncheresPage() {
       await loadEncheres(lotId, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur crÃƒÂ©ation enchÃƒÂ¨re");
+      alert("Erreur création enchère");
     } finally {
       setActionLoading(false);
     }
@@ -538,7 +538,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur dÃƒÂ©marrage enchÃƒÂ¨res");
+        alert(data?.error || "Erreur démarrage enchères");
         return;
       }
 
@@ -546,7 +546,7 @@ export default function EncheresPage() {
       await loadLots(sessionActive.id, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur dÃƒÂ©marrage enchÃƒÂ¨res");
+      alert("Erreur démarrage enchères");
     } finally {
       setActionLoading(false);
     }
@@ -570,7 +570,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur clÃƒÂ´ture session");
+        alert(data?.error || "Erreur clôture session");
         return;
       }
 
@@ -579,7 +579,7 @@ export default function EncheresPage() {
       if (selectedLot) await loadEncheres(selectedLot, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur clÃƒÂ´ture session");
+      alert("Erreur clôture session");
     } finally {
       setActionLoading(false);
     }
@@ -600,13 +600,13 @@ export default function EncheresPage() {
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">
-                EnchÃƒÂ¨res en ligne
+                Enchères en ligne
               </p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
-                Salle dÃ¢â‚¬â„¢enchÃƒÂ¨res ASF-NTOL
+                Salle d’enchères ASF-NTOL
               </h1>
               <p className="mt-3 text-sm text-emerald-900/70 md:text-base">
-                Session active, lots disponibles, renchÃƒÂ©rissement rapide et classement live.
+                Session active, lots disponibles, renchérissement rapide et classement live.
               </p>
             </div>
 
@@ -633,7 +633,7 @@ export default function EncheresPage() {
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchÃƒÂ¨res</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchères</p>
             <div className="mt-2">
               <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(sessionActive?.statut_encheres)}`}>
                 {sessionActive?.statut_encheres || "Indisponible"}
@@ -654,7 +654,7 @@ export default function EncheresPage() {
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">DÃƒÂ©part enchÃƒÂ¨res</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Départ enchères</p>
             <p className="mt-2 text-lg font-bold text-slate-900">{formatMontant(sessionActive?.montant_depart_enchere_session)}</p>
           </article>
 
@@ -668,7 +668,7 @@ export default function EncheresPage() {
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-emerald-950">Pilotage session</h2>
-              <p className="text-sm text-emerald-900/70">DÃƒÂ©marrage du chrono et clÃƒÂ´ture globale.</p>
+              <p className="text-sm text-emerald-900/70">Démarrage du chrono et clôture globale.</p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -678,7 +678,7 @@ export default function EncheresPage() {
                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "PLANIFIEE" || actionLoading}
                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                Top dÃƒÂ©part chrono
+                Top départ chrono
               </button>
 
               <button
@@ -687,7 +687,7 @@ export default function EncheresPage() {
                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "EN_COURS" || actionLoading}
                 className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                ClÃƒÂ´turer globalement
+                Clôturer globalement
               </button>
             </div>
           </div>
@@ -696,7 +696,7 @@ export default function EncheresPage() {
             <div className="flex items-center justify-between gap-3">
               <span className={`text-sm font-semibold ${timerTone.text}`}>Temps restant</span>
               <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${timerTone.chip}`}>
-                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "Ãƒâ‚¬ surveiller" : "Stable"}
+                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "À surveiller" : "Stable"}
               </span>
             </div>
 
@@ -711,7 +711,7 @@ export default function EncheresPage() {
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>
-                <p className="text-sm text-emerald-900/70">SÃƒÂ©lectionne un lot pour voir le classement live et enchÃƒÂ©rir.</p>
+                <p className="text-sm text-emerald-900/70">Sélectionne un lot pour voir le classement live et enchérir.</p>
               </div>
 
               {(loadingLots || loadingSessions) && (
@@ -727,7 +727,7 @@ export default function EncheresPage() {
               </div>
             ) : lots.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                Aucun lot trouvÃƒÂ© pour cette session.
+                Aucun lot trouvé pour cette session.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
@@ -747,10 +747,10 @@ export default function EncheresPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-lg font-bold text-emerald-950">
-                            Lot {lotNumber ?? "-"}{lot.libelle ? ` Ã¢â‚¬â€ ${lot.libelle}` : ""}
+                            Lot {lotNumber ?? "-"}{lot.libelle ? ` — ${lot.libelle}` : ""}
                           </p>
                           <p className="mt-1 text-sm text-emerald-900/65">
-                            PÃƒÂ©riode : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}
+                            Période : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}
                           </p>
                         </div>
 
@@ -761,7 +761,7 @@ export default function EncheresPage() {
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">DÃƒÂ©part</p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Départ</p>
                           <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.montant_depart_enchere)}</p>
                         </div>
 
@@ -801,19 +801,19 @@ export default function EncheresPage() {
                   <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>
                   <p className="text-sm text-emerald-900/70">
                     {selectedLotData
-                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` Ã¢â‚¬â€ ${selectedLotData.libelle}` : ""}`
-                      : "SÃƒÂ©lectionne un lot pour afficher le classement"}
+                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`
+                      : "Sélectionne un lot pour afficher le classement"}
                   </p>
                 </div>
 
                 <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                  {liveAgeSeconds === null ? "Mise ÃƒÂ  jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
+                  {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
                 </span>
               </div>
 
               {!selectedLot ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucun lot sÃƒÂ©lectionnÃƒÂ©.
+                  Aucun lot sélectionné.
                 </div>
               ) : loadingEncheres ? (
                 <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
@@ -821,7 +821,7 @@ export default function EncheresPage() {
                 </div>
               ) : encheres.length === 0 ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucune enchÃƒÂ¨re pour ce lot.
+                  Aucune enchère pour ce lot.
                 </div>
               ) : (
                 <div className="mt-5 space-y-3">
@@ -867,25 +867,25 @@ export default function EncheresPage() {
 
             <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-emerald-950">RenchÃƒÂ©rissement rapide</h2>
+                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>
                 <p className="text-sm text-emerald-900/70">Tu ajoutes un montant au meilleur total actuel.</p>
               </div>
 
               {!selectedLotData ? (
                 <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  SÃƒÂ©lectionne dÃ¢â‚¬â„¢abord un lot.
+                  Sélectionne d’abord un lot.
                 </div>
               ) : normalize(sessionActive?.statut_encheres) !== "EN_COURS" ? (
                 <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
-                  Les enchÃƒÂ¨res ne sont pas en cours.
+                  Les enchères ne sont pas en cours.
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sÃƒÂ©lectionnÃƒÂ©</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sélectionné</p>
                       <p className="mt-1 text-sm font-bold text-slate-900">
-                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` Ã¢â‚¬â€ ${selectedLotData.libelle}` : ""}
+                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}
                       </p>
                     </div>
 
@@ -898,7 +898,7 @@ export default function EncheresPage() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant dÃ¢â‚¬â„¢ajout</span>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant d’ajout</span>
                     <input
                       type="number"
                       min={500}
@@ -929,11 +929,11 @@ export default function EncheresPage() {
                     disabled={actionLoading || authLoading || !member?.id}
                     className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {actionLoading ? "Traitement..." : "EnchÃƒÂ©rir sur ce lot"}
+                    {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
                   </button>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Le renchÃƒÂ©rissement minimum reste de 500 FCFA.
+                    Le renchérissement minimum reste de 500 FCFA.
                   </div>
                 </div>
               )}

@@ -1,0 +1,346 @@
+[1mdiff --git a/src/app/(dashboard)/encheres/page.tsx b/src/app/(dashboard)/encheres/page.tsx[m
+[1mindex 5dbe2c7..9178eba 100644[m
+[1m--- a/src/app/(dashboard)/encheres/page.tsx[m
+[1m+++ b/src/app/(dashboard)/encheres/page.tsx[m
+[36m@@ -63,7 +63,7 @@[m [mfunction formatMontant(value: unknown) {[m
+ }[m
+ [m
+ function formatDateTime(value?: string | null) {[m
+[31m-  if (!value) return "Non démarré";[m
+[32m+[m[32m  if (!value) return "Non dÃƒÂ©marrÃƒÂ©";[m
+   return new Date(value).toLocaleString("fr-FR");[m
+ }[m
+ [m
+[36m@@ -103,7 +103,7 @@[m [mfunction getRankTone(rank: number) {[m
+ }[m
+ [m
+ function formatCountdown(ms: number | null) {[m
+[31m-  if (ms === null) return "Non démarré";[m
+[32m+[m[32m  if (ms === null) return "Non dÃƒÂ©marrÃƒÂ©";[m
+   const safeMs = Math.max(0, ms);[m
+   const totalSeconds = Math.floor(safeMs / 1000);[m
+   const minutes = Math.floor(totalSeconds / 60);[m
+[36m@@ -156,7 +156,7 @@[m [mfunction getSessionLabel(session: Session | null) {[m
+   if (!session) return "Aucune session active";[m
+   const libelle = session.libelle || `Session ${session.ordre_session ?? "-"}`;[m
+   const periode = session.periode_reference || session.periode;[m
+[31m-  return periode ? `${libelle} — ${periode}` : libelle;[m
+[32m+[m[32m  return periode ? `${libelle} Ã¢â‚¬â€ ${periode}` : libelle;[m
+ }[m
+ [m
+ function getLotNumber(lot: Lot) {[m
+[36m@@ -269,7 +269,7 @@[m [mexport default function EncheresPage() {[m
+       setSelectedLot(lotId);[m
+       setLastClassementUpdateAt(new Date().toISOString());[m
+     } catch (err) {[m
+[31m-      console.error("Erreur chargement enchères:", err);[m
+[32m+[m[32m      console.error("Erreur chargement enchÃƒÂ¨res:", err);[m
+       if (!silent) setEncheres([]);[m
+       setSelectedLot(lotId);[m
+     } finally {[m
+[36m@@ -414,7 +414,7 @@[m [mexport default function EncheresPage() {[m
+         const data = await res.json();[m
+ [m
+         if (!res.ok || data?.error) {[m
+[31m-          alert(data?.error || "Erreur clôture automatique de la session");[m
+[32m+[m[32m          alert(data?.error || "Erreur clÃƒÂ´ture automatique de la session");[m
+           setAutoClosing(false);[m
+           return;[m
+         }[m
+[36m@@ -423,10 +423,10 @@[m [mexport default function EncheresPage() {[m
+         await loadLots(sessionActive.id, true);[m
+         if (selectedLot) await loadEncheres(selectedLot, true);[m
+ [m
+[31m-        alert("Le délai sans nouvelle enchère est dépassé. La session a été clôturée automatiquement.");[m
+[32m+[m[32m        alert("Le dÃƒÂ©lai sans nouvelle enchÃƒÂ¨re est dÃƒÂ©passÃƒÂ©. La session a ÃƒÂ©tÃƒÂ© clÃƒÂ´turÃƒÂ©e automatiquement.");[m
+       } catch (err) {[m
+         console.error(err);[m
+[31m-        alert("Erreur clôture automatique de la session");[m
+[32m+[m[32m        alert("Erreur clÃƒÂ´ture automatique de la session");[m
+         setAutoClosing(false);[m
+       }[m
+     };[m
+[36m@@ -460,12 +460,12 @@[m [mexport default function EncheresPage() {[m
+       }[m
+ [m
+       if (!member?.id) {[m
+[31m-        alert("Membre connecté introuvable.");[m
+[32m+[m[32m        alert("Membre connectÃƒÂ© introuvable.");[m
+         return;[m
+       }[m
+ [m
+       if (!sessionActive?.id || normalize(sessionActive.statut_encheres) !== "EN_COURS") {[m
+[31m-        alert("Les enchères ne sont pas en cours.");[m
+[32m+[m[32m        alert("Les enchÃƒÂ¨res ne sont pas en cours.");[m
+         return;[m
+       }[m
+ [m
+[36m@@ -478,12 +478,12 @@[m [mexport default function EncheresPage() {[m
+       }[m
+ [m
+       if (!montantRelance || montantRelance <= 0) {[m
+[31m-        alert("Saisis un montant de renchérissement supérieur à 0 FCFA.");[m
+[32m+[m[32m        alert("Saisis un montant de renchÃƒÂ©rissement supÃƒÂ©rieur ÃƒÂ  0 FCFA.");[m
+         return;[m
+       }[m
+ [m
+       if (montantRelance < 500) {[m
+[31m-        alert("Le renchérissement minimum est de 500 FCFA.");[m
+[32m+[m[32m        alert("Le renchÃƒÂ©rissement minimum est de 500 FCFA.");[m
+         return;[m
+       }[m
+ [m
+[36m@@ -504,7 +504,7 @@[m [mexport default function EncheresPage() {[m
+       const data = await res.json();[m
+ [m
+       if (!res.ok || data?.error) {[m
+[31m-        alert(data?.error || "Erreur création enchère");[m
+[32m+[m[32m        alert(data?.error || "Erreur crÃƒÂ©ation enchÃƒÂ¨re");[m
+         return;[m
+       }[m
+ [m
+[36m@@ -514,7 +514,7 @@[m [mexport default function EncheresPage() {[m
+       await loadEncheres(lotId, true);[m
+     } catch (err) {[m
+       console.error(err);[m
+[31m-      alert("Erreur création enchère");[m
+[32m+[m[32m      alert("Erreur crÃƒÂ©ation enchÃƒÂ¨re");[m
+     } finally {[m
+       setActionLoading(false);[m
+     }[m
+[36m@@ -538,7 +538,7 @@[m [mexport default function EncheresPage() {[m
+       const data = await res.json();[m
+ [m
+       if (!res.ok || data?.error) {[m
+[31m-        alert(data?.error || "Erreur démarrage enchères");[m
+[32m+[m[32m        alert(data?.error || "Erreur dÃƒÂ©marrage enchÃƒÂ¨res");[m
+         return;[m
+       }[m
+ [m
+[36m@@ -546,7 +546,7 @@[m [mexport default function EncheresPage() {[m
+       await loadLots(sessionActive.id, true);[m
+     } catch (err) {[m
+       console.error(err);[m
+[31m-      alert("Erreur démarrage enchères");[m
+[32m+[m[32m      alert("Erreur dÃƒÂ©marrage enchÃƒÂ¨res");[m
+     } finally {[m
+       setActionLoading(false);[m
+     }[m
+[36m@@ -570,7 +570,7 @@[m [mexport default function EncheresPage() {[m
+       const data = await res.json();[m
+ [m
+       if (!res.ok || data?.error) {[m
+[31m-        alert(data?.error || "Erreur clôture session");[m
+[32m+[m[32m        alert(data?.error || "Erreur clÃƒÂ´ture session");[m
+         return;[m
+       }[m
+ [m
+[36m@@ -579,7 +579,7 @@[m [mexport default function EncheresPage() {[m
+       if (selectedLot) await loadEncheres(selectedLot, true);[m
+     } catch (err) {[m
+       console.error(err);[m
+[31m-      alert("Erreur clôture session");[m
+[32m+[m[32m      alert("Erreur clÃƒÂ´ture session");[m
+     } finally {[m
+       setActionLoading(false);[m
+     }[m
+[36m@@ -600,13 +600,13 @@[m [mexport default function EncheresPage() {[m
+           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">[m
+             <div className="max-w-4xl">[m
+               <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">[m
+[31m-                Enchères en ligne[m
+[32m+[m[32m                EnchÃƒÂ¨res en ligne[m
+               </p>[m
+               <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">[m
+[31m-                Salle d’enchères ASF-NTOL[m
+[32m+[m[32m                Salle dÃ¢â‚¬â„¢enchÃƒÂ¨res ASF-NTOL[m
+               </h1>[m
+               <p className="mt-3 text-sm text-emerald-900/70 md:text-base">[m
+[31m-                Session active, lots disponibles, renchérissement rapide et classement live.[m
+[32m+[m[32m                Session active, lots disponibles, renchÃƒÂ©rissement rapide et classement live.[m
+               </p>[m
+             </div>[m
+ [m
+[36m@@ -633,7 +633,7 @@[m [mexport default function EncheresPage() {[m
+           </article>[m
+ [m
+           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">[m
+[31m-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchères</p>[m
+[32m+[m[32m            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchÃƒÂ¨res</p>[m
+             <div className="mt-2">[m
+               <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(sessionActive?.statut_encheres)}`}>[m
+                 {sessionActive?.statut_encheres || "Indisponible"}[m
+[36m@@ -654,7 +654,7 @@[m [mexport default function EncheresPage() {[m
+           </article>[m
+ [m
+           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">[m
+[31m-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Départ enchères</p>[m
+[32m+[m[32m            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">DÃƒÂ©part enchÃƒÂ¨res</p>[m
+             <p className="mt-2 text-lg font-bold text-slate-900">{formatMontant(sessionActive?.montant_depart_enchere_session)}</p>[m
+           </article>[m
+ [m
+[36m@@ -668,7 +668,7 @@[m [mexport default function EncheresPage() {[m
+           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">[m
+             <div>[m
+               <h2 className="text-xl font-semibold text-emerald-950">Pilotage session</h2>[m
+[31m-              <p className="text-sm text-emerald-900/70">Démarrage du chrono et clôture globale.</p>[m
+[32m+[m[32m              <p className="text-sm text-emerald-900/70">DÃƒÂ©marrage du chrono et clÃƒÂ´ture globale.</p>[m
+             </div>[m
+ [m
+             <div className="flex flex-wrap gap-3">[m
+[36m@@ -678,7 +678,7 @@[m [mexport default function EncheresPage() {[m
+                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "PLANIFIEE" || actionLoading}[m
+                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"[m
+               >[m
+[31m-                Top départ chrono[m
+[32m+[m[32m                Top dÃƒÂ©part chrono[m
+               </button>[m
+ [m
+               <button[m
+[36m@@ -687,7 +687,7 @@[m [mexport default function EncheresPage() {[m
+                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "EN_COURS" || actionLoading}[m
+                 className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"[m
+               >[m
+[31m-                Clôturer globalement[m
+[32m+[m[32m                ClÃƒÂ´turer globalement[m
+               </button>[m
+             </div>[m
+           </div>[m
+[36m@@ -696,7 +696,7 @@[m [mexport default function EncheresPage() {[m
+             <div className="flex items-center justify-between gap-3">[m
+               <span className={`text-sm font-semibold ${timerTone.text}`}>Temps restant</span>[m
+               <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${timerTone.chip}`}>[m
+[31m-                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "À surveiller" : "Stable"}[m
+[32m+[m[32m                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "Ãƒâ‚¬ surveiller" : "Stable"}[m
+               </span>[m
+             </div>[m
+ [m
+[36m@@ -711,7 +711,7 @@[m [mexport default function EncheresPage() {[m
+             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">[m
+               <div>[m
+                 <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>[m
+[31m-                <p className="text-sm text-emerald-900/70">Sélectionne un lot pour voir le classement live et enchérir.</p>[m
+[32m+[m[32m                <p className="text-sm text-emerald-900/70">SÃƒÂ©lectionne un lot pour voir le classement live et enchÃƒÂ©rir.</p>[m
+               </div>[m
+ [m
+               {(loadingLots || loadingSessions) && ([m
+[36m@@ -727,7 +727,7 @@[m [mexport default function EncheresPage() {[m
+               </div>[m
+             ) : lots.length === 0 ? ([m
+               <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">[m
+[31m-                Aucun lot trouvé pour cette session.[m
+[32m+[m[32m                Aucun lot trouvÃƒÂ© pour cette session.[m
+               </div>[m
+             ) : ([m
+               <div className="grid gap-4 md:grid-cols-2">[m
+[36m@@ -747,10 +747,10 @@[m [mexport default function EncheresPage() {[m
+                       <div className="flex items-start justify-between gap-3">[m
+                         <div>[m
+                           <p className="text-lg font-bold text-emerald-950">[m
+[31m-                            Lot {lotNumber ?? "-"}{lot.libelle ? ` — ${lot.libelle}` : ""}[m
+[32m+[m[32m                            Lot {lotNumber ?? "-"}{lot.libelle ? ` Ã¢â‚¬â€ ${lot.libelle}` : ""}[m
+                           </p>[m
+                           <p className="mt-1 text-sm text-emerald-900/65">[m
+[31m-                            Période : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}[m
+[32m+[m[32m                            PÃƒÂ©riode : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}[m
+                           </p>[m
+                         </div>[m
+ [m
+[36m@@ -761,7 +761,7 @@[m [mexport default function EncheresPage() {[m
+ [m
+                       <div className="mt-5 grid gap-3 sm:grid-cols-2">[m
+                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">[m
+[31m-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Départ</p>[m
+[32m+[m[32m                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">DÃƒÂ©part</p>[m
+                           <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.montant_depart_enchere)}</p>[m
+                         </div>[m
+ [m
+[36m@@ -801,19 +801,19 @@[m [mexport default function EncheresPage() {[m
+                   <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>[m
+                   <p className="text-sm text-emerald-900/70">[m
+                     {selectedLotData[m
+[31m-                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`[m
+[31m-                      : "Sélectionne un lot pour afficher le classement"}[m
+[32m+[m[32m                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` Ã¢â‚¬â€ ${selectedLotData.libelle}` : ""}`[m
+[32m+[m[32m                      : "SÃƒÂ©lectionne un lot pour afficher le classement"}[m
+                   </p>[m
+                 </div>[m
+ [m
+                 <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">[m
+[31m-                  {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}[m
+[32m+[m[32m                  {liveAgeSeconds === null ? "Mise ÃƒÂ  jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}[m
+                 </span>[m
+               </div>[m
+ [m
+               {!selectedLot ? ([m
+                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">[m
+[31m-                  Aucun lot sélectionné.[m
+[32m+[m[32m                  Aucun lot sÃƒÂ©lectionnÃƒÂ©.[m
+                 </div>[m
+               ) : loadingEncheres ? ([m
+                 <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">[m
+[36m@@ -821,7 +821,7 @@[m [mexport default function EncheresPage() {[m
+                 </div>[m
+               ) : encheres.length === 0 ? ([m
+                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">[m
+[31m-                  Aucune enchère pour ce lot.[m
+[32m+[m[32m                  Aucune enchÃƒÂ¨re pour ce lot.[m
+                 </div>[m
+               ) : ([m
+                 <div className="mt-5 space-y-3">[m
+[36m@@ -867,25 +867,25 @@[m [mexport default function EncheresPage() {[m
+ [m
+             <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">[m
+               <div className="mb-4">[m
+[31m-                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>[m
+[32m+[m[32m                <h2 className="text-xl font-semibold text-emerald-950">RenchÃƒÂ©rissement rapide</h2>[m
+                 <p className="text-sm text-emerald-900/70">Tu ajoutes un montant au meilleur total actuel.</p>[m
+               </div>[m
+ [m
+               {!selectedLotData ? ([m
+                 <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">[m
+[31m-                  Sélectionne d’abord un lot.[m
+[32m+[m[32m                  SÃƒÂ©lectionne dÃ¢â‚¬â„¢abord un lot.[m
+                 </div>[m
+               ) : normalize(sessionActive?.statut_encheres) !== "EN_COURS" ? ([m
+                 <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">[m
+[31m-                  Les enchères ne sont pas en cours.[m
+[32m+[m[32m                  Les enchÃƒÂ¨res ne sont pas en cours.[m
+                 </div>[m
+               ) : ([m
+                 <div className="space-y-4">[m
+                   <div className="grid gap-3 sm:grid-cols-2">[m
+                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">[m
+[31m-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sélectionné</p>[m
+[32m+[m[32m                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sÃƒÂ©lectionnÃƒÂ©</p>[m
+                       <p className="mt-1 text-sm font-bold text-slate-900">[m
+[31m-                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}[m
+[32m+[m[32m                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` Ã¢â‚¬â€ ${selectedLotData.libelle}` : ""}[m
+                       </p>[m
+                     </div>[m
+ [m
+[36m@@ -898,7 +898,7 @@[m [mexport default function EncheresPage() {[m
+                   </div>[m
+ [m
+                   <label className="block">[m
+[31m-                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant d’ajout</span>[m
+[32m+[m[32m                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant dÃ¢â‚¬â„¢ajout</span>[m
+                     <input[m
+                       type="number"[m
+                       min={500}[m
+[36m@@ -929,11 +929,11 @@[m [mexport default function EncheresPage() {[m
+                     disabled={actionLoading || authLoading || !member?.id}[m
+                     className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"[m
+                   >[m
+[31m-                    {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}[m
+[32m+[m[32m                    {actionLoading ? "Traitement..." : "EnchÃƒÂ©rir sur ce lot"}[m
+                   </button>[m
+ [m
+                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">[m
+[31m-                    Le renchérissement minimum reste de 500 FCFA.[m
+[32m+[m[32m                    Le renchÃƒÂ©rissement minimum reste de 500 FCFA.[m
+                   </div>[m
+                 </div>[m
+               )}[m
+[36m@@ -943,4 +943,4 @@[m [mexport default function EncheresPage() {[m
+   

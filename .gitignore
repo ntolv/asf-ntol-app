@@ -33,3 +33,5 @@ src/components/ui/MobileBottomNav-final.tsx
 .next/
 .vercel/
 .env.local
+
+_backups/
