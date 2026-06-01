@@ -35,3 +35,6 @@ src/components/ui/MobileBottomNav-final.tsx
 .env.local
 
 _backups/
+*.bak-*
+*.backup
+*.old
