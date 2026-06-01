@@ -1,10 +1,18 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type CycleParams = {
   id?: string;
+  cycle_id?: string | null;
+  cycle_code?: string | null;
+  cycle_libelle?: string | null;
+  statut_cycle?: string | null;
+  nb_tontineurs?: number | string | null;
+  nb_sessions?: number | string | null;
+  nb_lots_total?: number | string | null;
+  contribution_globale_mensuelle?: number | string | null;
   annee_cycle?: number | string | null;
   libelle_cycle?: string | null;
   montant_fixe_par_tontineur?: number | string | null;
@@ -145,7 +153,7 @@ export default function TontinePage() {
 
     setForm({
       annee_cycle: payload?.annee_cycle ? String(payload.annee_cycle) : "",
-      libelle_cycle: payload?.libelle_cycle ? String(payload.libelle_cycle) : "",
+      libelle_cycle: payload?.cycle_libelle ? String(payload.cycle_libelle) : payload?.libelle_cycle ? String(payload.libelle_cycle) : "",
       montant_fixe_par_tontineur: payload?.montant_fixe_par_tontineur
         ? String(payload.montant_fixe_par_tontineur)
         : "",
@@ -440,7 +448,7 @@ export default function TontinePage() {
                     Nombre de tontineurs
                   </p>
                   <p className="mt-2 text-xl font-black text-slate-900">
-                    {cycleParams?.nb_tontineurs_inscrits ?? "-"}
+                    {cycleParams?.nb_tontineurs ?? cycleParams?.nb_tontineurs_inscrits ?? "-"}
                   </p>
                 </div>
 
