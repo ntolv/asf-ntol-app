@@ -1,47 +1,67 @@
-'use client'
+﻿"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       if (!supabase?.auth) {
-        setError('Configuration Supabase absente')
-        return
+        setError("Configuration Supabase absente");
+        return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-      if (error) {
-        setError('Email ou mot de passe incorrect')
-        return
+      if (loginError) {
+        setError("Email ou mot de passe incorrect");
+        return;
       }
 
-      router.push('/')
-      router.refresh()
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        setError("Session Supabase non créée. Reconnecte-toi.");
+        return;
+      }
+
+      const contextResponse = await fetch("/api/auth/context", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const context = await contextResponse.json().catch(() => null);
+
+      if (!context?.success || !context?.membreId) {
+        setError(context?.message || "Compte connecté, mais membre ASF-NTOL introuvable.");
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
     } catch {
-      setError('Une erreur est survenue')
+      setError("Une erreur est survenue");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="card-3d p-8">
@@ -92,7 +112,7 @@ export default function LoginPage() {
               <Lock className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
@@ -134,9 +154,9 @@ export default function LoginPage() {
 
       <div className="mt-6 text-center space-y-2">
         <p className="text-sm text-gray-600">
-          Première connexion ?{' '}
+          Première connexion ?{" "}
           <button
-            onClick={() => router.push('/preinscription')}
+            onClick={() => router.push("/preinscription")}
             className="text-green-600 hover:text-green-700 font-medium"
           >
             Créer mon compte
@@ -152,5 +172,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }
