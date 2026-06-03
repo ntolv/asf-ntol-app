@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -43,13 +43,19 @@ type SessionRow = {
 
 type GagnantRow = {
   id?: string;
-  membre_nom?: string | null;
+  membre_id?: string | null;
+  cycle_id?: string | null;
+  session_id?: string | null;
+  lot_id?: string | null;
+  periode?: string | null;
+  lot?: number | null;
   nom_complet?: string | null;
-  lot_libelle?: string | null;
-  lot_numero?: number | null;
-  montant_enchere?: number | string | null;
+  membre_nom?: string | null;
+  mise_brute?: number | string | null;
+  total_relances?: number | string | null;
   gain_reel?: number | string | null;
-  [key: string]: unknown;
+  date_attribution?: string | null;
+  statut_gain?: string | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -702,7 +708,7 @@ export default function TontinePage() {
                         Lot
                       </p>
                       <h3 className="mt-2 text-lg font-black text-slate-900">
-                        {item.lot_libelle || `Lot ${item.lot_numero ?? index + 1}`}
+                        {`Lot ${item.lot ?? index + 1}`}
                       </h3>
                       <p className="mt-3 text-sm text-slate-600">
                         Gagnant :{" "}
@@ -711,13 +717,13 @@ export default function TontinePage() {
                         </span>
                       </p>
                       <p className="mt-2 text-sm text-slate-600">
-                        Enchère :{" "}
+                        Montant enchères :{" "}
                         <span className="font-semibold text-slate-900">
-                          {formatMoney(item.montant_enchere)}
+                          {formatMoney(item.total_relances)}
                         </span>
                       </p>
                       <p className="mt-2 text-sm text-slate-600">
-                        Gain réel :{" "}
+                        Montant net tontine :{" "}
                         <span className="font-semibold text-slate-900">
                           {formatMoney(item.gain_reel)}
                         </span>
@@ -733,4 +739,7 @@ export default function TontinePage() {
     </div>
   );
 }
+
+
+
 

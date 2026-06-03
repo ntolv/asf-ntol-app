@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,22 +49,6 @@ type Enchere = {
   statut?: string | null;
 };
 
-type GagnantSession = {
-  id: string;
-  membre_id?: string | null;
-  cycle_id?: string | null;
-  session_id: string;
-  lot_id?: string | null;
-  periode?: string | null;
-  lot?: number | null;
-  nom_complet?: string | null;
-  mise_brute?: number | string | null;
-  total_relances?: number | string | null;
-  gain_reel?: number | string | null;
-  date_attribution?: string | null;
-  statut_gain?: string | null;
-};
-
 function normalize(value: unknown) {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -79,7 +63,7 @@ function formatMontant(value: unknown) {
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return "Non dÃ©marrÃ©";
+  if (!value) return "Non démarré";
   return new Date(value).toLocaleString("fr-FR");
 }
 
@@ -119,7 +103,7 @@ function getRankTone(rank: number) {
 }
 
 function formatCountdown(ms: number | null) {
-  if (ms === null) return "Non dÃ©marrÃ©";
+  if (ms === null) return "Non démarré";
   const safeMs = Math.max(0, ms);
   const totalSeconds = Math.floor(safeMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -172,7 +156,7 @@ function getSessionLabel(session: Session | null) {
   if (!session) return "Aucune session active";
   const libelle = session.libelle || `Session ${session.ordre_session ?? "-"}`;
   const periode = session.periode_reference || session.periode;
-  return periode ? `${libelle} â€” ${periode}` : libelle;
+  return periode ? `${libelle} — ${periode}` : libelle;
 }
 
 function getLotNumber(lot: Lot) {
@@ -205,13 +189,11 @@ export default function EncheresPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
   const [encheres, setEncheres] = useState<Enchere[]>([]);
-  const [gagnants, setGagnants] = useState<GagnantSession[]>([]);
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
 
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingLots, setLoadingLots] = useState(false);
   const [loadingEncheres, setLoadingEncheres] = useState(false);
-  const [loadingGagnants, setLoadingGagnants] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [autoClosing, setAutoClosing] = useState(false);
 
@@ -274,36 +256,6 @@ export default function EncheresPage() {
     }
   }, []);
 
-  const loadGagnants = useCallback(async (sessionId?: string | null, silent = false) => {
-    if (!sessionId) {
-      setGagnants([]);
-      return;
-    }
-
-    if (!silent) setLoadingGagnants(true);
-
-    try {
-      const res = await fetch(`/api/tontine/gagnants-session?session_id=${sessionId}`, {
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        console.error("Erreur chargement gagnants:", data?.error || data);
-        if (!silent) setGagnants([]);
-        return;
-      }
-
-      setGagnants(readRows<GagnantSession>(data));
-    } catch (err) {
-      console.error("Erreur chargement gagnants:", err);
-      if (!silent) setGagnants([]);
-    } finally {
-      if (!silent) setLoadingGagnants(false);
-    }
-  }, []);
   const loadEncheres = useCallback(async (lotId: string, silent = false) => {
     if (!silent) setLoadingEncheres(true);
 
@@ -317,7 +269,7 @@ export default function EncheresPage() {
       setSelectedLot(lotId);
       setLastClassementUpdateAt(new Date().toISOString());
     } catch (err) {
-      console.error("Erreur chargement enchÃ¨res:", err);
+      console.error("Erreur chargement enchères:", err);
       if (!silent) setEncheres([]);
       setSelectedLot(lotId);
     } finally {
@@ -340,7 +292,6 @@ export default function EncheresPage() {
   useEffect(() => {
     setSelectedLot(null);
     setEncheres([]);
-    setGagnants([]);
     setLotBidValues({});
     setLastClassementUpdateAt(null);
     setAutoClosing(false);
@@ -349,11 +300,6 @@ export default function EncheresPage() {
   useEffect(() => {
     loadLots(sessionActive?.id, false);
   }, [sessionActive?.id, loadLots]);
-
-  useEffect(() => {
-    loadGagnants(sessionActive?.id, false);
-  }, [sessionActive?.id, loadGagnants]);
-
 
   useEffect(() => {
     if (!sessionActive?.id) return;
@@ -468,20 +414,19 @@ export default function EncheresPage() {
         const data = await res.json();
 
         if (!res.ok || data?.error) {
-          alert(data?.error || "Erreur clÃ´ture automatique de la session");
+          alert(data?.error || "Erreur clôture automatique de la session");
           setAutoClosing(false);
           return;
         }
 
         await loadSessions(true);
         await loadLots(sessionActive.id, true);
-        await loadGagnants(sessionActive.id, true);
         if (selectedLot) await loadEncheres(selectedLot, true);
 
-        alert("Le dÃ©lai sans nouvelle enchÃ¨re est dÃ©passÃ©. La session a Ã©tÃ© clÃ´turÃ©e automatiquement.");
+        alert("Le délai sans nouvelle enchère est dépassé. La session a été clôturée automatiquement.");
       } catch (err) {
         console.error(err);
-        alert("Erreur clÃ´ture automatique de la session");
+        alert("Erreur clôture automatique de la session");
         setAutoClosing(false);
       }
     };
@@ -515,12 +460,12 @@ export default function EncheresPage() {
       }
 
       if (!member?.id) {
-        alert("Membre connectÃ© introuvable.");
+        alert("Membre connecté introuvable.");
         return;
       }
 
       if (!sessionActive?.id || normalize(sessionActive.statut_encheres) !== "EN_COURS") {
-        alert("Les enchÃ¨res ne sont pas en cours.");
+        alert("Les enchères ne sont pas en cours.");
         return;
       }
 
@@ -533,12 +478,12 @@ export default function EncheresPage() {
       }
 
       if (!montantRelance || montantRelance <= 0) {
-        alert("Saisis un montant de renchÃ©rissement supÃ©rieur Ã  0 FCFA.");
+        alert("Saisis un montant de renchérissement supérieur à 0 FCFA.");
         return;
       }
 
       if (montantRelance < 500) {
-        alert("Le renchÃ©rissement minimum est de 500 FCFA.");
+        alert("Le renchérissement minimum est de 500 FCFA.");
         return;
       }
 
@@ -559,7 +504,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur crÃ©ation enchÃ¨re");
+        alert(data?.error || "Erreur création enchère");
         return;
       }
 
@@ -569,7 +514,7 @@ export default function EncheresPage() {
       await loadEncheres(lotId, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur crÃ©ation enchÃ¨re");
+      alert("Erreur création enchère");
     } finally {
       setActionLoading(false);
     }
@@ -593,7 +538,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur dÃ©marrage enchÃ¨res");
+        alert(data?.error || "Erreur démarrage enchères");
         return;
       }
 
@@ -601,7 +546,7 @@ export default function EncheresPage() {
       await loadLots(sessionActive.id, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur dÃ©marrage enchÃ¨res");
+      alert("Erreur démarrage enchères");
     } finally {
       setActionLoading(false);
     }
@@ -625,7 +570,7 @@ export default function EncheresPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        alert(data?.error || "Erreur clÃ´ture session");
+        alert(data?.error || "Erreur clôture session");
         return;
       }
 
@@ -634,7 +579,7 @@ export default function EncheresPage() {
       if (selectedLot) await loadEncheres(selectedLot, true);
     } catch (err) {
       console.error(err);
-      alert("Erreur clÃ´ture session");
+      alert("Erreur clôture session");
     } finally {
       setActionLoading(false);
     }
@@ -655,13 +600,13 @@ export default function EncheresPage() {
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">
-                EnchÃ¨res en ligne
+                Enchères en ligne
               </p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-emerald-950 md:text-4xl">
-                Salle dâ€™enchÃ¨res ASF-NTOL
+                Salle d’enchères ASF-NTOL
               </h1>
               <p className="mt-3 text-sm text-emerald-900/70 md:text-base">
-                Session active, lots disponibles, renchÃ©rissement rapide et classement live.
+                Session active, lots disponibles, renchérissement rapide et classement live.
               </p>
             </div>
 
@@ -670,10 +615,7 @@ export default function EncheresPage() {
                 type="button"
                 onClick={() => {
                   loadSessions(false);
-                  if (sessionActive?.id) {
-                    loadLots(sessionActive.id, false);
-                    loadGagnants(sessionActive.id, false);
-                  }
+                  if (sessionActive?.id) loadLots(sessionActive.id, false);
                   if (selectedLot) loadEncheres(selectedLot, false);
                 }}
                 className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
@@ -691,7 +633,7 @@ export default function EncheresPage() {
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchÃ¨res</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Statut enchères</p>
             <div className="mt-2">
               <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getBadgeClass(sessionActive?.statut_encheres)}`}>
                 {sessionActive?.statut_encheres || "Indisponible"}
@@ -712,7 +654,7 @@ export default function EncheresPage() {
           </article>
 
           <article className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">DÃ©part enchÃ¨res</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Départ enchères</p>
             <p className="mt-2 text-lg font-bold text-slate-900">{formatMontant(sessionActive?.montant_depart_enchere_session)}</p>
           </article>
 
@@ -726,7 +668,7 @@ export default function EncheresPage() {
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-emerald-950">Pilotage session</h2>
-              <p className="text-sm text-emerald-900/70">DÃ©marrage du chrono et clÃ´ture globale.</p>
+              <p className="text-sm text-emerald-900/70">Démarrage du chrono et clôture globale.</p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -736,7 +678,7 @@ export default function EncheresPage() {
                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "PLANIFIEE" || actionLoading}
                 className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                Top dÃ©part chrono
+                Top départ chrono
               </button>
 
               <button
@@ -745,7 +687,7 @@ export default function EncheresPage() {
                 disabled={!sessionActive || normalize(sessionActive.statut_encheres) !== "EN_COURS" || actionLoading}
                 className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                ClÃ´turer globalement
+                Clôturer globalement
               </button>
             </div>
           </div>
@@ -754,7 +696,7 @@ export default function EncheresPage() {
             <div className="flex items-center justify-between gap-3">
               <span className={`text-sm font-semibold ${timerTone.text}`}>Temps restant</span>
               <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${timerTone.chip}`}>
-                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "Ã€ surveiller" : "Stable"}
+                {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "À surveiller" : "Stable"}
               </span>
             </div>
 
@@ -764,76 +706,12 @@ export default function EncheresPage() {
           </div>
         </section>
 
-                <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-emerald-950">Résultats gagnants</h2>
-              <p className="text-sm text-emerald-900/70">
-                Liste des gagnants attribués avec montant net tontine et montant enchères.
-              </p>
-            </div>
-
-            <span className="inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-              {gagnants.length} gagnant{gagnants.length > 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {loadingGagnants ? (
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-6 text-sm text-slate-600">
-              Chargement des gagnants...
-            </div>
-          ) : gagnants.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-              Aucun gagnant disponible pour cette session.
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-3xl border border-emerald-100">
-              <div className="grid grid-cols-4 bg-emerald-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">
-                <span>Gagnant</span>
-                <span>Lot</span>
-                <span>Montant net tontine</span>
-                <span>Montant enchères</span>
-              </div>
-
-              <div className="divide-y divide-emerald-100">
-                {gagnants.map((g) => (
-                  <div key={g.id} className="grid grid-cols-4 items-center gap-3 px-4 py-4 text-sm">
-                    <div>
-                      <p className="font-bold text-slate-900">{g.nom_complet || "-"}</p>
-                      <p className="text-xs text-slate-500">{g.periode || "-"}</p>
-                    </div>
-
-                    <p className="font-semibold text-slate-700">Lot {g.lot ?? "-"}</p>
-
-                    <p className="font-black text-emerald-800">
-                      {formatMontant(g.gain_reel)}
-                    </p>
-
-                    <p className="font-black text-amber-700">
-                      {formatMontant(g.total_relances)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-4 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-900">
-                <span className="col-span-2">Total session</span>
-                <span className="text-emerald-800">
-                  {formatMontant(gagnants.reduce((sum, g) => sum + Number(g.gain_reel || 0), 0))}
-                </span>
-                <span className="text-amber-700">
-                  {formatMontant(gagnants.reduce((sum, g) => sum + Number(g.total_relances || 0), 0))}
-                </span>
-              </div>
-            </div>
-          )}
-        </section>
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-emerald-950">Lots de la session</h2>
-                <p className="text-sm text-emerald-900/70">SÃ©lectionne un lot pour voir le classement live et enchÃ©rir.</p>
+                <p className="text-sm text-emerald-900/70">Sélectionne un lot pour voir le classement live et enchérir.</p>
               </div>
 
               {(loadingLots || loadingSessions) && (
@@ -849,7 +727,7 @@ export default function EncheresPage() {
               </div>
             ) : lots.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                Aucun lot trouvÃ© pour cette session.
+                Aucun lot trouvé pour cette session.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
@@ -869,10 +747,10 @@ export default function EncheresPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-lg font-bold text-emerald-950">
-                            Lot {lotNumber ?? "-"}{lot.libelle ? ` â€” ${lot.libelle}` : ""}
+                            Lot {lotNumber ?? "-"}{lot.libelle ? ` — ${lot.libelle}` : ""}
                           </p>
                           <p className="mt-1 text-sm text-emerald-900/65">
-                            PÃ©riode : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}
+                            Période : {lot.periode || sessionActive?.periode_reference || sessionActive?.periode || "-"}
                           </p>
                         </div>
 
@@ -883,7 +761,7 @@ export default function EncheresPage() {
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">DÃ©part</p>
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Départ</p>
                           <p className="mt-1 text-sm font-bold text-slate-900">{formatMontant(lot.montant_depart_enchere)}</p>
                         </div>
 
@@ -923,15 +801,15 @@ export default function EncheresPage() {
                   <h2 className="text-xl font-semibold text-emerald-950">Classement live</h2>
                   <p className="text-sm text-emerald-900/70">
                     {selectedLotData
-                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` â€” ${selectedLotData.libelle}` : ""}`
-                      : "SÃ©lectionne un lot pour afficher le classement"}
+                      ? `Lot ${getLotNumber(selectedLotData) ?? "-"}${selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}`
+                      : "Sélectionne un lot pour afficher le classement"}
                   </p>
 
                   <div className={`mt-4 rounded-2xl border p-4 ${timerTone.card}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${timerTone.text}`}>
-                          Timer enchÃ¨res
+                          Timer enchères
                         </p>
                         <p className={`mt-1 text-3xl font-black tracking-tight ${timerTone.text}`}>
                           {timerText}
@@ -939,7 +817,7 @@ export default function EncheresPage() {
                       </div>
 
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${timerTone.chip}`}>
-                        {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "Ã€ surveiller" : "Stable"}
+                        {remainingMs === null ? "Inactif" : timerProgressPercent <= 20 ? "Fin proche" : timerProgressPercent <= 45 ? "À surveiller" : "Stable"}
                       </span>
                     </div>
 
@@ -953,13 +831,13 @@ export default function EncheresPage() {
                 </div>
 
                 <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                  {liveAgeSeconds === null ? "Mise Ã  jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
+                  {liveAgeSeconds === null ? "Mise à jour en attente" : `MAJ il y a ${liveAgeSeconds}s`}
                 </span>
               </div>
 
               {!selectedLot ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucun lot sÃ©lectionnÃ©.
+                  Aucun lot sélectionné.
                 </div>
               ) : loadingEncheres ? (
                 <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-8 text-sm text-slate-600">
@@ -967,7 +845,7 @@ export default function EncheresPage() {
                 </div>
               ) : encheres.length === 0 ? (
                 <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  Aucune enchÃ¨re pour ce lot.
+                  Aucune enchère pour ce lot.
                 </div>
               ) : (
                 <div className="mt-5 space-y-3">
@@ -1013,25 +891,25 @@ export default function EncheresPage() {
 
             <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-emerald-950">RenchÃ©rissement rapide</h2>
+                <h2 className="text-xl font-semibold text-emerald-950">Renchérissement rapide</h2>
                 <p className="text-sm text-emerald-900/70">Tu ajoutes un montant au meilleur total actuel.</p>
               </div>
 
               {!selectedLotData ? (
                 <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 px-6 py-8 text-center text-sm text-emerald-900/70">
-                  SÃ©lectionne dâ€™abord un lot.
+                  Sélectionne d’abord un lot.
                 </div>
               ) : normalize(sessionActive?.statut_encheres) !== "EN_COURS" ? (
                 <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center text-sm text-slate-600">
-                  Les enchÃ¨res ne sont pas en cours.
+                  Les enchères ne sont pas en cours.
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sÃ©lectionnÃ©</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Lot sélectionné</p>
                       <p className="mt-1 text-sm font-bold text-slate-900">
-                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` â€” ${selectedLotData.libelle}` : ""}
+                        Lot {getLotNumber(selectedLotData) ?? "-"}{selectedLotData.libelle ? ` — ${selectedLotData.libelle}` : ""}
                       </p>
                     </div>
 
@@ -1044,7 +922,7 @@ export default function EncheresPage() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant dâ€™ajout</span>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Montant d’ajout</span>
                     <input
                       type="number"
                       min={500}
@@ -1075,11 +953,11 @@ export default function EncheresPage() {
                     disabled={actionLoading || authLoading || !member?.id}
                     className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {actionLoading ? "Traitement..." : "EnchÃ©rir sur ce lot"}
+                    {actionLoading ? "Traitement..." : "Enchérir sur ce lot"}
                   </button>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Le renchÃ©rissement minimum reste de 500 FCFA.
+                    Le renchérissement minimum reste de 500 FCFA.
                   </div>
                 </div>
               )}
