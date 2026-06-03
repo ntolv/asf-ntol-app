@@ -20,6 +20,40 @@ function bySum(rows: Row[], key: string) {
   return rows.reduce((sum, row) => sum + n(row[key]), 0);
 }
 
+function normalizeText(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function classifyDecaissement(row: Row): "AIDE" | "PRET" | "AUTRE" {
+  const text = [
+    row.caisse_libelle,
+    row.rubrique_nom,
+    row.motif,
+  ].map(normalizeText).join(" ");
+
+  if (
+    text.includes("pret") ||
+    text.includes("prets") ||
+    text.includes("investissement") ||
+    text.includes("developpement")
+  ) {
+    return "PRET";
+  }
+
+  if (
+    text.includes("aide") ||
+    text.includes("secours") ||
+    text.includes("solidarite")
+  ) {
+    return "AIDE";
+  }
+
+  return "AUTRE";
+}
+
 export async function GET() {
   try {
     const supabase = createClient(
@@ -80,15 +114,18 @@ export async function GET() {
     const partRedistribution = bySum(tontineRows, "part_redistribution_par_tontineur");
 
     const totalDecaissements = bySum(decaissementRows, "montant");
+
     const totalAides = decaissementRows
-      .filter((row) => `${row.rubrique_nom ?? row.caisse_libelle ?? ""}`.toLowerCase().includes("aide"))
+      .filter((row) => classifyDecaissement(row) === "AIDE")
       .reduce((sum, row) => sum + n(row.montant), 0);
 
     const totalPrets = decaissementRows
-      .filter((row) => `${row.rubrique_nom ?? row.caisse_libelle ?? ""}`.toLowerCase().includes("prêt") || `${row.rubrique_nom ?? row.caisse_libelle ?? ""}`.toLowerCase().includes("pret"))
+      .filter((row) => classifyDecaissement(row) === "PRET")
       .reduce((sum, row) => sum + n(row.montant), 0);
 
-    const totalAutres = totalDecaissements - totalAides - totalPrets;
+    const totalAutres = decaissementRows
+      .filter((row) => classifyDecaissement(row) === "AUTRE")
+      .reduce((sum, row) => sum + n(row.montant), 0);
 
     const retardsByMember = new Map<string, Row>();
 
@@ -175,3 +212,4 @@ export async function GET() {
     );
   }
 }
+
