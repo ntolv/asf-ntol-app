@@ -30,6 +30,7 @@ type SessionRow = {
   cycle_id?: string | null;
   ordre_session?: number | null;
   libelle?: string | null;
+  periode?: string | null;
   periode_reference?: string | null;
   statut_session?: string | null;
   statut_encheres?: string | null;
@@ -50,7 +51,6 @@ type GagnantRow = {
   periode?: string | null;
   lot?: number | null;
   nom_complet?: string | null;
-  membre_nom?: string | null;
   mise_brute?: number | string | null;
   total_relances?: number | string | null;
   gain_reel?: number | string | null;
@@ -70,6 +70,10 @@ function normalizeStatus(value: unknown): "PLANIFIEE" | "EN_COURS" | "TERMINEE" 
   if (raw === "EN_COURS") return "EN_COURS";
   if (raw === "TERMINEE") return "TERMINEE";
   return "AUTRE";
+}
+
+function normalizeStatusValue(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
 }
 
 function formatStatus(value: unknown) {
@@ -129,6 +133,7 @@ export default function TontinePage() {
   const [sessionsPlanifiees, setSessionsPlanifiees] = useState<SessionRow[]>([]);
   const [gagnants, setGagnants] = useState<GagnantRow[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+  const [selectedResultSessionId, setSelectedResultSessionId] = useState<string>("");
 
   const [form, setForm] = useState({
     annee_cycle: "",
@@ -251,9 +256,21 @@ export default function TontinePage() {
   }, [refreshKey]);
 
   useEffect(() => {
-    void loadGagnants(selectedSessionId);
-  }, [selectedSessionId]);
+    void loadGagnants(selectedResultSessionId);
+  }, [selectedResultSessionId]);
 
+  useEffect(() => {
+    if (selectedResultSessionId || sessions.length === 0) return;
+
+    const sessionAvecResultat =
+      sessions.find((session) => normalizeStatusValue(session.statut_session) === "TERMINEE") ||
+      sessions.find((session) => normalizeStatusValue(session.statut_encheres) === "TERMINEE") ||
+      sessions[0];
+
+    if (sessionAvecResultat?.id) {
+      setSelectedResultSessionId(sessionAvecResultat.id);
+    }
+  }, [sessions, selectedResultSessionId]);
   const selectedSession = useMemo(
     () => sessionsPlanifiees.find((row) => row.id === selectedSessionId) ?? null,
     [sessionsPlanifiees, selectedSessionId]
@@ -693,6 +710,25 @@ export default function TontinePage() {
                 </p>
               </div>
 
+              <div className="mt-5 grid gap-3 md:max-w-md">
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Session des résultats</span>
+                  <select
+                    value={selectedResultSessionId}
+                    onChange={(e) => setSelectedResultSessionId(e.target.value)}
+                    className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-400"
+                  >
+                    <option value="">Sélectionner une session</option>
+                    {sessions.map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {(session.libelle || `Session ${session.ordre_session ?? ""}`).trim()} {" "}
+                        {session.periode_reference || session.periode || "Période non renseignée"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {gagnants.length === 0 ? (
                   <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
@@ -713,7 +749,7 @@ export default function TontinePage() {
                       <p className="mt-3 text-sm text-slate-600">
                         Gagnant :{" "}
                         <span className="font-semibold text-slate-900">
-                          {item.nom_complet || item.membre_nom || "-"}
+                          {item.nom_complet || "-"}
                         </span>
                       </p>
                       <p className="mt-2 text-sm text-slate-600">
@@ -728,6 +764,12 @@ export default function TontinePage() {
                           {formatMoney(item.gain_reel)}
                         </span>
                       </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Période :{" "}
+                        <span className="font-semibold text-slate-900">
+                          {item.periode || "-"}
+                        </span>
+                      </p>
                     </article>
                   ))
                 )}
@@ -739,6 +781,9 @@ export default function TontinePage() {
     </div>
   );
 }
+
+
+
 
 
 
