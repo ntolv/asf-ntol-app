@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import LogoutButton from "@/components/auth/LogoutButton";
 
 type NavItem = {
@@ -27,6 +28,8 @@ const navItems: NavItem[] = [
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const auth = useAuth?.();
+  const displayName = auth?.member?.nom || "Utilisateur";
 
   return (
     <div
@@ -65,6 +68,10 @@ export default function MobileBottomNav() {
             </Link>
           );
         })}
+
+        <div className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-semibold text-emerald-900 shadow-sm">
+          {displayName}
+        </div>
 
         <LogoutButton compact className="shrink-0 text-xs" />
       </div>
