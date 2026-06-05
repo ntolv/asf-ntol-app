@@ -1,8 +1,20 @@
 ﻿import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 import AppSidebar from "@/components/ui/AppSidebar";
 import MobileBottomNav from "@/components/ui/MobileBottomNav";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <div
       data-dashboard-layout-root="true"
