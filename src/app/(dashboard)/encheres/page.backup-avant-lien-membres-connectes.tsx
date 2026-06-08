@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -612,13 +611,6 @@ export default function EncheresPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/membres-connectes"
-                className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-              >
-                Membres connectes
-              </Link>
-
               <button
                 type="button"
                 onClick={() => {
@@ -680,13 +672,6 @@ export default function EncheresPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/membres-connectes"
-                className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-              >
-                Membres connectes
-              </Link>
-
               <button
                 type="button"
                 onClick={startSession}
