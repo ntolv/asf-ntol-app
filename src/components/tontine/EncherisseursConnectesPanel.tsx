@@ -26,9 +26,7 @@ function uniqueByMember(rows: PresenceUser[]) {
   const map = new Map<string, PresenceUser>();
 
   for (const row of rows) {
-    if (row.member_id) {
-      map.set(row.member_id, row);
-    }
+    if (row.member_id) map.set(row.member_id, row);
   }
 
   return Array.from(map.values()).sort((a, b) =>
@@ -42,18 +40,9 @@ export default function EncherisseursConnectesPanel({ member }: { member: any })
   useEffect(() => {
     if (!member?.id) return;
 
-    const currentUser: PresenceUser = {
-      member_id: member.id,
-      nom_complet: getMemberName(member),
-      page: "encheres",
-      online_at: new Date().toISOString(),
-    };
-
     const channel = supabase.channel("asf-ntol-presence", {
       config: {
-        presence: {
-          key: `encheres-${member.id}`,
-        },
+        presence: { key: `encheres-${member.id}` },
       },
     });
 
@@ -70,7 +59,12 @@ export default function EncherisseursConnectesPanel({ member }: { member: any })
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await channel.track(currentUser);
+          await channel.track({
+            member_id: member.id,
+            nom_complet: getMemberName(member),
+            page: "encheres",
+            online_at: new Date().toISOString(),
+          });
         }
       });
 
@@ -105,13 +99,10 @@ export default function EncherisseursConnectesPanel({ member }: { member: any })
         </Link>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-        <p className="text-sm text-emerald-800">
-          <span className="font-black">{usersOnEncheres.length}</span>{" "}
-          membre{usersOnEncheres.length > 1 ? "s" : ""} pr&eacute;sent
-          {usersOnEncheres.length > 1 ? "s" : ""} dans la salle
-          d&apos;ench&egrave;res.
-        </p>
+      <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <span className="font-black">{usersOnEncheres.length}</span>{" "}
+        membre{usersOnEncheres.length > 1 ? "s" : ""} pr&eacute;sent
+        {usersOnEncheres.length > 1 ? "s" : ""} dans la salle.
       </div>
 
       <div className="mt-4 space-y-2">
@@ -125,15 +116,9 @@ export default function EncherisseursConnectesPanel({ member }: { member: any })
               key={user.member_id}
               className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
             >
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  {user.nom_complet}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Pr&eacute;sent maintenant
-                </p>
-              </div>
-
+              <p className="text-sm font-semibold text-slate-900">
+                {user.nom_complet}
+              </p>
               <span className="h-3 w-3 rounded-full bg-emerald-500" />
             </div>
           ))
