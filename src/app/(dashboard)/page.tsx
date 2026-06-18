@@ -1,134 +1,243 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import PushNotificationPanel from "@/components/push/PushNotificationPanel";
 
+type PilotageResponse = {
+  contributions?: {
+    total_encaisse?: number;
+  };
+  tontine?: {
+    total_encheres?: number;
+    nb_lots_attribues?: number;
+    derniers_gagnants?: Array<{
+      periode?: string;
+      gagnant?: string;
+    }>;
+  };
+  decaissements?: {
+    total_general?: number;
+  };
+  retards?: {
+    montant_total_retards?: number;
+    nb_membres_retard?: number;
+  };
+};
+
 const quickActions = [
-  { href: "/dashboard", label: "Accueil", description: "Vue générale" },
-  { href: "/caisse", label: "Caisse", description: "Paiements et situation" },
-  { href: "/tontine", label: "Tontine", description: "Cycle et sessions" },
-  { href: "/encheres", label: "Enchères", description: "Lots et participation" },
-  { href: "/membres", label: "Profil", description: "Compte et actions" },
+  { href: "/contributions", label: "Encaisser" },
+  { href: "/decaissements", label: "Décaisser" },
+  { href: "/tontine", label: "Tontine" },
+  { href: "/encheres", label: "Enchères" },
+  { href: "/membres-connectes", label: "Connectés" },
 ];
 
-const allPages = [
-  { href: "/dashboard", label: "Dashboard", description: "Situation réelle du membre" },
-  { href: "/bilan", label: "Bilan", description: "Bilan global de l'association" },
-  { href: "/membres", label: "Membres", description: "Gestion et consultation des membres" },
-  { href: "/contributions", label: "Contributions", description: "Contributions des membres" },
-  { href: "/imputations", label: "Imputations", description: "Ventilation des montants" },
-  { href: "/caisse", label: "Caisse", description: "Pilotage des fonds par rubrique" },
-  { href: "/montants-attendus", label: "Montants attendus", description: "Paramétrage initial des attendus" },
-  { href: "/decaissements", label: "Décaissements", description: "Sorties de fonds des caisses" },
-  { href: "/tontine", label: "Tontine", description: "Cycles, sessions et suivi tontine" },
-  { href: "/encheres", label: "Enchères", description: "Lots, participation et suivi" },
-  { href: "/aides", label: "Aides / Secours / Prêts", description: "Transmission des demandes membre" },
-  { href: "/gestion-demandes", label: "Gestion des demandes", description: "Validation bureau des aides et prêts" },
-  { href: "/prets-aides", label: "Prêts / Aides", description: "Historique global de tous les membres" },
-  { href: "/documents", label: "Documents", description: "Documents et pièces de l'association" },
-  { href: "/admin/roles", label: "Administration des rôles", description: "Gestion des accès et rôles" }
+const kpiLinks = [
+  { key: "caisse", href: "/caisse", label: "Caisse disponible" },
+  { key: "retards", href: "/montants-attendus", label: "Retards" },
+  { key: "encheres", href: "/encheres", label: "Enchères" },
+  { key: "decaissements", href: "/decaissements", label: "Décaissements" },
 ];
+
+function money(value: number | undefined) {
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "XAF",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
 
 export default function HomePage() {
+  const [data, setData] = useState<PilotageResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function loadPilotage() {
+    try {
+      const res = await fetch("/api/caisses/pilotage", { cache: "no-store" });
+      if (!res.ok) throw new Error("Erreur chargement pilotage");
+      const json = (await res.json()) as PilotageResponse;
+      setData(json);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPilotage();
+    const timer = window.setInterval(loadPilotage, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const dernierGagnant = data?.tontine?.derniers_gagnants?.[0];
+
+  const values: Record<string, string> = {
+    caisse: money(data?.contributions?.total_encaisse),
+    retards: money(data?.retards?.montant_total_retards),
+    encheres: money(data?.tontine?.total_encheres),
+    decaissements: money(data?.decaissements?.total_general),
+  };
+
   return (
     <>
-      {/* Mobile version */}
       <div className="xl:hidden">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 pb-20">
           <PushNotificationPanel />
 
           <section className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Application mobile
+              Association Famille NTOL
             </p>
             <h1 className="mt-2 text-2xl font-bold text-slate-900">
-              Bienvenue sur ASF-NTOL
+              Centre de pilotage
             </h1>
             <p className="mt-3 text-sm text-slate-600">
-              Accédez rapidement à vos fonctionnalités principales : caisse, tontine, enchères et profil.
+              Vue rapide de la caisse, des retards, des enchères et des décaissements.
             </p>
           </section>
 
-          <section>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Accès principal
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              {quickActions.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-[24px] border border-slate-200 bg-white p-5"
-                >
-                  <p className="text-xl font-bold text-slate-900">{item.label}</p>
-                  <p className="mt-2 text-sm text-slate-500">{item.description}</p>
-                </Link>
-              ))}
-            </div>
+          <section className="grid grid-cols-2 gap-3">
+            {kpiLinks.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-lg font-bold text-slate-900">
+                  {loading ? "..." : values[item.key]}
+                </p>
+              </Link>
+            ))}
           </section>
 
-          <section className="rounded-[24px] border border-slate-200 bg-white p-5">
-            <div className="mb-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                Toutes les pages
-              </p>
-              <h2 className="mt-2 text-xl font-bold text-slate-900">
-                Accès complet
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Retrouvez ici toutes les pages de l'application, au-delà de la navigation basse.
-              </p>
-            </div>
+          <section className="grid grid-cols-2 gap-3">
+            {quickActions.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex min-h-[70px] items-center justify-center rounded-[22px] border border-slate-200 bg-white p-4 text-center text-base font-bold text-slate-900 shadow-sm"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </section>
 
-            <div className="grid gap-3">
-              {allPages.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4"
-                >
-                  <p className="text-base font-bold text-slate-900">{item.label}</p>
-                  <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                </Link>
-              ))}
+          <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Informations
+            </p>
+
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
+              <p>
+                🏆 Dernier gagnant :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading
+                    ? "..."
+                    : dernierGagnant?.gagnant
+                      ? `${dernierGagnant.gagnant}${dernierGagnant.periode ? ` — Session ${dernierGagnant.periode}` : ""}`
+                      : "Aucun gagnant"}
+                </span>
+              </p>
+
+              <p>
+                👥 Membres ayant gagné la tontine :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading ? "..." : data?.tontine?.nb_lots_attribues ?? 0}
+                </span>
+              </p>
+
+              <p>
+                ⚠️ Alerte :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} membres en retard`}
+                </span>
+              </p>
             </div>
           </section>
         </div>
       </div>
 
-      {/* Desktop version */}
       <div className="hidden xl:block">
         <div className="space-y-6 p-4 md:p-6">
+          <PushNotificationPanel />
+
           <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
-            <div className="max-w-4xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                Association Famille NTOL
-              </p>
-              <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-                Bienvenue sur ASF-NTOL
-              </h1>
-              <p className="mt-3 text-sm text-slate-600 md:text-base">
-                Accès rapide à toutes les pages principales de l'application.
-              </p>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Association Famille NTOL
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+              Centre de pilotage
+            </h1>
+            <p className="mt-3 text-base text-slate-600">
+              Vue synthétique de la situation financière et tontine.
+            </p>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {allPages.map((item) => (
+          <section className="grid gap-4 md:grid-cols-4">
+            {kpiLinks.map((item) => (
               <Link
-                key={item.href}
+                key={item.key}
                 href={item.href}
                 className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Accès rapide
-                </p>
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
                   {item.label}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {item.description}
+                </p>
+                <p className="mt-3 text-2xl font-bold text-slate-900">
+                  {loading ? "..." : values[item.key]}
                 </p>
               </Link>
             ))}
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-5">
+            {quickActions.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-[24px] border border-slate-200 bg-white p-5 text-center text-lg font-bold text-slate-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </section>
+
+          <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Informations
+            </p>
+
+            <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
+              <p>
+                🏆 Dernier gagnant :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading
+                    ? "..."
+                    : dernierGagnant?.gagnant
+                      ? `${dernierGagnant.gagnant}${dernierGagnant.periode ? ` — Session ${dernierGagnant.periode}` : ""}`
+                      : "Aucun gagnant"}
+                </span>
+              </p>
+
+              <p>
+                👥 Membres ayant gagné :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading ? "..." : data?.tontine?.nb_lots_attribues ?? 0}
+                </span>
+              </p>
+
+              <p>
+                ⚠️ Alerte :{" "}
+                <span className="font-bold text-slate-900">
+                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} membres en retard`}
+                </span>
+              </p>
+            </div>
           </section>
         </div>
       </div>
