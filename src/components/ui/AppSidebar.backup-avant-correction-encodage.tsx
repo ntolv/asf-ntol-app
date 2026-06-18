@@ -13,30 +13,29 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊", section: "pilotage" },
-  { href: "/bilan", label: "Bilan", icon: "📈", section: "pilotage" },
-  { href: "/caisse", label: "Caisse", icon: "🏦", section: "pilotage" },
-  { href: "/tontine", label: "Tontine", icon: "💚", section: "pilotage" },
-  { href: "/encheres", label: "Enchères", icon: "🔥", section: "pilotage" },
+  { href: "/dashboard", label: "Dashboard", icon: "ðŸ“Š", section: "pilotage" },
+  { href: "/bilan", label: "Bilan", icon: "ðŸ“ˆ", section: "pilotage" },
+  { href: "/caisse", label: "Caisse", icon: "ðŸ¦º", section: "pilotage" },
+  { href: "/tontine", label: "Tontine", icon: "ðŸ’š", section: "pilotage" },
+  { href: "/encheres", label: "EnchÃ¨res", icon: "ðŸ”¥", section: "pilotage" },
 
-  { href: "/membres", label: "Membres", icon: "👥", section: "operations" },
-  { href: "/contributions", label: "Contributions", icon: "💰", section: "operations" },
-  { href: "/imputations", label: "Imputations", icon: "🧾", section: "operations" },
-  { href: "/montants-attendus", label: "Montants attendus", icon: "📌", section: "operations" },
-  { href: "/decaissements", label: "Décaissements", icon: "💸", section: "operations" },
+  { href: "/membres", label: "Membres", icon: "ðŸ‘¥", section: "operations" },
+  { href: "/contributions", label: "Contributions", icon: "ðŸ’°", section: "operations" },
+  { href: "/imputations", label: "Imputations", icon: "ðŸ§¾", section: "operations" },
+  { href: "/montants-attendus", label: "Montants attendus", icon: "ðŸ“Œ", section: "operations" },
+  { href: "/decaissements", label: "DÃ©caissements", icon: "ðŸ’¸", section: "operations" },
 
-  { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝", section: "support" },
-  { href: "/gestion-demandes", label: "Gestion des demandes", icon: "🗂️", section: "support" },
-  { href: "/prets-aides", label: "Prêts / Aides", icon: "📉", section: "support" },
-  { href: "/documents", label: "Documents", icon: "📂", section: "support" },
+  { href: "/aides", label: "Aides / Secours / PrÃªts", icon: "ðŸ¤", section: "support" },
+  { href: "/gestion-demandes", label: "Gestion des demandes", icon: "ðŸ—‚ï¸", section: "support" },
+  { href: "/prets-aides", label: "PrÃªts / Aides", icon: "ðŸ“‰", section: "support" },
+  { href: "/documents", label: "Documents", icon: "ðŸ“‚", section: "support" },
 
-  { href: "/admin/roles", label: "Administration", icon: "⚙️", section: "admin" },
-  { href: "/admin/notifications", label: "Notifications", icon: "📢", section: "admin" },
+  { href: "/admin/roles", label: "Administration", icon: "âš™ï¸", section: "admin" }
 ];
 
 const sections = [
   { key: "pilotage", label: "Pilotage" },
-  { key: "operations", label: "Opérations" },
+  { key: "operations", label: "OpÃ©rations" },
   { key: "support", label: "Support" },
   { key: "admin", label: "Administration" },
 ] as const;
@@ -70,19 +69,19 @@ export default function AppSidebar() {
         </h1>
 
         <p className="mt-2 text-sm text-slate-600">
-          Navigation complète de l’application.
+          Navigation complÃ¨te de lâ€™application.
         </p>
 
         {showMemberName ? (
           <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Membre connecté
+              Membre connectÃ©
             </p>
             <p className="mt-1 text-sm font-bold text-emerald-950">
               {displayedName}
             </p>
             <p className="mt-1 text-xs text-slate-600">
-              {displayedRole || "Rôle indisponible"}
+              {displayedRole || "RÃ´le indisponible"}
             </p>
           </div>
         ) : null}
