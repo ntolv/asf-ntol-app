@@ -18,7 +18,7 @@ function getMemberName(member: unknown) {
     m?.nom_complet ||
     [m?.prenom, m?.nom].filter(Boolean).join(" ") ||
     m?.email ||
-    "Membre connectÃ©"
+    "Membre connecté"
   );
 }
 
@@ -83,7 +83,7 @@ export default function MembresConnectesLink() {
       className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
     >
       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-      Membres connectÃ©s
+      Membres connectés
       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
         {connectedOnEncheres}
       </span>

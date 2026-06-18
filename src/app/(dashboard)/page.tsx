@@ -26,19 +26,54 @@ type PilotageResponse = {
   };
 };
 
+const T = {
+  memberConnected: "Membre connect\u00e9",
+  center: "Centre de pilotage",
+  family: "Association Famille NTOL",
+  mobileDesc:
+    "Vue rapide de la caisse, des retards, des ench\u00e8res et des d\u00e9caissements.",
+  desktopDesc: "Vue synth\u00e9tique de la situation financi\u00e8re et tontine.",
+  dashboard: "Dashboard",
+  encaisser: "Encaisser",
+  decaisser: "D\u00e9caisser",
+  tontine: "Tontine",
+  encheres: "Ench\u00e8res",
+  connectes: "Connect\u00e9s",
+  caisseDisponible: "Caisse disponible",
+  retards: "Retards",
+  decaissements: "D\u00e9caissements",
+  informations: "Informations",
+  lastWinner: "Dernier gagnant",
+  winnersCycle: "Membres ayant gagn\u00e9 la tontine",
+  winners: "Membres ayant gagn\u00e9",
+  alert: "Alerte",
+  noWinner: "Aucun gagnant",
+  membersLate: "membres en retard",
+  loading: "Chargement...",
+  user: "Utilisateur",
+  member: "Membre",
+};
+
+const ICONS = {
+  trophy: "\uD83C\uDFC6",
+  users: "\uD83D\uDC65",
+  warning: "\u26A0\uFE0F",
+};
+
 const quickActions = [
-  { href: "/contributions", label: "Encaisser" },
-  { href: "/decaissements", label: "Décaisser" },
-  { href: "/tontine", label: "Tontine" },
-  { href: "/encheres", label: "Enchères" },
-  { href: "/membres-connectes", label: "Connectés" },
+  { href: "/dashboard", label: T.dashboard },
+  { href: "/contributions", label: T.encaisser },
+  { href: "/decaissements", label: T.decaisser },
+  { href: "/tontine", label: T.tontine },
+  { href: "/encheres", label: T.encheres },
+  { href: "/membres-connectes", label: T.connectes },
 ];
 
 const kpiLinks = [
-  { key: "caisse", href: "/caisse", label: "Caisse disponible" },
-  { key: "retards", href: "/montants-attendus", label: "Retards" },
-  { key: "encheres", href: "/encheres", label: "Enchères" },
-  { key: "decaissements", href: "/decaissements", label: "Décaissements" },
+  { key: "caisse", href: "/caisse", label: T.caisseDisponible },
+  { key: "retards", href: "/montants-attendus", label: T.retards },
+  { key: "encheres", href: "/encheres", label: T.encheres },
+  { key: "decaissements", href: "/decaissements", label: T.decaissements },
 ];
 
 function money(value: number | undefined) {
@@ -82,8 +117,12 @@ export default function HomePage() {
     decaissements: money(data?.decaissements?.total_general),
   };
 
-  const memberName = auth.member?.nom || "Utilisateur";
-  const memberRole = auth.member?.role || auth.member?.roleCode || "Membre";
+  const memberName = auth.member?.nom || T.user;
+  const memberRole = auth.member?.role || auth.member?.roleCode || T.member;
+
+  const winnerText = dernierGagnant?.gagnant
+    ? `${dernierGagnant.gagnant}${dernierGagnant.periode ? ` \u2014 Session ${dernierGagnant.periode}` : ""}`
+    : T.noWinner;
 
   return (
     <>
@@ -93,10 +132,10 @@ export default function HomePage() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Membre connecté
+                  {T.memberConnected}
                 </p>
                 <p className="mt-1 truncate text-lg font-bold text-slate-900">
-                  {auth.loading ? "Chargement..." : memberName}
+                  {auth.loading ? T.loading : memberName}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   {auth.loading ? "" : memberRole}
@@ -109,14 +148,12 @@ export default function HomePage() {
 
           <section className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Association Famille NTOL
+              {T.family}
             </p>
             <h1 className="mt-2 text-2xl font-bold text-slate-900">
-              Centre de pilotage
+              {T.center}
             </h1>
-            <p className="mt-3 text-sm text-slate-600">
-              Vue rapide de la caisse, des retards, des enchères et des décaissements.
-            </p>
+            <p className="mt-3 text-sm text-slate-600">{T.mobileDesc}</p>
           </section>
 
           <section className="grid grid-cols-2 gap-3">
@@ -150,32 +187,28 @@ export default function HomePage() {
 
           <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Informations
+              {T.informations}
             </p>
 
             <div className="mt-4 space-y-3 text-sm text-slate-700">
               <p>
-                🏆 Dernier gagnant :{" "}
+                {ICONS.trophy} {T.lastWinner}:{" "}
                 <span className="font-bold text-slate-900">
-                  {loading
-                    ? "..."
-                    : dernierGagnant?.gagnant
-                      ? `${dernierGagnant.gagnant}${dernierGagnant.periode ? ` — Session ${dernierGagnant.periode}` : ""}`
-                      : "Aucun gagnant"}
+                  {loading ? "..." : winnerText}
                 </span>
               </p>
 
               <p>
-                👥 Membres ayant gagné la tontine :{" "}
+                {ICONS.users} {T.winnersCycle}:{" "}
                 <span className="font-bold text-slate-900">
                   {loading ? "..." : data?.tontine?.nb_lots_attribues ?? 0}
                 </span>
               </p>
 
               <p>
-                ⚠️ Alerte :{" "}
+                {ICONS.warning} {T.alert}:{" "}
                 <span className="font-bold text-slate-900">
-                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} membres en retard`}
+                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} ${T.membersLate}`}
                 </span>
               </p>
             </div>
@@ -189,10 +222,10 @@ export default function HomePage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Membre connecté
+                  {T.memberConnected}
                 </p>
                 <p className="mt-1 text-xl font-bold text-slate-900">
-                  {auth.loading ? "Chargement..." : memberName}
+                  {auth.loading ? T.loading : memberName}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   {auth.loading ? "" : memberRole}
@@ -205,14 +238,12 @@ export default function HomePage() {
 
           <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Association Famille NTOL
+              {T.family}
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">
-              Centre de pilotage
+              {T.center}
             </h1>
-            <p className="mt-3 text-base text-slate-600">
-              Vue synthétique de la situation financière et tontine.
-            </p>
+            <p className="mt-3 text-base text-slate-600">{T.desktopDesc}</p>
           </section>
 
           <section className="grid gap-4 md:grid-cols-4">
@@ -232,7 +263,7 @@ export default function HomePage() {
             ))}
           </section>
 
-          <section className="grid gap-4 md:grid-cols-5">
+          <section className="grid gap-4 md:grid-cols-6">
             {quickActions.map((item) => (
               <Link
                 key={item.href}
@@ -246,32 +277,28 @@ export default function HomePage() {
 
           <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Informations
+              {T.informations}
             </p>
 
             <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
               <p>
-                🏆 Dernier gagnant :{" "}
+                {ICONS.trophy} {T.lastWinner}:{" "}
                 <span className="font-bold text-slate-900">
-                  {loading
-                    ? "..."
-                    : dernierGagnant?.gagnant
-                      ? `${dernierGagnant.gagnant}${dernierGagnant.periode ? ` — Session ${dernierGagnant.periode}` : ""}`
-                      : "Aucun gagnant"}
+                  {loading ? "..." : winnerText}
                 </span>
               </p>
 
               <p>
-                👥 Membres ayant gagné :{" "}
+                {ICONS.users} {T.winners}:{" "}
                 <span className="font-bold text-slate-900">
                   {loading ? "..." : data?.tontine?.nb_lots_attribues ?? 0}
                 </span>
               </p>
 
               <p>
-                ⚠️ Alerte :{" "}
+                {ICONS.warning} {T.alert}:{" "}
                 <span className="font-bold text-slate-900">
-                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} membres en retard`}
+                  {loading ? "..." : `${data?.retards?.nb_membres_retard ?? 0} ${T.membersLate}`}
                 </span>
               </p>
             </div>
