@@ -1,8 +1,9 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 import AppSidebar from "@/components/ui/AppSidebar";
 import MobileBottomNav from "@/components/ui/MobileBottomNav";
+import AlertesButton from "@/components/alertes/AlertesButton";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const supabase = await createSupabaseServerClient();
@@ -25,6 +26,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         className="mx-auto flex h-full min-h-0 w-full max-w-[1800px]"
       >
         <AppSidebar />
+
+        <AlertesButton />
 
         <div className="flex min-w-0 min-h-0 flex-1 flex-col">
           <main
