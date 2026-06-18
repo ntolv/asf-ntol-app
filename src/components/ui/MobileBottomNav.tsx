@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import LogoutButton from "@/components/auth/LogoutButton";
 
 type NavItem = {
   href: string;
@@ -13,23 +11,15 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "/", label: "Accueil", icon: "🏠" },
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/caisse", label: "Finances", icon: "🏦" },
   { href: "/tontine", label: "Tontine", icon: "💚" },
-  { href: "/encheres", label: "Enchères", icon: "🔥" },
   { href: "/membres", label: "Membres", icon: "👥" },
-  { href: "/contributions", label: "Contrib.", icon: "💰" },
-  { href: "/imputations", label: "Imput.", icon: "🧾" },
-  { href: "/caisse", label: "Caisse", icon: "🏦" },
-  { href: "/aides", label: "Aides", icon: "🤝" },
-  { href: "/prets-aides", label: "Invest.", icon: "📈" },
   { href: "/documents", label: "Docs", icon: "📂" },
   { href: "/admin/roles", label: "Admin", icon: "⚙️" },
 ];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const auth = useAuth?.();
-  const displayName = auth?.member?.nom || "Utilisateur";
 
   return (
     <div
@@ -42,10 +32,8 @@ export default function MobileBottomNav() {
           onClick={() => window.history.back()}
           className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-900 shadow-sm"
         >
-          <span className="mobile-bottom-nav-icon mr-1" aria-hidden="true">
-            ←
-          </span>
-          <span className="mobile-bottom-nav-label">Retour</span>
+          <span className="mr-1" aria-hidden="true">←</span>
+          Retour
         </button>
 
         {navItems.map((item) => {
@@ -68,12 +56,6 @@ export default function MobileBottomNav() {
             </Link>
           );
         })}
-
-        <div className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-semibold text-emerald-900 shadow-sm">
-          {displayName}
-        </div>
-
-        <LogoutButton compact className="shrink-0 text-xs" />
       </div>
     </div>
   );

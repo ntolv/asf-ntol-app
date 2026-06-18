@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import PushNotificationPanel from "@/components/push/PushNotificationPanel";
+import LogoutButton from "@/components/auth/LogoutButton";
+import { useAuth } from "@/hooks/useAuth";
 
 type PilotageResponse = {
   contributions?: {
@@ -49,6 +50,7 @@ function money(value: number | undefined) {
 }
 
 export default function HomePage() {
+  const auth = useAuth();
   const [data, setData] = useState<PilotageResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,11 +82,30 @@ export default function HomePage() {
     decaissements: money(data?.decaissements?.total_general),
   };
 
+  const memberName = auth.member?.nom || "Utilisateur";
+  const memberRole = auth.member?.role || auth.member?.roleCode || "Membre";
+
   return (
     <>
       <div className="xl:hidden">
         <div className="flex flex-col gap-4 pb-20">
-          <PushNotificationPanel />
+          <section className="rounded-[24px] border border-emerald-100 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Membre connecté
+                </p>
+                <p className="mt-1 truncate text-lg font-bold text-slate-900">
+                  {auth.loading ? "Chargement..." : memberName}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {auth.loading ? "" : memberRole}
+                </p>
+              </div>
+
+              <LogoutButton compact className="shrink-0" />
+            </div>
+          </section>
 
           <section className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -164,7 +185,23 @@ export default function HomePage() {
 
       <div className="hidden xl:block">
         <div className="space-y-6 p-4 md:p-6">
-          <PushNotificationPanel />
+          <section className="rounded-[24px] border border-emerald-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Membre connecté
+                </p>
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {auth.loading ? "Chargement..." : memberName}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {auth.loading ? "" : memberRole}
+                </p>
+              </div>
+
+              <LogoutButton />
+            </div>
+          </section>
 
           <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
