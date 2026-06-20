@@ -7,7 +7,7 @@
                     "build":  "npm run check:encoding \u0026\u0026 next build",
                     "start":  "next start",
                     "lint":  "eslint",
-                    "check:encoding":  "powershell -ExecutionPolicy Bypass -File ./scripts/check-encoding.ps1"
+                    "check:encoding":  "node ./scripts/check-encoding.mjs"
                 },
     "dependencies":  {
                          "@supabase/auth-helpers-nextjs":  "^0.8.7",
