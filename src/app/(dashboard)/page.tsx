@@ -9,6 +9,9 @@ type PilotageResponse = {
   contributions?: {
     total_encaisse?: number;
   };
+  tresorerie?: {
+    caisse_disponible?: number;
+  };
   tontine?: {
     total_encheres?: number;
     nb_lots_attribues?: number;
@@ -111,7 +114,7 @@ export default function HomePage() {
   const dernierGagnant = data?.tontine?.derniers_gagnants?.[0];
 
   const values: Record<string, string> = {
-    caisse: money(data?.contributions?.total_encaisse),
+    caisse: money(data?.tresorerie?.caisse_disponible),
     retards: money(data?.retards?.montant_total_retards),
     encheres: money(data?.tontine?.total_encheres),
     decaissements: money(data?.decaissements?.total_general),

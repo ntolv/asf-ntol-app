@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type Row = Record<string, any>;
@@ -67,12 +67,14 @@ export async function GET() {
       tontineDetails,
       decaissements,
       retards,
+      tresorerie,
     ] = await Promise.all([
       supabase.from("v_caisses").select("*"),
       supabase.from("v_tontine_caisse_encheres").select("*"),
       supabase.from("v_tontine_caisse_encheres_details").select("*").order("date_attribution", { ascending: false }).limit(10),
       supabase.from("v_decaissements").select("*").order("date_decaissement", { ascending: false }).limit(20),
       supabase.from("v_retards").select("*"),
+      supabase.from("v_tresorerie_reelle").select("caisse_disponible").maybeSingle(),
     ]);
 
     if (caisses.error) throw caisses.error;
@@ -80,12 +82,14 @@ export async function GET() {
     if (tontineDetails.error) throw tontineDetails.error;
     if (decaissements.error) throw decaissements.error;
     if (retards.error) throw retards.error;
+    if (tresorerie.error) throw tresorerie.error;
 
     const caisseRows = (caisses.data ?? []) as Row[];
     const tontineRows = (tontineCaisse.data ?? []) as Row[];
     const tontineDetailRows = (tontineDetails.data ?? []) as Row[];
     const decaissementRows = (decaissements.data ?? []) as Row[];
     const retardRows = (retards.data ?? []) as Row[];
+    const tresorerieRow = (tresorerie.data ?? {}) as Row;
 
     const rubriquesMap = new Map<string, Row>();
 
@@ -163,6 +167,9 @@ export async function GET() {
     const plusGrosRetardataire = membresRetard[0] ?? null;
 
     return NextResponse.json({
+      tresorerie: {
+        caisse_disponible: n(tresorerieRow.caisse_disponible),
+      },
       contributions: {
         total_attendu: totalAttendu,
         total_encaisse: totalVerse,
