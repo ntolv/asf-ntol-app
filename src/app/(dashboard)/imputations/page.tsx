@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -11,14 +11,21 @@ type MembreOption = {
   nom_complet: string;
 };
 
+type RubriqueOption = {
+  id: string;
+  nom: string;
+  ordre_affichage: number;
+};
+
 type FormDataResponse = {
   success: boolean;
   membres?: MembreOption[];
-  periodes?: string[];
+  annees?: string[];
+  rubriques?: RubriqueOption[];
   message?: string;
 };
 
-type ImputationLine = {
+type EncaissementLine = {
   ligne_id: string;
   rubrique_id: string;
   rubrique_nom: string;
@@ -26,20 +33,20 @@ type ImputationLine = {
   ordre_affichage: number;
 };
 
-type ImputationContribution = {
+type EncaissementContribution = {
   contribution_id: string;
   membre_id: string;
   membre_nom: string;
   date_contribution: string;
   montant_total: number;
   statut: string;
-  lignes: ImputationLine[];
+  lignes: EncaissementLine[];
 };
 
-type ImputationsResponse = {
+type EncaissementsResponse = {
   success: boolean;
   count?: number;
-  contributions?: ImputationContribution[];
+  contributions?: EncaissementContribution[];
   message?: string;
 };
 
@@ -54,15 +61,21 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR").format(date);
 }
 
+function getCurrentYear() {
+  return String(new Date().getFullYear());
+}
+
 export default function ImputationsPage() {
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState("");
   const [membres, setMembres] = useState<MembreOption[]>([]);
-  const [periodes, setPeriodes] = useState<string[]>([]);
+  const [annees, setAnnees] = useState<string[]>([]);
+  const [rubriques, setRubriques] = useState<RubriqueOption[]>([]);
   const [membreId, setMembreId] = useState("");
-  const [periode, setPeriode] = useState("");
-  const [contributions, setContributions] = useState<ImputationContribution[]>([]);
+  const [annee, setAnnee] = useState(getCurrentYear());
+  const [rubriqueId, setRubriqueId] = useState("");
+  const [contributions, setContributions] = useState<EncaissementContribution[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -85,8 +98,12 @@ export default function ImputationsPage() {
 
         if (!mounted) return;
 
+        const apiAnnees = result.annees ?? [];
+        const currentYear = getCurrentYear();
+
         setMembres(result.membres ?? []);
-        setPeriodes(result.periodes ?? []);
+        setAnnees(apiAnnees.includes(currentYear) ? apiAnnees : [currentYear, ...apiAnnees]);
+        setRubriques(result.rubriques ?? []);
       } catch (err: any) {
         if (!mounted) return;
         setError(err?.message || "Erreur de chargement des filtres");
@@ -105,14 +122,15 @@ export default function ImputationsPage() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadImputations() {
+    async function loadEncaissements() {
       setLoadingData(true);
       setError("");
 
       try {
         const params = new URLSearchParams();
         if (membreId) params.set("membre_id", membreId);
-        if (periode) params.set("periode", periode);
+        if (annee) params.set("annee", annee);
+        if (rubriqueId) params.set("rubrique_id", rubriqueId);
 
         const suffix = params.toString() ? `?${params.toString()}` : "";
         const response = await fetch(`/api/imputations${suffix}`, {
@@ -120,52 +138,87 @@ export default function ImputationsPage() {
           cache: "no-store",
         });
 
-        const result = (await response.json()) as ImputationsResponse;
+        const result = (await response.json()) as EncaissementsResponse;
 
         if (!response.ok || !result?.success) {
-          throw new Error(result?.message || "Impossible de charger les imputations");
+          throw new Error(result?.message || "Impossible de charger l'historique des encaissements");
         }
 
         if (!mounted) return;
         setContributions(result.contributions ?? []);
       } catch (err: any) {
         if (!mounted) return;
-        setError(err?.message || "Erreur de chargement des imputations");
+        setError(err?.message || "Erreur de chargement de l'historique des encaissements");
       } finally {
         if (mounted) setLoadingData(false);
       }
     }
 
-    loadImputations();
+    loadEncaissements();
 
     return () => {
       mounted = false;
     };
-  }, [membreId, periode]);
+  }, [membreId, annee, rubriqueId]);
 
-  const totalGlobal = useMemo(() => {
+  const totalEncaisse = useMemo(() => {
     return contributions.reduce((sum, item) => sum + Number(item.montant_total ?? 0), 0);
   }, [contributions]);
 
-  const totalLignes = useMemo(() => {
-    return contributions.reduce(
-      (sum, item) =>
-        sum +
-        item.lignes.reduce((lineSum, ligne) => lineSum + Number(ligne.montant_ligne ?? 0), 0),
-      0
+  const membresAyantCotise = useMemo(() => {
+    return new Set(contributions.map((item) => item.membre_id)).size;
+  }, [contributions]);
+
+  const ventilationRubriques = useMemo(() => {
+    const map = new Map<string, { nom: string; total: number; ordre: number }>();
+
+    contributions.forEach((item) => {
+      item.lignes.forEach((ligne) => {
+        const current = map.get(ligne.rubrique_id) ?? {
+          nom: ligne.rubrique_nom,
+          total: 0,
+          ordre: Number(ligne.ordre_affichage ?? 999),
+        };
+
+        current.total += Number(ligne.montant_ligne ?? 0);
+        map.set(ligne.rubrique_id, current);
+      });
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)
     );
   }, [contributions]);
+
+  const rubriqueLabel =
+    rubriques.find((rubrique) => rubrique.id === rubriqueId)?.nom || "Toutes les rubriques";
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Imputations"
-        subtitle="Lecture des imputations générées automatiquement par le backend à partir des contributions enregistrées."
+        title="Historique Encaissements"
+        subtitle="Consultation annuelle des encaissements enregistrés, ventilés par membre et par rubrique."
         size="lg"
       />
 
       <SectionCard padding="md">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-4">
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-700">Année</span>
+            <select
+              value={annee}
+              onChange={(e) => setAnnee(e.target.value)}
+              disabled={loadingFilters}
+              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
+            >
+              {annees.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-700">Membre</span>
             <select
@@ -184,17 +237,17 @@ export default function ImputationsPage() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-700">Période</span>
+            <span className="mb-2 block text-sm font-semibold text-slate-700">Rubrique</span>
             <select
-              value={periode}
-              onChange={(e) => setPeriode(e.target.value)}
+              value={rubriqueId}
+              onChange={(e) => setRubriqueId(e.target.value)}
               disabled={loadingFilters}
               className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
-              <option value="">Toutes les périodes</option>
-              {periodes.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+              <option value="">Toutes les rubriques</option>
+              {rubriques.map((rubrique) => (
+                <option key={rubrique.id} value={rubrique.id}>
+                  {rubrique.nom}
                 </option>
               ))}
             </select>
@@ -207,40 +260,62 @@ export default function ImputationsPage() {
               fullWidth
               onClick={() => {
                 setMembreId("");
-                setPeriode("");
+                setAnnee(getCurrentYear());
+                setRubriqueId("");
               }}
             >
-              Réinitialiser les filtres
+              Réinitialiser
             </ActionButton>
           </div>
         </div>
       </SectionCard>
 
       {(loadingFilters || loadingData) && (
-        <LoadingState 
-          message="Chargement des données..." 
-          size="md" 
-          variant="default" 
-        />
+        <LoadingState message="Chargement des données..." size="md" variant="default" />
       )}
 
       {!loadingFilters && !loadingData && (
-        <div className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">Contributions affichées</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{contributions.length}</p>
+        <SectionCard
+          title={`Résumé des encaissements ${annee}`}
+          subtitle={`Rubrique : ${rubriqueLabel}`}
+          padding="md"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-500">Montant total encaissé</p>
+              <p className="mt-2 text-3xl font-bold text-emerald-700">{formatFcfa(totalEncaisse)}</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-500">Nombre d'encaissements</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{contributions.length}</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-500">Membres ayant cotisé</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{membresAyantCotise}</p>
+            </div>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">Montant total contributions</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-700">{formatFcfa(totalGlobal)}</p>
+          <div className="mt-5 rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-3 text-sm font-semibold text-slate-800">Ventilation par rubrique</p>
+            {ventilationRubriques.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucun encaissement trouvé pour ces filtres.</p>
+            ) : (
+              <div className="space-y-2">
+                {ventilationRubriques.map((item) => (
+                  <div
+                    key={item.nom}
+                    className="flex items-center justify-between gap-4 rounded-[12px] bg-white px-4 py-3"
+                  >
+                    <span className="text-sm font-medium text-slate-700">{item.nom}</span>
+                    <span className="text-sm font-bold text-slate-900">{formatFcfa(item.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">Somme des lignes imputées</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{formatFcfa(totalLignes)}</p>
-          </div>
-        </div>
+        </SectionCard>
       )}
 
       {error ? (
@@ -249,29 +324,20 @@ export default function ImputationsPage() {
         </section>
       ) : null}
 
-      <SectionCard 
-        title="Historique des imputations" 
-        subtitle="Chaque contribution ci-dessous affiche automatiquement ses lignes d'imputation." 
+      <SectionCard
+        title="Historique détaillé"
+        subtitle="Chaque encaissement affiche les rubriques concernées et les montants ventilés."
         padding="md"
       >
         {loadingData ? (
-          <LoadingState 
-            message="Chargement des imputations..." 
-            size="md" 
-            variant="default" 
-          />
+          <LoadingState message="Chargement de l'historique..." size="md" variant="default" />
         ) : contributions.length === 0 ? (
           <div className="rounded-[20px] border border-slate-100 bg-slate-50 p-5">
-            <p className="text-sm text-slate-600">Aucune imputation trouvée pour ces filtres.</p>
+            <p className="text-sm text-slate-600">Aucun encaissement trouvé pour ces filtres.</p>
           </div>
         ) : (
           <div className="space-y-5">
             {contributions.map((item) => {
-              const totalLignesContribution = item.lignes.reduce(
-                (sum, ligne) => sum + Number(ligne.montant_ligne ?? 0),
-                0
-              );
-
               return (
                 <article
                   key={item.contribution_id}
@@ -281,28 +347,20 @@ export default function ImputationsPage() {
                     <div className="space-y-1">
                       <p className="text-lg font-semibold text-slate-900">{item.membre_nom}</p>
                       <p className="text-sm text-slate-500">
-                        Contribution du {formatDate(item.date_contribution)}
-                      </p>
-                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
-                        ID {item.contribution_id}
+                        Encaissement du {formatDate(item.date_contribution)}
                       </p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[320px]">
                       <div className="rounded-[12px] border border-white bg-white p-4">
                         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Statut</p>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{item.statut}</p>
                       </div>
+
                       <div className="rounded-[12px] border border-white bg-white p-4">
-                        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total contribution</p>
+                        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total encaissé</p>
                         <p className="mt-2 text-sm font-semibold text-emerald-700">
                           {formatFcfa(item.montant_total)}
-                        </p>
-                      </div>
-                      <div className="rounded-[12px] border border-white bg-white p-4">
-                        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total lignes</p>
-                        <p className="mt-2 text-sm font-semibold text-slate-900">
-                          {formatFcfa(totalLignesContribution)}
                         </p>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type MembreRow = {
@@ -8,8 +8,14 @@ type MembreRow = {
   prenom: string | null;
 };
 
-type ContributionPeriodRow = {
+type ContributionDateRow = {
   date_contribution: string | null;
+};
+
+type RubriqueRow = {
+  rubrique_id: string;
+  rubrique_nom: string;
+  ordre_affichage: number | null;
 };
 
 function getAdminClient() {
@@ -33,16 +39,16 @@ function buildMemberName(membre: MembreRow) {
   );
 }
 
-function toPeriod(value: string | null) {
-  if (!value || value.length < 7) return null;
-  return value.slice(0, 7);
+function toYear(value: string | null) {
+  if (!value || value.length < 4) return null;
+  return value.slice(0, 4);
 }
 
 export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    const [membresResult, contributionsResult] = await Promise.all([
+    const [membresResult, contributionsResult, rubriquesResult] = await Promise.all([
       supabase
         .from("membres")
         .select("id, nom_complet, nom, prenom")
@@ -51,40 +57,57 @@ export async function GET() {
         .from("contributions")
         .select("date_contribution")
         .order("date_contribution", { ascending: false })
-        .limit(500),
+        .limit(2000),
+      supabase
+        .from("v_contributions_imputations")
+        .select("rubrique_id, rubrique_nom, ordre_affichage")
+        .order("ordre_affichage", { ascending: true })
+        .limit(2000),
     ]);
 
-    if (membresResult.error) {
-      throw membresResult.error;
-    }
-
-    if (contributionsResult.error) {
-      throw contributionsResult.error;
-    }
+    if (membresResult.error) throw membresResult.error;
+    if (contributionsResult.error) throw contributionsResult.error;
+    if (rubriquesResult.error) throw rubriquesResult.error;
 
     const membres = ((membresResult.data ?? []) as MembreRow[]).map((membre) => ({
       id: membre.id,
       nom_complet: buildMemberName(membre),
     }));
 
-    const periodsSet = new Set<string>();
-    ((contributionsResult.data ?? []) as ContributionPeriodRow[]).forEach((row) => {
-      const period = toPeriod(row.date_contribution);
-      if (period) periodsSet.add(period);
+    const yearsSet = new Set<string>();
+    ((contributionsResult.data ?? []) as ContributionDateRow[]).forEach((row) => {
+      const year = toYear(row.date_contribution);
+      if (year) yearsSet.add(year);
     });
 
-    const periodes = Array.from(periodsSet).sort((a, b) => b.localeCompare(a));
+    const rubriquesMap = new Map<string, { id: string; nom: string; ordre_affichage: number }>();
+    ((rubriquesResult.data ?? []) as RubriqueRow[]).forEach((row) => {
+      if (!row.rubrique_id) return;
+      if (!rubriquesMap.has(row.rubrique_id)) {
+        rubriquesMap.set(row.rubrique_id, {
+          id: row.rubrique_id,
+          nom: row.rubrique_nom || "Rubrique sans nom",
+          ordre_affichage: Number(row.ordre_affichage ?? 999),
+        });
+      }
+    });
+
+    const annees = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    const rubriques = Array.from(rubriquesMap.values()).sort(
+      (a, b) => a.ordre_affichage - b.ordre_affichage || a.nom.localeCompare(b.nom)
+    );
 
     return NextResponse.json({
       success: true,
       membres,
-      periodes,
+      annees,
+      rubriques,
     });
   } catch (error: any) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Impossible de charger les filtres d'imputations",
+        message: error?.message || "Impossible de charger les filtres d'historique encaissements",
       },
       { status: 500 }
     );

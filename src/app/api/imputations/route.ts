@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type ImputationRow = {
@@ -29,24 +29,17 @@ function getAdminClient() {
   });
 }
 
-function getPeriodRange(period: string) {
-  const match = /^(\d{4})-(\d{2})$/.exec(period);
+function getYearRange(yearValue: string) {
+  const match = /^(\d{4})$/.exec(yearValue);
   if (!match) return null;
 
   const year = Number(match[1]);
-  const month = Number(match[2]);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return null;
 
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return null;
-  }
-
-  const start = `${match[1]}-${match[2]}-01`;
-  const nextMonthDate = new Date(Date.UTC(year, month, 1));
-  const endYear = nextMonthDate.getUTCFullYear();
-  const endMonth = String(nextMonthDate.getUTCMonth() + 1).padStart(2, "0");
-  const end = `${endYear}-${endMonth}-01`;
-
-  return { start, end };
+  return {
+    start: `${year}-01-01`,
+    end: `${year + 1}-01-01`,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -55,7 +48,8 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const membreId = searchParams.get("membre_id")?.trim() || "";
-    const periode = searchParams.get("periode")?.trim() || "";
+    const annee = searchParams.get("annee")?.trim() || "";
+    const rubriqueId = searchParams.get("rubrique_id")?.trim() || "";
 
     let query = supabase
       .from("v_contributions_imputations")
@@ -68,11 +62,15 @@ export async function GET(request: NextRequest) {
       query = query.eq("membre_id", membreId);
     }
 
-    if (periode) {
-      const range = getPeriodRange(periode);
+    if (rubriqueId) {
+      query = query.eq("rubrique_id", rubriqueId);
+    }
+
+    if (annee) {
+      const range = getYearRange(annee);
       if (!range) {
         return NextResponse.json(
-          { success: false, message: "Période invalide. Format attendu : YYYY-MM" },
+          { success: false, message: "Année invalide. Format attendu : YYYY" },
           { status: 400 }
         );
       }
@@ -80,11 +78,9 @@ export async function GET(request: NextRequest) {
       query = query.gte("date_contribution", range.start).lt("date_contribution", range.end);
     }
 
-    const { data, error } = await query.limit(1000);
+    const { data, error } = await query.limit(2000);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const rows = (data ?? []) as ImputationRow[];
 
@@ -114,13 +110,15 @@ export async function GET(request: NextRequest) {
           membre_id: row.membre_id,
           membre_nom: row.membre_nom,
           date_contribution: row.date_contribution,
-          montant_total: Number(row.montant_total ?? 0),
+          montant_total: 0,
           statut: row.statut,
           lignes: [],
         });
       }
 
-      groupedMap.get(row.contribution_id)!.lignes.push({
+      const group = groupedMap.get(row.contribution_id)!;
+
+      group.lignes.push({
         ligne_id: row.ligne_id,
         rubrique_id: row.rubrique_id,
         rubrique_nom: row.rubrique_nom,
@@ -129,16 +127,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const contributions = Array.from(groupedMap.values()).map((item) => ({
-      ...item,
-      lignes: item.lignes.sort((a, b) => a.ordre_affichage - b.ordre_affichage),
-    }));
+    const contributions = Array.from(groupedMap.values()).map((item) => {
+      const lignes = item.lignes.sort((a, b) => a.ordre_affichage - b.ordre_affichage);
+      const totalFiltre = lignes.reduce((sum, ligne) => sum + Number(ligne.montant_ligne ?? 0), 0);
+
+      return {
+        ...item,
+        montant_total: totalFiltre,
+        lignes,
+      };
+    });
 
     return NextResponse.json({
       success: true,
       filters: {
         membre_id: membreId || null,
-        periode: periode || null,
+        annee: annee || null,
+        rubrique_id: rubriqueId || null,
       },
       count: contributions.length,
       contributions,
@@ -147,7 +152,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Impossible de charger les imputations",
+        message: error?.message || "Impossible de charger l'historique des encaissements",
       },
       { status: 500 }
     );
