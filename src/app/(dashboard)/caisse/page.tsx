@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -92,20 +92,20 @@ export default function CaissePage() {
         <div className="space-y-6">
           <section className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">Bloc 1</p>
-            <h2 className="mt-2 text-xl font-black text-slate-900">Caisse contributions</h2>
+            <h2 className="mt-2 text-xl font-black text-slate-900">Trésorerie réelle</h2>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="mt-5 grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl bg-emerald-50 p-4 md:col-span-2">
+                <p className="text-xs uppercase text-emerald-700">Caisse disponible</p>
+                <p className="mt-1 text-2xl font-black text-emerald-800">{money(data.tresorerie?.caisse_disponible)}</p>
+              </div>
               <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase text-slate-500">Total attendu</p>
-                <p className="mt-1 text-xl font-black">{money(data.contributions.total_attendu)}</p>
+                <p className="text-xs uppercase text-slate-500">Caisse enchères</p>
+                <p className="mt-1 text-xl font-black">{money(data.tresorerie?.total_encheres)}</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50 p-4">
-                <p className="text-xs uppercase text-emerald-700">Total encaissé</p>
-                <p className="mt-1 text-xl font-black text-emerald-800">{money(data.contributions.total_encaisse)}</p>
-              </div>
-              <div className="rounded-2xl bg-amber-50 p-4">
-                <p className="text-xs uppercase text-amber-700">Reste à encaisser</p>
-                <p className="mt-1 text-xl font-black text-amber-800">{money(data.contributions.reste_a_encaisser)}</p>
+              <div className="rounded-2xl bg-sky-50 p-4">
+                <p className="text-xs uppercase text-sky-700">Intérêts prêts</p>
+                <p className="mt-1 text-xl font-black text-sky-800">{money(data.tresorerie?.total_interets_prets)}</p>
               </div>
             </div>
 
@@ -113,21 +113,27 @@ export default function CaissePage() {
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b text-slate-500">
-                    <th className="px-3 py-3">Rubrique</th>
-                    <th className="px-3 py-3">Attendu</th>
-                    <th className="px-3 py-3">Encaissé</th>
-                    <th className="px-3 py-3">Reste</th>
+                    <th className="px-3 py-3">Caisse</th>
+                    <th className="px-3 py-3">Entrées</th>
+                    <th className="px-3 py-3">Sorties</th>
+                    <th className="px-3 py-3">Solde disponible</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.contributions.rubriques.map((r: any) => (
-                    <tr key={r.rubrique} className="border-b border-slate-100">
-                      <td className="px-3 py-3 font-semibold">{r.rubrique}</td>
-                      <td className="px-3 py-3">{money(r.montant_attendu)}</td>
-                      <td className="px-3 py-3">{money(r.montant_verse)}</td>
-                      <td className="px-3 py-3">{money(r.reste_a_payer)}</td>
+                  {(data.tresorerie?.caisses_rubriques ?? []).map((r: any) => (
+                    <tr key={r.caisse_id || r.rubrique_nom} className="border-b border-slate-100">
+                      <td className="px-3 py-3 font-semibold">{r.rubrique_nom}</td>
+                      <td className="px-3 py-3">{money(r.total_encaisse)}</td>
+                      <td className="px-3 py-3">{money(r.total_decaisse)}</td>
+                      <td className="px-3 py-3 font-black text-emerald-800">{money(r.solde_disponible)}</td>
                     </tr>
                   ))}
+                  <tr className="border-t-2 border-emerald-100 bg-emerald-50/60">
+                    <td className="px-3 py-3 font-black">Total caisses rubriques</td>
+                    <td className="px-3 py-3">-</td>
+                    <td className="px-3 py-3">-</td>
+                    <td className="px-3 py-3 font-black text-emerald-900">{money(data.tresorerie?.total_caisses_rubriques)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
