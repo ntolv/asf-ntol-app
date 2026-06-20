@@ -1,4 +1,4 @@
-﻿# backups temporaires
+# backups temporaires
 *.bak
 *.bak_*
 *.tmp
@@ -38,3 +38,21 @@ _backups/
 *.bak-*
 *.backup
 *.old
+
+# Backups locaux
+*.backup*
+*.bak
+backup-*
+*.backup-*
+*.backup-*.tsx
+*.backup-*.ts
+*.backup-*.js
+*.backup-*.jsx
+*.backup-*.json
+*backup-avant*
+*backup-ajout*
+*backup-clean*
+
+# Next / logs
+.next/
+*.log
