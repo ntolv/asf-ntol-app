@@ -67,14 +67,18 @@ export async function GET() {
       tontineDetails,
       decaissements,
       retards,
+      caissesSoldes,
       tresorerie,
+      interetsPrets,
     ] = await Promise.all([
       supabase.from("v_caisses").select("*"),
       supabase.from("v_tontine_caisse_encheres").select("*"),
       supabase.from("v_tontine_caisse_encheres_details").select("*").order("date_attribution", { ascending: false }).limit(10),
       supabase.from("v_decaissements").select("*").order("date_decaissement", { ascending: false }).limit(20),
       supabase.from("v_retards").select("*"),
+      supabase.from("v_caisses_soldes").select("*").order("rubrique_nom", { ascending: true }),
       supabase.from("v_tresorerie_reelle").select("caisse_disponible").maybeSingle(),
+      supabase.from("v_caisse_interets_prets").select("total_caisse_interets_prets").maybeSingle(),
     ]);
 
     if (caisses.error) throw caisses.error;
@@ -82,7 +86,9 @@ export async function GET() {
     if (tontineDetails.error) throw tontineDetails.error;
     if (decaissements.error) throw decaissements.error;
     if (retards.error) throw retards.error;
+    if (caissesSoldes.error) throw caissesSoldes.error;
     if (tresorerie.error) throw tresorerie.error;
+    if (interetsPrets.error) throw interetsPrets.error;
 
     const caisseRows = (caisses.data ?? []) as Row[];
     const tontineRows = (tontineCaisse.data ?? []) as Row[];
@@ -90,7 +96,8 @@ export async function GET() {
     const decaissementRows = (decaissements.data ?? []) as Row[];
     const retardRows = (retards.data ?? []) as Row[];
     const tresorerieRow = (tresorerie.data ?? {}) as Row;
-
+    const interetsPretsRow = (interetsPrets.data ?? {}) as Row;
+    const caissesSoldesRows = (caissesSoldes.data ?? []) as Row[];
     const rubriquesMap = new Map<string, Row>();
 
     for (const row of caisseRows) {
@@ -169,6 +176,18 @@ export async function GET() {
     return NextResponse.json({
       tresorerie: {
         caisse_disponible: n(tresorerieRow.caisse_disponible),
+        total_caisses_rubriques: bySum(caissesSoldesRows, "solde_disponible"),
+        total_encheres: totalEncheres,
+        total_interets_prets: n(interetsPretsRow.total_caisse_interets_prets),
+        caisses_rubriques: caissesSoldesRows.map((row) => ({
+          caisse_id: row.caisse_id,
+          caisse_libelle: row.caisse_libelle,
+          rubrique_id: row.rubrique_id,
+          rubrique_nom: row.rubrique_nom,
+          total_encaisse: n(row.total_encaisse),
+          total_decaisse: n(row.total_decaisse),
+          solde_disponible: n(row.solde_disponible),
+        })),
       },
       contributions: {
         total_attendu: totalAttendu,
