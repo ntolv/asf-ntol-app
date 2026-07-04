@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -12,11 +12,18 @@ export async function GET() {
       .from("v_tontine_page_resume")
       .select("*")
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
-    return NextResponse.json(data);
+    return NextResponse.json(data ?? {
+      cycle: null,
+      session: null,
+      lots: [],
+      gagnants: [],
+      encheres: [],
+      message: "Aucune donnée tontine après remise à zéro"
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
