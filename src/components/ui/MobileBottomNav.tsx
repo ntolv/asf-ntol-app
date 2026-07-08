@@ -14,7 +14,12 @@ const navItems: NavItem[] = [
   { href: "/caisse", label: "Finances", icon: "🏦" },
   { href: "/tontine", label: "Tontine", icon: "💚" },
   { href: "/membres", label: "Membres", icon: "👥" },
-  { href: "/documents", label: "Docs", icon: "📂" },
+
+  { href: "/aides", label: "Aides", icon: "🤝" },
+  { href: "/gestion-demandes", label: "Demandes", icon: "🗂️" },
+  { href: "/prets-aides", label: "Prêts", icon: "✉️" },
+  { href: "/documents", label: "Docs", icon: "📁" },
+
   { href: "/admin/roles", label: "Admin", icon: "⚙️" },
 ];
 
