@@ -53,7 +53,10 @@ export default function LoginPage() {
         setError(context?.message || "Compte connecté, mais membre ASF-NTOL introuvable.");
         return;
       }
-
+await fetch("/api/auth/login-success", {
+  method: "POST",
+  credentials: "include",
+});
       router.push("/");
       router.refresh();
     } catch {

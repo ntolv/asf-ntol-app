@@ -20,6 +20,13 @@ type MembreData = {
   created_at: string;
   photo_url?: string | null;
   photo_storage_path?: string | null;
+  utilisateurs?: {
+    id: string;
+    auth_user_id: string | null;
+    last_login_at: string | null;
+    last_activity_at: string | null;
+    login_count: number | null;
+  }[] | null;
 };
 
 export default function MembresPage() {
@@ -44,8 +51,6 @@ export default function MembresPage() {
           throw new Error(result.error);
         }
 
-        console.log("API MEMBRES RESULT:", result);
-        
         setMembres(result.data || []);
 
       } catch (err: any) {
@@ -70,6 +75,51 @@ export default function MembresPage() {
     } else {
       return "text-red-700 bg-red-50";
     }
+  };
+  const getConnexionInfo = (membre: MembreData) => {
+    const utilisateur = membre.utilisateurs?.[0];
+
+    if (!utilisateur) {
+      return {
+        label: "Aucun compte ASF",
+        detail: "Compte non créé",
+        icon: "🔴",
+        className: "text-red-700 bg-red-50",
+      };
+    }
+
+    if (!utilisateur.last_login_at || (utilisateur.login_count ?? 0) === 0) {
+      return {
+        label: "Jamais connecté",
+        detail: "Aucune connexion enregistrée",
+        icon: "🟡",
+        className: "text-amber-700 bg-amber-50",
+      };
+    }
+
+    const lastActivity = utilisateur.last_activity_at
+      ? new Date(utilisateur.last_activity_at)
+      : null;
+
+    const isOnline =
+      lastActivity &&
+      Date.now() - lastActivity.getTime() < 2 * 60 * 1000;
+
+    return {
+      label: isOnline ? "En ligne" : "Hors ligne",
+      detail: `Dernière connexion : ${formatDateTime(utilisateur.last_login_at)}`,
+      icon: isOnline ? "🟢" : "⚪",
+      className: isOnline ? "text-green-700 bg-green-50" : "text-slate-700 bg-slate-100",
+    };
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "Jamais";
+    return new Date(dateString).toLocaleString("fr-FR");
+  };
+
+  const getLoginCount = (membre: MembreData) => {
+    return membre.utilisateurs?.[0]?.login_count ?? 0;
   };
 
   const getInitials = (nom: string) => {
@@ -500,44 +550,66 @@ export default function MembresPage() {
                     )}
                   </div>
 
-                  {/* Informations du membre */}
-                  <div className="space-y-3">
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold text-slate-900">
-                        {membre.nom_complet}
-                      </h3>
-                      <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatutColor(membre.actif)}`}>
-                        {membre.actif ? 'Actif' : 'Inactif'}
-                      </span>
-                    </div>
+{/* Informations du membre */}
+<div className="space-y-3">
+  <div className="text-center">
+    <h3 className="text-lg font-semibold text-slate-900">
+      {membre.nom_complet}
+    </h3>
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <span className="text-slate-400">📧</span>
-                        <span className="truncate">{membre.email}</span>
-                      </div>
-                      
-                      {membre.telephone && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <span className="text-slate-400">📞</span>
-                          <span>{membre.telephone}</span>
-                        </div>
-                      )}
-                      
-                      {membre.categorie && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <span className="text-slate-400">🏷️</span>
-                          <span>{membre.categorie}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <span className="text-slate-400">📅</span>
-                        <span>Membre</span>
-                      </div>
-                    </div>
+    <div className="mt-2 flex flex-col items-center gap-2">
+      <span
+        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatutColor(
+          membre.actif
+        )}`}
+      >
+        {membre.actif ? "🟢 Membre actif" : "🔴 Membre inactif"}
+      </span>
+
+      <span
+        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+          getConnexionInfo(membre).className
+        }`}
+      >
+        {getConnexionInfo(membre).icon} {getConnexionInfo(membre).label}
+      </span>
+
+      <div className="text-center text-xs text-slate-500">
+        <div>{getConnexionInfo(membre).detail}</div>
+        {getLoginCount(membre) > 0 && (
+          <div>Connexions : {getLoginCount(membre)}</div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <div className="space-y-2 text-sm">
+    <div className="flex items-center gap-2 text-slate-600">
+      <span className="text-slate-400">📧</span>
+      <span className="truncate">{membre.email || "Email non renseigné"}</span>
+    </div>
+
+    {membre.telephone && (
+      <div className="flex items-center gap-2 text-slate-600">
+        <span className="text-slate-400">📞</span>
+        <span>{membre.telephone}</span>
+      </div>
+    )}
+
+    {membre.categorie && (
+      <div className="flex items-center gap-2 text-slate-600">
+        <span className="text-slate-400">🏷️</span>
+        <span>{membre.categorie}</span>
+      </div>
+    )}
+
+    <div className="flex items-center gap-2 text-slate-600">
+      <span className="text-slate-400">📅</span>
+      <span>Membre</span>
+    </div>
+  </div>
+</div>
                   </div>
-                </div>
               ))}
             </div>
           )}

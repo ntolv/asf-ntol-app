@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 import { getUserContext } from "@/lib/server/getUserContext";
 
@@ -32,7 +32,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (error || !user) {
-      return emptyContext(error?.message || "Utilisateur non connecté");
+      return emptyContext(error?.message || "Utilisateur non connecte");
     }
 
     const context = await getUserContext({

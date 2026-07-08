@@ -16,7 +16,7 @@ export async function GET() {
     // 3. récupérer membres
     const { data, error } = await supabase
       .from("v_membres")
-      .select(`
+            .select(`
         id,
         nom_complet,
         email,
@@ -28,7 +28,14 @@ export async function GET() {
         created_at,
         date_adhesion,
         photo_url,
-        photo_storage_path
+        photo_storage_path,
+        utilisateurs (
+          id,
+          auth_user_id,
+          last_login_at,
+          last_activity_at,
+          login_count
+        )
       `)
       .order("nom_complet", { ascending: true });
 

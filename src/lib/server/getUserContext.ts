@@ -1,4 +1,5 @@
-﻿import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import { createSupabaseAdminClient } from "@/lib/server/supabaseAdmin";
 
 type AuthUserLike = {
   id?: string;
@@ -206,7 +207,7 @@ export async function getUserContext(
     };
   }
 
-  const supabase = getAdminClient();
+  const supabase = createSupabaseAdminClient();
 
   let utilisateur: any = null;
   let utilisateurError: any = null;
@@ -321,20 +322,29 @@ export async function getUserContext(
     : null;
 
   const member = {
-    ...memberResult.data,
-    role: role?.libelle ?? null,
-    role_code: role?.code ?? null,
-  };
+  ...memberResult.data,
+  role: role?.libelle ?? null,
+  role_code: role?.code ?? null,
+};
 
-  return {
-    success: true,
-    message: "Contexte utilisateur chargé",
-    authUserId: user.id,
-    email: user.email ?? null,
-    membreId: utilisateur.membre_id ?? null,
-    user,
-    utilisateur,
-    member,
-    role,
-  };
+// Mise à jour de l'activité du membre
+await supabase
+  .from("utilisateurs")
+  .update({
+    last_activity_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  })
+  .eq("id", utilisateur.id);
+
+return {
+  success: true,
+  message: "Contexte utilisateur chargé",
+  authUserId: user.id,
+  email: user.email ?? null,
+  membreId: utilisateur.membre_id ?? null,
+  user,
+  utilisateur,
+  member,
+  role,
+};
 }
