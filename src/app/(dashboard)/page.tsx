@@ -66,6 +66,7 @@ const ICONS = {
 const quickActions = [
   { href: "/dashboard", label: T.dashboard },
   { href: "/contributions", label: T.encaisser },
+  { href: "/imputations", label: "Historique des encaissements" },
   { href: "/decaissements", label: T.decaisser },
   { href: "/tontine", label: T.tontine },
   { href: "/encheres", label: T.encheres },
