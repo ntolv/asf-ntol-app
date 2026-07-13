@@ -128,12 +128,23 @@ export default function CaissePage() {
                       <td className="px-3 py-3 font-black text-emerald-800">{money(r.solde_disponible)}</td>
                     </tr>
                   ))}
-                  <tr className="border-t-2 border-emerald-100 bg-emerald-50/60">
-                    <td className="px-3 py-3 font-black">Total caisses rubriques</td>
-                    <td className="px-3 py-3">-</td>
-                    <td className="px-3 py-3">-</td>
-                    <td className="px-3 py-3 font-black text-emerald-900">{money(data.tresorerie?.total_caisses_rubriques)}</td>
-                  </tr>
+                <tr className="border-t-2 border-emerald-100 bg-emerald-50/60">
+  <td className="px-3 py-3 font-black">
+    Total caisses rubriques
+  </td>
+
+  <td className="px-3 py-3 font-black">
+    {money(data.tresorerie?.total_entrees_caisses_rubriques)}
+  </td>
+
+  <td className="px-3 py-3 font-black">
+    {money(data.tresorerie?.total_sorties_caisses_rubriques)}
+  </td>
+
+  <td className="px-3 py-3 font-black text-emerald-900">
+    {money(data.tresorerie?.total_caisses_rubriques)}
+  </td>
+</tr>
                 </tbody>
               </table>
             </div>

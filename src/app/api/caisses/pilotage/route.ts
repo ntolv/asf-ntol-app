@@ -175,20 +175,39 @@ export async function GET() {
 
     return NextResponse.json({
       tresorerie: {
-        caisse_disponible: n(tresorerieRow.caisse_disponible),
-        total_caisses_rubriques: bySum(caissesSoldesRows, "solde_disponible"),
-        total_encheres: totalEncheres,
-        total_interets_prets: n(interetsPretsRow.total_caisse_interets_prets),
-        caisses_rubriques: caissesSoldesRows.map((row) => ({
-          caisse_id: row.caisse_id,
-          caisse_libelle: row.caisse_libelle,
-          rubrique_id: row.rubrique_id,
-          rubrique_nom: row.rubrique_nom,
-          total_encaisse: n(row.total_encaisse),
-          total_decaisse: n(row.total_decaisse),
-          solde_disponible: n(row.solde_disponible),
-        })),
-      },
+  caisse_disponible: n(tresorerieRow.caisse_disponible),
+
+  total_entrees_caisses_rubriques: bySum(
+    caissesSoldesRows,
+    "total_encaisse"
+  ),
+
+  total_sorties_caisses_rubriques: bySum(
+    caissesSoldesRows,
+    "total_decaisse"
+  ),
+
+  total_caisses_rubriques: bySum(
+    caissesSoldesRows,
+    "solde_disponible"
+  ),
+
+  total_encheres: totalEncheres,
+
+  total_interets_prets: n(
+    interetsPretsRow.total_caisse_interets_prets
+  ),
+
+  caisses_rubriques: caissesSoldesRows.map((row) => ({
+    caisse_id: row.caisse_id,
+    caisse_libelle: row.caisse_libelle,
+    rubrique_id: row.rubrique_id,
+    rubrique_nom: row.rubrique_nom,
+    total_encaisse: n(row.total_encaisse),
+    total_decaisse: n(row.total_decaisse),
+    solde_disponible: n(row.solde_disponible),
+  })),
+},
       contributions: {
         total_attendu: totalAttendu,
         total_encaisse: totalVerse,
