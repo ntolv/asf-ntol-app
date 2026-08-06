@@ -409,17 +409,7 @@ export default function ImportExportPage() {
     detections.find((item) => item.role === "Mois")?.header ?? "";
 
   const totalColumn =
-    headers.find((header) => {
-      const value = normalize(header);
-
-      return (
-        value === "total du mois fcfa" ||
-        value.startsWith("total du mois") ||
-        value.includes("total du mois")
-      );
-    }) ??
-    detections.find((item) => item.role === "Total")?.header ??
-    "";
+    detections.find((item) => item.role === "Total")?.header ?? "";
 
   const rubricColumns = useMemo(
     () =>
