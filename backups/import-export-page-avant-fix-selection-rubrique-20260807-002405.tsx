@@ -374,13 +374,9 @@ export default function ImportExportPage() {
   const totalColumn =
     detections.find((item) => item.role === "Total")?.header ?? "";
 
-  const rubricColumns = useMemo(
-    () =>
-      detections
-        .filter((item) => item.role === "Rubrique")
-        .map((item) => item.header),
-    [detections]
-  );
+  const rubricColumns = detections
+    .filter((item) => item.role === "Rubrique")
+    .map((item) => item.header);
 
   const detectedYear = useMemo(() => {
     const textMatch = `${fileName} ${selectedSheet}`.match(/\b(20\d{2})\b/);
@@ -466,41 +462,34 @@ export default function ImportExportPage() {
   );
 
   useEffect(() => {
-    setMemberDecisions((current) => {
-      const next: Record<string, MemberDecision> = {};
+    const next: Record<string, MemberDecision> = {};
 
-      for (const item of memberMatches) {
-        next[item.source] =
-          current[item.source] ?? {
-            mode: "associate",
-            membreId: item.target?.id ?? "",
-          };
-      }
+    for (const item of memberMatches) {
+      next[item.source] = {
+        mode: "associate",
+        membreId: item.target?.id ?? "",
+      };
+    }
 
-      return next;
-    });
+    setMemberDecisions(next);
   }, [memberMatches]);
 
   useEffect(() => {
-    setRubricDecisions((current) => {
-      const next: Record<string, RubricDecision> = {};
+    const next: Record<string, RubricDecision> = {};
 
-      for (const item of rubricMatches) {
-        next[item.source] =
-          current[item.source] ??
-          (item.target
-            ? {
-                mode: "associate",
-                rubriqueId: item.target.id,
-              }
-            : {
-                mode: "create",
-                rubriqueId: "",
-              });
-      }
+    for (const item of rubricMatches) {
+      next[item.source] = item.target
+        ? {
+            mode: "associate",
+            rubriqueId: item.target.id,
+          }
+        : {
+            mode: "create",
+            rubriqueId: "",
+          };
+    }
 
-      return next;
-    });
+    setRubricDecisions(next);
   }, [rubricMatches]);
 
   const monthsCount = useMemo(() => {
