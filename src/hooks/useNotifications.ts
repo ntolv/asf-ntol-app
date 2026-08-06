@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 interface Notification {
@@ -22,6 +22,7 @@ interface Notification {
   type: "info" | "success" | "warning" | "error";
   date_creation: string;
 }
+
 interface NotificationsState {
   notifications: Notification[];
   loading: boolean;
@@ -29,18 +30,38 @@ interface NotificationsState {
   unreadCount: number;
 }
 
-function normalizeType(value: string | null | undefined): Notification["type"] {
-  const v = String(value || "").toLowerCase();
+const NOTIFICATION_READ_EVENT = "asf-notification-read";
+const ALL_NOTIFICATIONS_READ_EVENT = "asf-all-notifications-read";
 
-  if (v.includes("success") || v.includes("ok") || v.includes("valide")) {
+function normalizeType(
+  value: string | null | undefined
+): Notification["type"] {
+  const normalized = String(value || "").toLowerCase();
+
+  if (
+    normalized.includes("success") ||
+    normalized.includes("ok") ||
+    normalized.includes("valide") ||
+    normalized.includes("approuve")
+  ) {
     return "success";
   }
 
-  if (v.includes("warning") || v.includes("retard") || v.includes("alerte")) {
+  if (
+    normalized.includes("warning") ||
+    normalized.includes("retard") ||
+    normalized.includes("alerte") ||
+    normalized.includes("attente")
+  ) {
     return "warning";
   }
 
-  if (v.includes("error") || v.includes("erreur") || v.includes("echec")) {
+  if (
+    normalized.includes("error") ||
+    normalized.includes("erreur") ||
+    normalized.includes("echec") ||
+    normalized.includes("refuse")
+  ) {
     return "error";
   }
 
@@ -53,6 +74,8 @@ function normalizeNotification(row: any): Notification {
     lue: Boolean(row.date_lecture),
     type: normalizeType(row.type_notification),
     date_creation: row.date_envoi || row.created_at,
+    url_cible: row.url_cible ?? null,
+    donnees: row.donnees ?? null,
   };
 }
 
@@ -64,52 +87,67 @@ export function useNotifications(userId: string | undefined) {
     unreadCount: 0,
   });
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!userId) {
-      setState((prev) => ({ ...prev, loading: false }));
+      setState((previous) => ({
+        ...previous,
+        loading: false,
+        notifications: [],
+        unreadCount: 0,
+      }));
       return;
     }
 
-    const fetchNotifications = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("membre_id", userId)
-          .order("date_envoi", { ascending: false })
-          .limit(20);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("membre_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-        if (error) {
-          setState((prev) => ({
-            ...prev,
-            loading: false,
-            error: error.message || "Erreur lors du chargement des notifications",
-          }));
-          return;
-        }
-
-        const notifications = (data || []).map(normalizeNotification);
-        const unreadCount = notifications.filter((n) => !n.lue).length;
-
-        setState({
-          notifications,
+      if (error) {
+        setState((previous) => ({
+          ...previous,
           loading: false,
-          error: null,
-          unreadCount,
-        });
-      } catch (error: any) {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: error?.message || "Erreur lors du chargement des notifications",
+          error:
+            error.message ||
+            "Erreur lors du chargement des notifications.",
         }));
+        return;
       }
-    };
 
+      const notifications = (data || []).map(normalizeNotification);
+      const unreadCount = notifications.filter(
+        (notification) => !notification.lue
+      ).length;
+
+      setState({
+        notifications,
+        loading: false,
+        error: null,
+        unreadCount,
+      });
+    } catch (error: any) {
+      setState((previous) => ({
+        ...previous,
+        loading: false,
+        error:
+          error?.message ||
+          "Erreur lors du chargement des notifications.",
+      }));
+    }
+  }, [userId]);
+
+  useEffect(() => {
     fetchNotifications();
 
+    if (!userId) {
+      return;
+    }
+
     const channel = supabase
-      .channel(`notifications-${userId}`)
+      .channel(`notifications-${userId}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {
@@ -127,66 +165,178 @@ export function useNotifications(userId: string | undefined) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, fetchNotifications]);
 
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ date_lecture: new Date().toISOString() })
-        .eq("id", notificationId);
+  useEffect(() => {
+    function handleNotificationRead(event: Event) {
+      const customEvent = event as CustomEvent<{
+        notificationId: string;
+        readAt: string;
+      }>;
 
-      if (error) {
-        console.error("Erreur lors du marquage comme lu:", error);
+      const notificationId = customEvent.detail?.notificationId;
+      const readAt = customEvent.detail?.readAt;
+
+      if (!notificationId || !readAt) {
         return;
       }
 
-      setState((prev) => ({
-        ...prev,
-        notifications: prev.notifications.map((n) =>
-          n.id === notificationId
-            ? {
-                ...n,
-                lue: true,
-                date_lecture: new Date().toISOString(),
-              }
-            : n
-        ),
-        unreadCount: Math.max(0, prev.unreadCount - 1),
+      setState((previous) => {
+        const notification = previous.notifications.find(
+          (item) => item.id === notificationId
+        );
+
+        if (!notification || notification.lue) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          notifications: previous.notifications.map((item) =>
+            item.id === notificationId
+              ? {
+                  ...item,
+                  lue: true,
+                  date_lecture: readAt,
+                }
+              : item
+          ),
+          unreadCount: Math.max(0, previous.unreadCount - 1),
+        };
+      });
+    }
+
+    function handleAllNotificationsRead() {
+      const now = new Date().toISOString();
+
+      setState((previous) => ({
+        ...previous,
+        notifications: previous.notifications.map((notification) => ({
+          ...notification,
+          lue: true,
+          date_lecture: notification.date_lecture || now,
+        })),
+        unreadCount: 0,
       }));
+    }
+
+    window.addEventListener(
+      NOTIFICATION_READ_EVENT,
+      handleNotificationRead
+    );
+
+    window.addEventListener(
+      ALL_NOTIFICATIONS_READ_EVENT,
+      handleAllNotificationsRead
+    );
+
+    return () => {
+      window.removeEventListener(
+        NOTIFICATION_READ_EVENT,
+        handleNotificationRead
+      );
+
+      window.removeEventListener(
+        ALL_NOTIFICATIONS_READ_EVENT,
+        handleAllNotificationsRead
+      );
+    };
+  }, []);
+
+  const markAsRead = async (notificationId: string) => {
+    const existingNotification = state.notifications.find(
+      (notification) => notification.id === notificationId
+    );
+
+    if (!existingNotification || existingNotification.lue) {
+      return true;
+    }
+
+    const readAt = new Date().toISOString();
+
+    // Mise à jour immédiate de toutes les instances du hook.
+    window.dispatchEvent(
+      new CustomEvent(NOTIFICATION_READ_EVENT, {
+        detail: {
+          notificationId,
+          readAt,
+        },
+      })
+    );
+
+    try {
+      const { error } = await supabase
+        .from("notifications")
+        .update({
+          date_lecture: readAt,
+          updated_at: readAt,
+        })
+        .eq("id", notificationId)
+        .eq("membre_id", userId);
+
+      if (error) {
+        console.error(
+          "Erreur lors du marquage comme lu :",
+          error
+        );
+
+        await fetchNotifications();
+        return false;
+      }
+
+      return true;
     } catch (error) {
-      console.error("Erreur lors du marquage comme lu:", error);
+      console.error(
+        "Erreur lors du marquage comme lu :",
+        error
+      );
+
+      await fetchNotifications();
+      return false;
     }
   };
 
   const markAllAsRead = async () => {
-    if (!userId) return;
+    if (!userId || state.unreadCount === 0) {
+      return true;
+    }
+
+    const now = new Date().toISOString();
+
+    // Le compteur passe immédiatement à zéro partout.
+    window.dispatchEvent(
+      new CustomEvent(ALL_NOTIFICATIONS_READ_EVENT)
+    );
 
     try {
-      const now = new Date().toISOString();
-
       const { error } = await supabase
         .from("notifications")
-        .update({ date_lecture: now })
+        .update({
+          date_lecture: now,
+          updated_at: now,
+        })
         .eq("membre_id", userId)
         .is("date_lecture", null);
 
       if (error) {
-        console.error("Erreur lors du marquage de toutes comme lues:", error);
-        return;
+        console.error(
+          "Erreur lors du marquage de toutes comme lues :",
+          error
+        );
+
+        await fetchNotifications();
+        return false;
       }
 
-      setState((prev) => ({
-        ...prev,
-        notifications: prev.notifications.map((n) => ({
-          ...n,
-          lue: true,
-          date_lecture: n.date_lecture || now,
-        })),
-        unreadCount: 0,
-      }));
+      return true;
     } catch (error) {
-      console.error("Erreur lors du marquage de toutes comme lues:", error);
+      console.error(
+        "Erreur lors du marquage de toutes comme lues :",
+        error
+      );
+
+      await fetchNotifications();
+      return false;
     }
   };
 
@@ -194,5 +344,6 @@ export function useNotifications(userId: string | undefined) {
     ...state,
     markAsRead,
     markAllAsRead,
+    refreshNotifications: fetchNotifications,
   };
 }
