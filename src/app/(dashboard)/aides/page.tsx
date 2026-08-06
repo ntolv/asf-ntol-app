@@ -15,6 +15,7 @@ function formatMoney(value: number | null | undefined) {
 
 async function readJsonSafe(response: Response) {
   const rawText = await response.text();
+
   try {
     return rawText ? JSON.parse(rawText) : null;
   } catch {
@@ -24,7 +25,6 @@ async function readJsonSafe(response: Response) {
 
 export default function AidesPage() {
   const [loadingAide, setLoadingAide] = useState(false);
-  const [loadingOtp, setLoadingOtp] = useState(false);
   const [loadingPret, setLoadingPret] = useState(false);
 
   const [messageAide, setMessageAide] = useState("");
@@ -39,9 +39,6 @@ export default function AidesPage() {
   const [montantPret, setMontantPret] = useState(0);
   const [motifPret, setMotifPret] = useState("");
   const [conditionsAcceptees, setConditionsAcceptees] = useState(false);
-
-  const [otpRequested, setOtpRequested] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
 
   function addMontantAide(value: number) {
     setMontantAide((prev) => Math.max(0, Number(prev || 0) + value));
@@ -73,13 +70,16 @@ export default function AidesPage() {
 
       if (!response.ok || !json?.success) {
         throw new Error(
-          json?.error || json?.message || "Erreur lors de l'envoi de la demande d'aide."
+          json?.error ||
+            json?.message ||
+            "Erreur lors de l'envoi de la demande d'aide."
         );
       }
 
       setMessageAide(
         json?.message || "Demande d'aide / secours transmise avec succès."
       );
+
       setMontantAide(0);
       setMotifAide("");
     } catch (err: any) {
@@ -91,13 +91,13 @@ export default function AidesPage() {
     }
   }
 
-  async function handleRequestOtp() {
+  async function handleSubmitPret() {
     try {
-      setLoadingOtp(true);
+      setLoadingPret(true);
       setErrorPret("");
       setMessagePret("");
 
-      const response = await fetch("/api/prets/request-otp", {
+      const response = await fetch("/api/prets/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,55 +114,24 @@ export default function AidesPage() {
 
       if (!response.ok || !json?.success) {
         throw new Error(
-          json?.error || json?.message || "Erreur lors de l'envoi du code OTP."
-        );
-      }
-
-      setOtpRequested(true);
-      setMessagePret(json?.message || "Code OTP envoyé par email.");
-    } catch (err: any) {
-      setErrorPret(err?.message || "Erreur lors de l'envoi du code OTP.");
-    } finally {
-      setLoadingOtp(false);
-    }
-  }
-
-  async function handleVerifyOtpAndSubmitPret() {
-    try {
-      setLoadingPret(true);
-      setErrorPret("");
-      setMessagePret("");
-
-      const response = await fetch("/api/prets/verify-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          otp: otpCode,
-        }),
-      });
-
-      const json = (await readJsonSafe(response)) as ApiResponse | null;
-
-      if (!response.ok || !json?.success) {
-        throw new Error(
-          json?.error || json?.message || "Erreur lors de la validation du code OTP."
+          json?.error ||
+            json?.message ||
+            "Erreur lors de la transmission de la demande de prêt."
         );
       }
 
       setMessagePret(
-        json?.message || "OTP validé. Demande de prêt transmise avec succès."
+        json?.message ||
+          "Votre demande de prêt a été transmise avec succès. Elle est en attente de validation."
       );
+
       setMontantPret(0);
       setMotifPret("");
       setConditionsAcceptees(false);
-      setOtpCode("");
-      setOtpRequested(false);
     } catch (err: any) {
       setErrorPret(
-        err?.message || "Erreur lors de la validation du code OTP."
+        err?.message ||
+          "Erreur lors de la transmission de la demande de prêt."
       );
     } finally {
       setLoadingPret(false);
@@ -175,15 +144,18 @@ export default function AidesPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-4xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Aides / Secours / Prêts / Prêts
+              Aides / Secours / Prêts
             </p>
+
             <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-              Aides / Secours / Prêts / Prêts
+              Aides / Secours / Prêts
             </h1>
+
             <p className="mt-3 text-sm text-slate-600 md:text-base">
-              Cette page sert uniquement à transmettre une demande d'aide / secours
-              ou une demande de prêt. Le backend gère toute la logique métier,
-              la génération du document signé, l'OTP, les validations et les notifications.
+              Cette page sert uniquement à transmettre une demande d'aide,
+              de secours ou une demande de prêt. Le backend gère toute la
+              logique métier, la génération du document, les validations et
+              les notifications internes.
             </p>
           </div>
 
@@ -204,9 +176,11 @@ export default function AidesPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
               Aide / Secours
             </p>
+
             <h2 className="mt-2 text-xl font-bold text-slate-900">
               Faire une demande d'aide ou de secours
             </h2>
+
             <p className="mt-2 text-sm text-slate-600">
               Le membre renseigne uniquement le montant demandé et le motif.
             </p>
@@ -229,13 +203,16 @@ export default function AidesPage() {
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Montant demandé
               </label>
+
               <input
                 type="number"
                 min="0"
                 step="100"
                 value={montantAide}
                 onChange={(e) =>
-                  setMontantAide(Math.max(0, Number(e.target.value || 0)))
+                  setMontantAide(
+                    Math.max(0, Number(e.target.value || 0))
+                  )
                 }
                 disabled={loadingAide}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
@@ -279,6 +256,7 @@ export default function AidesPage() {
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Motif
               </label>
+
               <textarea
                 value={motifAide}
                 onChange={(e) => setMotifAide(e.target.value)}
@@ -310,12 +288,14 @@ export default function AidesPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
               Prêt
             </p>
+
             <h2 className="mt-2 text-xl font-bold text-slate-900">
               Faire une demande de prêt
             </h2>
+
             <p className="mt-2 text-sm text-slate-600">
-              Le membre renseigne uniquement le montant demandé et le motif.
-              Le backend gère le document signé et le flux OTP email.
+              Le membre renseigne le montant demandé et le motif. La demande
+              sera transmise directement au bureau pour validation.
             </p>
           </div>
 
@@ -336,15 +316,18 @@ export default function AidesPage() {
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Montant demandé
               </label>
+
               <input
                 type="number"
                 min="0"
                 step="100"
                 value={montantPret}
                 onChange={(e) =>
-                  setMontantPret(Math.max(0, Number(e.target.value || 0)))
+                  setMontantPret(
+                    Math.max(0, Number(e.target.value || 0))
+                  )
                 }
-                disabled={loadingOtp || loadingPret}
+                disabled={loadingPret}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
               />
 
@@ -352,7 +335,7 @@ export default function AidesPage() {
                 <button
                   type="button"
                   onClick={() => addMontantPret(10000)}
-                  disabled={loadingOtp || loadingPret}
+                  disabled={loadingPret}
                   className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700"
                 >
                   +10000 FCFA
@@ -361,7 +344,7 @@ export default function AidesPage() {
                 <button
                   type="button"
                   onClick={() => addMontantPret(25000)}
-                  disabled={loadingOtp || loadingPret}
+                  disabled={loadingPret}
                   className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700"
                 >
                   +25000 FCFA
@@ -370,7 +353,7 @@ export default function AidesPage() {
                 <button
                   type="button"
                   onClick={() => addMontantPret(50000)}
-                  disabled={loadingOtp || loadingPret}
+                  disabled={loadingPret}
                   className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700"
                 >
                   +50000 FCFA
@@ -386,10 +369,11 @@ export default function AidesPage() {
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Motif
               </label>
+
               <textarea
                 value={motifPret}
                 onChange={(e) => setMotifPret(e.target.value)}
-                disabled={loadingOtp || loadingPret}
+                disabled={loadingPret}
                 rows={5}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
               />
@@ -399,90 +383,62 @@ export default function AidesPage() {
               <p className="text-sm font-semibold text-slate-900">
                 Conditions de prêt
               </p>
+
               <div className="mt-3 space-y-2 text-sm text-slate-600">
-                <p>La demande de prêt est examinée par le bureau de l'association.</p>
-                <p>Le membre demandeur s'engage à rembourser intégralement toute somme qui lui sera accordée.</p>
-                <p>Le montant accordé peut être différent du montant demandé.</p>
-                <p>Le décaissement n'intervient qu'après validation officielle du bureau.</p>
+                <p>
+                  La demande de prêt est examinée par le bureau de
+                  l'association.
+                </p>
+
+                <p>
+                  Le membre demandeur s'engage à rembourser intégralement
+                  toute somme qui lui sera accordée.
+                </p>
+
+                <p>
+                  Le montant accordé peut être différent du montant demandé.
+                </p>
+
+                <p>
+                  Le décaissement n'intervient qu'après validation officielle
+                  du bureau.
+                </p>
               </div>
 
               <label className="mt-4 flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={conditionsAcceptees}
-                  onChange={(e) => setConditionsAcceptees(e.target.checked)}
-                  disabled={loadingOtp || loadingPret}
+                  onChange={(e) =>
+                    setConditionsAcceptees(e.target.checked)
+                  }
+                  disabled={loadingPret}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600"
                 />
+
                 <span className="text-sm text-slate-700">
-                  J'ai lu les conditions du prêt appliquées par l'association et je m'engage à rembourser la dette qui me sera accordée.
+                  J'ai lu les conditions du prêt appliquées par l'association
+                  et je m'engage à rembourser la dette qui me sera accordée.
                 </span>
               </label>
             </div>
 
-            {!otpRequested ? (
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={
-                  loadingOtp ||
-                  loadingPret ||
-                  Number(montantPret || 0) <= 0 ||
-                  !motifPret.trim() ||
-                  !conditionsAcceptees
-                }
-                className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loadingOtp ? "Envoi du code..." : "Recevoir le code OTP par email"}
-              </button>
-            ) : (
-              <div className="space-y-4 rounded-[24px] border border-emerald-200 bg-emerald-50/50 p-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Code OTP reçu par email
-                  </label>
-                  <input
-                    type="text"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    disabled={loadingPret}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
-                    placeholder="Saisir le code OTP"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={handleVerifyOtpAndSubmitPret}
-                    disabled={loadingPret || !otpCode.trim()}
-                    className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loadingPret
-                      ? "Validation..."
-                      : "Valider OTP et transmettre la demande"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpRequested(false);
-                      setOtpCode("");
-                      setMessagePret("");
-                      setErrorPret("");
-                    }}
-                    disabled={loadingPret}
-                    className="w-full rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
-                  >
-                    Revenir à la saisie
-                  </button>
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={handleSubmitPret}
+              disabled={
+                loadingPret ||
+                Number(montantPret || 0) <= 0 ||
+                !motifPret.trim() ||
+                !conditionsAcceptees
+              }
+              className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingPret ? "Validation..." : "Valider la demande"}
+            </button>
           </div>
         </article>
       </section>
     </div>
   );
 }
-
