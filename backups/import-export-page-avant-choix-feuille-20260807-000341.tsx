@@ -286,7 +286,6 @@ export default function ImportExportPage() {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState("");
-  const [pendingSheet, setPendingSheet] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<ExcelRow[]>([]);
   const [manualYear, setManualYear] = useState("");
@@ -746,7 +745,6 @@ export default function ImportExportPage() {
     setWorkbook(null);
     setSheetNames([]);
     setSelectedSheet("");
-    setPendingSheet("");
     setHeaders([]);
     setRows([]);
     setManualYear("");
@@ -771,7 +769,6 @@ export default function ImportExportPage() {
     const parsed = parseSheet(sheet);
 
     setSelectedSheet(name);
-    setPendingSheet("");
     setHeaders(parsed.headers);
     setRows(parsed.rows);
     setManualYear("");
@@ -805,24 +802,8 @@ export default function ImportExportPage() {
       setFileSize(file.size);
       setWorkbook(nextWorkbook);
       setSheetNames(nextWorkbook.SheetNames);
-      setReadyMessage("");
-      setImportReport(null);
-      setImportProgress(0);
 
-      if (nextWorkbook.SheetNames.length === 1) {
-        loadSheet(nextWorkbook, nextWorkbook.SheetNames[0]);
-      } else {
-        setSelectedSheet("");
-        setPendingSheet("");
-        setHeaders([]);
-        setRows([]);
-        setManualYear("");
-        setExistingCount(0);
-        setMemberDecisions({});
-        setRubricDecisions({});
-        setConfirmCreateRubrics(false);
-        setConfirmReplaceYear(false);
-      }
+      loadSheet(nextWorkbook, nextWorkbook.SheetNames[0]);
     } catch (caught: any) {
       resetFile();
       setError(caught?.message || "Impossible de lire le fichier Excel.");
@@ -951,61 +932,6 @@ export default function ImportExportPage() {
           </div>
         ) : null}
       </SectionCard>
-
-      {fileName && sheetNames.length > 1 && rows.length === 0 ? (
-        <SectionCard
-          title="Choix de la feuille"
-          subtitle={`Ce classeur contient ${sheetNames.length} feuilles. Sélectionnez celle à importer.`}
-          padding="md"
-        >
-          <div className="max-w-xl">
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">
-                Feuille à importer
-              </span>
-
-              <select
-                value={pendingSheet}
-                onChange={(event) => setPendingSheet(event.target.value)}
-                className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
-              >
-                <option value="">Choisir une feuille</option>
-
-                {sheetNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="mt-5 max-w-xs">
-              <ActionButton
-                variant="primary"
-                size="md"
-                fullWidth
-                disabled={!pendingSheet}
-                onClick={() => {
-                  if (!workbook || !pendingSheet) return;
-
-                  try {
-                    loadSheet(workbook, pendingSheet);
-                    setError("");
-                  } catch (caught) {
-                    setError(
-                      caught instanceof Error
-                        ? caught.message
-                        : "Impossible de lire cette feuille."
-                    );
-                  }
-                }}
-              >
-                Analyser cette feuille
-              </ActionButton>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
 
       {loadingReference ? (
         <LoadingState
