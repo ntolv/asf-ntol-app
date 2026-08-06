@@ -16,8 +16,8 @@ import {
 
 interface MemberData {
   nom_complet: string;
-  compte_active: boolean;
-  telephone: string;
+  compte_deja_active: boolean;
+  telephone_normalise: string;
 }
 
 type FinalizeResponse = {
@@ -36,57 +36,83 @@ export default function PreinscriptionPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"lookup" | "register" | "exists">("lookup");
+  const [step, setStep] = useState<"lookup" | "register" | "exists">(
+    "lookup"
+  );
   const [memberData, setMemberData] = useState<MemberData | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
   const router = useRouter();
 
   async function handleLookup(e: React.FormEvent) {
     e.preventDefault();
+
     setLoading(true);
     setError("");
     setSuccess("");
 
-    const normalizedTelephone = telephone.trim();
+    const telephoneSaisi = telephone.trim();
 
-    if (!normalizedTelephone) {
+    if (!telephoneSaisi) {
       setError("Téléphone obligatoire.");
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase.rpc("fn_preinscription_lookup_telephone", {
-        p_telephone: normalizedTelephone,
-      });
+      const { data, error: lookupError } = await supabase.rpc(
+        "fn_preinscription_lookup_telephone",
+        {
+          p_telephone: telephoneSaisi,
+        }
+      );
 
-      if (error) {
-        setError("Numéro non reconnu. Veuillez contacter l'administrateur.");
+      if (lookupError) {
+        setError(
+          "Numéro non reconnu. Veuillez contacter l'administrateur."
+        );
         return;
       }
 
-      if (data && data.length > 0) {
-        const member = data[0];
+      const member =
+        Array.isArray(data) && data.length > 0 ? data[0] : null;
 
-        setMemberData({
-          nom_complet: String(member.nom_complet ?? ""),
-          compte_active: Boolean(member.compte_active),
-          telephone: String(member.telephone ?? "").trim(),
-        });
-
-        if (member.compte_active) {
-          setStep("exists");
-          setError("Ce compte est déjà activé. Connecte-toi directement.");
-        } else {
-          setStep("register");
-          setSuccess(`Téléphone reconnu : ${member.nom_complet}`);
-        }
-      } else {
-        setError("Numéro non reconnu. Veuillez contacter l'administrateur.");
+      if (!member || member.membre_trouve !== true) {
+        setMemberData(null);
+        setStep("lookup");
+        setError(
+          "Numéro non reconnu. Veuillez contacter l'administrateur."
+        );
+        return;
       }
+
+      const nextMemberData: MemberData = {
+        nom_complet: String(member.nom_complet ?? "").trim(),
+        compte_deja_active: Boolean(member.compte_deja_active),
+        telephone_normalise: String(
+          member.telephone_normalise ?? ""
+        ).trim(),
+      };
+
+      setMemberData(nextMemberData);
+
+      if (nextMemberData.compte_deja_active) {
+        setStep("exists");
+        setError(
+          "Ce compte est déjà activé. Connecte-toi directement."
+        );
+        return;
+      }
+
+      setStep("register");
+      setSuccess(
+        `Téléphone reconnu : ${nextMemberData.nom_complet}`
+      );
     } catch {
-      setError("Erreur lors de la vérification. Veuillez réessayer.");
+      setError(
+        "Erreur lors de la vérification. Veuillez réessayer."
+      );
     } finally {
       setLoading(false);
     }
@@ -94,6 +120,7 @@ export default function PreinscriptionPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+
     setLoading(true);
     setError("");
     setSuccess("");
@@ -105,7 +132,10 @@ export default function PreinscriptionPage() {
     }
 
     const emailFinal = email.trim().toLowerCase();
-    const telephoneFinal = String(memberData.telephone ?? "").trim() || telephone.trim();
+
+    const telephoneFinal =
+      String(memberData.telephone_normalise ?? "").trim() ||
+      telephone.trim();
 
     if (!telephoneFinal) {
       setError("Téléphone obligatoire.");
@@ -126,37 +156,53 @@ export default function PreinscriptionPage() {
     }
 
     if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setError(
+        "Le mot de passe doit contenir au moins 6 caractères."
+      );
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch("/api/auth/preinscription/finaliser", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          telephone: telephoneFinal,
-          telephoneReconnu: telephoneFinal,
-          email: emailFinal,
-          password,
-        }),
-      });
+      const response = await fetch(
+        "/api/auth/preinscription/finaliser",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            telephone: telephoneFinal,
+            telephoneReconnu: telephoneFinal,
+            email: emailFinal,
+            password,
+          }),
+        }
+      );
 
       const result = (await response.json()) as FinalizeResponse;
 
       if (!response.ok || !result?.success) {
-        throw new Error(result?.message || "Erreur lors de la finalisation.");
+        throw new Error(
+          result?.message || "Erreur lors de la finalisation."
+        );
       }
 
-      setSuccess(result.message || "Préinscription finalisée avec succès.");
+      setSuccess(
+        result.message ||
+          "Préinscription finalisée avec succès."
+      );
 
       const target = result.redirect_to || "/login";
-      router.push(`${target}?email=${encodeURIComponent(emailFinal)}`);
+
+      router.push(
+        `${target}?email=${encodeURIComponent(emailFinal)}`
+      );
     } catch (err: any) {
-      setError(err?.message || "Erreur lors de la finalisation.");
+      setError(
+        err?.message || "Erreur lors de la finalisation."
+      );
     } finally {
       setLoading(false);
     }
@@ -169,9 +215,14 @@ export default function PreinscriptionPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
             ASF-NTOL
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">Préinscription</h1>
+
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+            Préinscription
+          </h1>
+
           <p className="mt-2 text-sm text-slate-600">
-            Active ton accès à partir de ton numéro de téléphone reconnu.
+            Active ton accès à partir de ton numéro de téléphone
+            reconnu.
           </p>
         </div>
 
@@ -181,8 +232,10 @@ export default function PreinscriptionPage() {
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Téléphone
               </label>
+
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
                 <input
                   type="text"
                   value={telephone}
@@ -207,19 +260,26 @@ export default function PreinscriptionPage() {
         {step === "register" && memberData && (
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-              <p className="text-sm font-semibold text-emerald-700">{memberData.nom_complet}</p>
+              <p className="text-sm font-semibold text-emerald-700">
+                {memberData.nom_complet}
+              </p>
             </div>
 
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
-              Téléphone reconnu : <span className="font-semibold">{memberData.telephone}</span>
+              Téléphone reconnu :{" "}
+              <span className="font-semibold">
+                {memberData.telephone_normalise}
+              </span>
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Email de connexion
               </label>
+
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
                 <input
                   type="email"
                   value={email}
@@ -235,8 +295,10 @@ export default function PreinscriptionPage() {
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Mot de passe
               </label>
+
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -245,12 +307,22 @@ export default function PreinscriptionPage() {
                   placeholder="Minimum 6 caractères"
                   required
                 />
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
+                  onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  aria-label={
+                    showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -259,22 +331,40 @@ export default function PreinscriptionPage() {
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Confirmer le mot de passe
               </label>
+
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
                 <input
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={
+                    showConfirmPassword ? "text" : "password"
+                  }
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-10 py-3 pr-12 text-sm outline-none transition focus:border-emerald-500"
                   placeholder="Confirmez le mot de passe"
                   required
                 />
+
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  onClick={() =>
+                    setShowConfirmPassword((value) => !value)
+                  }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  aria-label={
+                    showConfirmPassword
+                      ? "Masquer la confirmation du mot de passe"
+                      : "Afficher la confirmation du mot de passe"
+                  }
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -284,7 +374,10 @@ export default function PreinscriptionPage() {
               disabled={loading}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
             >
-              {loading ? "Finalisation..." : "Finaliser mon inscription"}
+              {loading
+                ? "Finalisation..."
+                : "Finaliser mon inscription"}
+
               {!loading && <ArrowRight className="h-4 w-4" />}
             </button>
           </form>
@@ -293,8 +386,10 @@ export default function PreinscriptionPage() {
         {step === "exists" && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              Ce compte est déjà activé. Utilise directement la page de connexion.
+              Ce compte est déjà activé. Utilise directement la
+              page de connexion.
             </div>
+
             <button
               type="button"
               onClick={() => router.push("/login")}
