@@ -1,48 +1,128 @@
-﻿import { NextResponse } from "next/server";
+﻿import crypto from "crypto";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
-import crypto from "crypto";
 
-function isBureauRole(role: { code?: string | null; libelle?: string | null } | null | undefined) {
-  const raw = `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
-  return raw.includes("admin") || raw.includes("président") || raw.includes("president") || raw.includes("trésorier") || raw.includes("tresorier");
+type FinancementInput = {
+  rubrique_id?: string;
+  caisse_id?: string;
+  montant?: number | string;
+};
+
+type FinancementValide = {
+  rubriqueId: string;
+  caisseId: string;
+  montant: number;
+  rubriqueNom: string;
+  caisseLibelle: string;
+  soldeDisponible: number;
+};
+
+function normalizeText(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
-function rebuildDocument(demande: any, montantAccorde: number | null) {
+function isBureauRole(
+  role:
+    | {
+        code?: string | null;
+        libelle?: string | null;
+      }
+    | null
+    | undefined
+) {
+  const raw = normalizeText(
+    `${role?.code ?? ""} ${role?.libelle ?? ""}`
+  );
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("president") ||
+    raw.includes("tresorier")
+  );
+}
+
+function toPositiveNumber(value: unknown) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function rebuildDocument(args: {
+  demande: any;
+  decision: "APPROUVEE" | "REFUSEE";
+  montantAccorde: number | null;
+  motifReduction: string | null;
+  commentaireDecision: string | null;
+  financements: FinancementValide[];
+  dateTraitement: string;
+}) {
+  const {
+    demande,
+    decision,
+    montantAccorde,
+    motifReduction,
+    commentaireDecision,
+    financements,
+    dateTraitement,
+  } = args;
+
   const signatureDate = demande.signature_date
     ? new Date(demande.signature_date).toISOString()
     : new Date().toISOString();
 
   const montantDemande = Number(demande.montant_demande || 0);
 
-  const montantAccordeLine =
-    montantAccorde && montantAccorde > 0
-      ? `
-### Mise à jour du montant par le bureau
+  const financementLines =
+    financements.length > 0
+      ? financements
+          .map(
+            (item) =>
+              `- ${item.rubriqueNom} — ${item.caisseLibelle} : **${formatMoney(
+                item.montant
+              )} FCFA**`
+          )
+          .join("\n")
+      : "- Aucun décaissement : demande refusée.";
 
-Montant demandé : **${montantDemande} FCFA**  
-Montant accordé : **${montantAccorde} FCFA**
-`
-      : "";
+  const decisionLabel =
+    decision === "APPROUVEE" ? "APPROUVÉE" : "REFUSÉE";
 
   const baseWithoutHash = `DEMANDE DE PRÊT – ASSOCIATION FAMILLE NTOL (ASF-NTOL)
 
 ### 1. Identification du membre
 
-Nom et prénom : **${demande.signature_nom ?? "-"}**  
-Numéro de membre : **${demande.document_json?.numero_membre ?? "-"}**  
-Téléphone : **${demande.signature_telephone ?? "-"}**  
+Nom et prénom : **${demande.signature_nom ?? "-"}**
+Numéro de membre : **${demande.document_json?.numero_membre ?? "-"}**
+Téléphone : **${demande.signature_telephone ?? "-"}**
 Email : **${demande.document_json?.email ?? "-"}**
 
 ### 2. Objet de la demande
 
-Je soussigné(e), **${demande.signature_nom ?? "-"}**, membre actif de l’Association Famille NTOL, sollicite l’octroi d’un prêt auprès de la caisse de l’association.
+Je soussigné(e), **${
+    demande.signature_nom ?? "-"
+  }**, membre actif de l’Association Famille NTOL, sollicite l’octroi d’un prêt auprès de l’association.
 
-Montant demandé : **${montantDemande} FCFA**
+Montant demandé : **${formatMoney(montantDemande)} FCFA**
 
-Motif de la demande :  
+Motif de la demande :
+
 **${demande.motif ?? demande.objet_pret ?? "-"}**
 
 ### 3. Engagement du membre
@@ -51,43 +131,52 @@ Je reconnais que ce prêt constitue une dette personnelle envers l’Association
 
 À ce titre, je m’engage à :
 
-- rembourser intégralement le montant qui me sera accordé
-- respecter les modalités et délais de remboursement fixés par le bureau
-- accepter les mesures internes applicables en cas de retard ou de non-remboursement
+- rembourser intégralement le montant qui me sera accordé ;
+- respecter les modalités et délais de remboursement fixés par le bureau ;
+- accepter les mesures internes applicables en cas de retard ou de non-remboursement.
 
-Je reconnais avoir pris connaissance et accepter sans réserve les règles de prêt en vigueur dans l’association.
+### 4. Décision du bureau
 
-### 4. Conditions d’attribution
+Décision : **${decisionLabel}**
 
-- La demande est soumise à validation du bureau (Président, Trésorier, Administrateur)
-- Le montant accordé peut être partiel ou différent du montant demandé
-- Le décaissement n’intervient qu’après validation officielle
-- Le prêt accordé sera enregistré dans la caisse correspondante
-- Un suivi de remboursement sera mis en place jusqu’à extinction complète de la dette
-${montantAccordeLine}
-### 5. Signature électronique avancée
+Montant demandé : **${formatMoney(montantDemande)} FCFA**
 
-En validant cette demande de prêt :
+Montant accordé : **${
+    montantAccorde !== null
+      ? `${formatMoney(montantAccorde)} FCFA`
+      : "0 FCFA"
+  }**
 
-- je confirme être l’auteur de cette demande
-- je certifie l’exactitude des informations fournies
-- j’exprime mon consentement libre et éclairé
-- je m’engage juridiquement à rembourser toute somme qui me sera accordée
+Motif de réduction :
 
-**Signature du membre :**
+**${motifReduction ?? "Sans objet"}**
 
-Nom du signataire : **${demande.signature_nom ?? "-"}**  
-Date de signature : **${signatureDate}**  
-Téléphone utilisé : **${demande.signature_telephone ?? "-"}**  
+Commentaire de décision :
+
+**${commentaireDecision ?? "Aucun commentaire"}**
+
+Date de traitement : **${dateTraitement}**
+
+### 5. Répartition du financement
+
+${financementLines}
+
+Le capital remboursé devra être restitué dans les caisses d’origine selon cette répartition.
+
+### 6. Signature électronique du membre
+
+Nom du signataire : **${demande.signature_nom ?? "-"}**
+Date de signature : **${signatureDate}**
+Téléphone utilisé : **${demande.signature_telephone ?? "-"}**
 Adresse IP : **${demande.signature_ip ?? "-"}**
 
-### 6. Scellement et traçabilité
+### 7. Scellement et traçabilité
 
-Référence de la demande : **${demande.reference_unique ?? "-"}**  
-Horodatage serveur : **${signatureDate}**  
-Empreinte numérique (hash) : **HASH_PLACEHOLDER**
+Référence de la demande : **${demande.reference_unique ?? "-"}**
+Horodatage de décision : **${dateTraitement}**
+Empreinte numérique : **HASH_PLACEHOLDER**
 
-*Ce document constitue une demande officielle de prêt signée électroniquement. Toute modification ultérieure invalide la signature.*`;
+*Ce document constitue la trace officielle de la demande, de la décision du bureau et de la répartition des caisses ayant financé le prêt.*`;
 
   const hash = crypto
     .createHash("sha256")
@@ -100,7 +189,34 @@ Empreinte numérique (hash) : **HASH_PLACEHOLDER**
   };
 }
 
+async function rollbackFinancialOperations(args: {
+  supabaseAdmin: any;
+  financementIds: string[];
+  decaissementIds: string[];
+}) {
+  const { supabaseAdmin, financementIds, decaissementIds } = args;
+
+  if (financementIds.length > 0) {
+    await supabaseAdmin
+      .from("pret_financements")
+      .delete()
+      .in("id", financementIds);
+  }
+
+  if (decaissementIds.length > 0) {
+    await supabaseAdmin
+      .from("decaissements")
+      .delete()
+      .in("id", decaissementIds);
+  }
+}
+
 export async function POST(request: Request) {
+  const createdDecaissementIds: string[] = [];
+  const createdFinancementIds: string[] = [];
+
+  let supabaseAdmin: any = null;
+
   try {
     const cookieStore = await cookies();
 
@@ -118,141 +234,569 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAuth.auth.getUser();
 
     if (userError || !user) {
       return NextResponse.json(
-        { success: false, message: userError?.message || "Utilisateur non authentifié." },
+        {
+          success: false,
+          message:
+            userError?.message || "Utilisateur non authentifié.",
+        },
         { status: 401 }
       );
     }
 
     const context = await getUserContext(user);
 
-    if (!context?.success) {
+    if (!context?.success || !context.authUserId) {
       return NextResponse.json(
-        { success: false, message: context?.message || "Contexte utilisateur introuvable." },
+        {
+          success: false,
+          message:
+            context?.message ||
+            "Contexte utilisateur introuvable.",
+        },
         { status: 401 }
       );
     }
 
     if (!isBureauRole(context.role)) {
       return NextResponse.json(
-        { success: false, message: "Accès refusé. Action réservée au bureau." },
+        {
+          success: false,
+          message: "Accès refusé. Action réservée au bureau.",
+        },
         { status: 403 }
       );
     }
 
     const body = await request.json();
-    const demandeId = String(body?.demande_id || "").trim();
-    const decisionRaw = String(body?.decision || "").trim().toUpperCase();
-    const decision = decisionRaw.startsWith("APPROUV") ? "APPROUVEE" : "REFUSEE";
-    const montantAccorde = body?.montant_accorde === null || body?.montant_accorde === undefined || body?.montant_accorde === ""
-      ? null
-      : Number(body?.montant_accorde);
-    const commentaireDecision = String(body?.commentaire_decision || "").trim() || null;
-    const rubriqueId = String(body?.rubrique_id || "").trim() || null;
+
+    const demandeId = String(body?.demande_id ?? "").trim();
+    const decision = String(body?.decision ?? "")
+      .trim()
+      .toUpperCase();
+
+    const commentaireDecision =
+      String(body?.commentaire_decision ?? "").trim() || null;
+
+    const motifReduction =
+      String(body?.motif_reduction ?? "").trim() || null;
+
+    const montantAccorde =
+      body?.montant_accorde === null ||
+      body?.montant_accorde === undefined ||
+      body?.montant_accorde === ""
+        ? null
+        : Number(body.montant_accorde);
+
+    const financementsInput: FinancementInput[] = Array.isArray(
+      body?.financements
+    )
+      ? body.financements
+      : [];
 
     if (!demandeId) {
-      return NextResponse.json({ success: false, message: "demande_id obligatoire." }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "demande_id obligatoire.",
+        },
+        { status: 400 }
+      );
     }
 
     if (!["APPROUVEE", "REFUSEE"].includes(decision)) {
-      return NextResponse.json({ success: false, message: "decision invalide." }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "La décision doit être APPROUVEE ou REFUSEE.",
+        },
+        { status: 400 }
+      );
     }
 
-    if (decision === "APPROUVEE") {
-      if (!rubriqueId) {
-        return NextResponse.json({ success: false, message: "rubrique_id obligatoire pour un prêt approuvé." }, { status: 400 });
-      }
-      if (montantAccorde === null || Number.isNaN(montantAccorde) || montantAccorde <= 0) {
-        return NextResponse.json({ success: false, message: "montant_accorde obligatoire et valide pour un prêt approuvé." }, { status: 400 });
-      }
-    }
-
-    const supabaseAdmin = createClient(
+    supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
     );
 
-    const { data: demande, error: demandeError } = await supabaseAdmin
-      .from("demandes_prets")
-      .select("*")
-      .eq("id", demandeId)
-      .maybeSingle();
-
-    if (demandeError) throw demandeError;
-
-    if (!demande) {
-      return NextResponse.json({ success: false, message: "Demande de prêt introuvable." }, { status: 404 });
-    }
-
-    if (String(demande.statut || "").toUpperCase() !== "EN_ATTENTE") {
-      return NextResponse.json({ success: false, message: "Cette demande a déjà été traitée." }, { status: 400 });
-    }
-
-    const now = new Date().toISOString();
-    const montantDemande = Number(demande.montant_demande || 0);
-    const montantFinal = decision === "APPROUVEE" ? montantAccorde : null;
-    const rebuilt = rebuildDocument(demande, montantFinal);
-
-    if (decision === "APPROUVEE") {
-      const { data: caisse, error: caisseError } = await supabaseAdmin
-        .from("caisses")
-        .select("id, rubrique_id")
-        .eq("rubrique_id", rubriqueId)
+    const { data: demande, error: demandeError } =
+      await supabaseAdmin
+        .from("demandes_prets")
+        .select("*")
+        .eq("id", demandeId)
         .maybeSingle();
 
-      if (caisseError) throw caisseError;
+    if (demandeError) {
+      throw demandeError;
+    }
 
-      if (!caisse?.id) {
+    if (!demande) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Demande de prêt introuvable.",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (
+      String(demande.statut ?? "").trim().toUpperCase() !==
+      "EN_ATTENTE"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Cette demande a déjà été traitée.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const montantDemande = Number(demande.montant_demande || 0);
+
+    let financementsValides: FinancementValide[] = [];
+
+    if (decision === "APPROUVEE") {
+      if (
+        montantAccorde === null ||
+        !Number.isFinite(montantAccorde) ||
+        montantAccorde <= 0
+      ) {
         return NextResponse.json(
-          { success: false, message: "Aucune caisse liée à la rubrique sélectionnée." },
+          {
+            success: false,
+            message:
+              "Le montant accordé doit être supérieur à zéro.",
+          },
           { status: 400 }
         );
       }
 
-      const { error: decaissementError } = await supabaseAdmin
-        .from("decaissements")
-        .insert({
-          caisse_id: caisse.id,
-          rubrique_id: rubriqueId,
-          membre_id: demande.membre_id ?? null,
-          montant: montantFinal,
-          motif: `Décaissement prêt approuvé - demande ${demande.reference_unique ?? demande.id}`,
-          created_by: context.authUserId,
-        });
+      if (montantAccorde > montantDemande) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Le montant accordé ne peut pas dépasser le montant demandé.",
+          },
+          { status: 400 }
+        );
+      }
 
-      if (decaissementError) throw decaissementError;
+      if (
+        montantAccorde < montantDemande &&
+        !motifReduction
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Le motif de réduction est obligatoire lorsque le montant accordé est inférieur au montant demandé.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (financementsInput.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Au moins une caisse de financement est obligatoire.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const normalizedFinancements = financementsInput.map(
+        (item, index) => {
+          const rubriqueId = String(
+            item?.rubrique_id ?? ""
+          ).trim();
+
+          const caisseId = String(
+            item?.caisse_id ?? ""
+          ).trim();
+
+          const montant = toPositiveNumber(item?.montant);
+
+          if (!rubriqueId || !caisseId || montant === null) {
+            throw new Error(
+              `La ligne de financement ${
+                index + 1
+              } est incomplète ou invalide.`
+            );
+          }
+
+          return {
+            rubriqueId,
+            caisseId,
+            montant,
+          };
+        }
+      );
+
+      const rubriqueIds = normalizedFinancements.map(
+        (item) => item.rubriqueId
+      );
+
+      const caisseIds = normalizedFinancements.map(
+        (item) => item.caisseId
+      );
+
+      if (new Set(rubriqueIds).size !== rubriqueIds.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Une même rubrique ne peut financer le prêt qu'une seule fois.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (new Set(caisseIds).size !== caisseIds.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Une même caisse ne peut financer le prêt qu'une seule fois.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const totalFinance = normalizedFinancements.reduce(
+        (total, item) => total + item.montant,
+        0
+      );
+
+      if (Math.abs(totalFinance - montantAccorde) > 0.001) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Le total des financements (${formatMoney(
+                totalFinance
+              )} FCFA) doit être exactement égal au montant accordé (${formatMoney(
+                montantAccorde
+              )} FCFA).`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const { data: caisses, error: caissesError } =
+        await supabaseAdmin
+          .from("v_caisses_soldes")
+          .select(
+            "caisse_id, caisse_libelle, actif, rubrique_id, rubrique_nom, solde_disponible"
+          )
+          .in("caisse_id", caisseIds);
+
+      if (caissesError) {
+        throw caissesError;
+      }
+
+      if ((caisses ?? []).length !== caisseIds.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Une ou plusieurs caisses sélectionnées sont introuvables.",
+          },
+          { status: 400 }
+        );
+      }
+
+      financementsValides = normalizedFinancements.map(
+        (financement) => {
+          const caisse = (caisses ?? []).find(
+            (row: any) =>
+              String(row.caisse_id) === financement.caisseId
+          );
+
+          if (!caisse) {
+            throw new Error(
+              "Une caisse sélectionnée est introuvable."
+            );
+          }
+
+          if (caisse.actif !== true) {
+            throw new Error(
+              `La caisse ${caisse.caisse_libelle ?? ""} est inactive.`
+            );
+          }
+
+          if (
+            String(caisse.rubrique_id) !== financement.rubriqueId
+          ) {
+            throw new Error(
+              `La caisse ${
+                caisse.caisse_libelle ?? ""
+              } ne correspond pas à la rubrique sélectionnée.`
+            );
+          }
+
+          const soldeDisponible = Number(
+            caisse.solde_disponible || 0
+          );
+
+          if (financement.montant > soldeDisponible) {
+            throw new Error(
+              `Le montant demandé dans la caisse ${
+                caisse.caisse_libelle ?? caisse.rubrique_nom
+              } (${formatMoney(
+                financement.montant
+              )} FCFA) dépasse le solde disponible (${formatMoney(
+                soldeDisponible
+              )} FCFA).`
+            );
+          }
+
+          return {
+            rubriqueId: financement.rubriqueId,
+            caisseId: financement.caisseId,
+            montant: financement.montant,
+            rubriqueNom:
+              String(caisse.rubrique_nom ?? "").trim() ||
+              "Rubrique",
+            caisseLibelle:
+              String(caisse.caisse_libelle ?? "").trim() ||
+              "Caisse",
+            soldeDisponible,
+          };
+        }
+      );
     }
+
+    const { data: utilisateurInterne } = await supabaseAdmin
+      .from("utilisateurs")
+      .select("id")
+      .eq("auth_user_id", context.authUserId)
+      .maybeSingle();
+
+    const utilisateurId = utilisateurInterne?.id ?? null;
+    const now = new Date().toISOString();
+
+    if (decision === "APPROUVEE") {
+      for (const financement of financementsValides) {
+        const { data: decaissement, error: decaissementError } =
+          await supabaseAdmin
+            .from("decaissements")
+            .insert({
+              caisse_id: financement.caisseId,
+              rubrique_id: financement.rubriqueId,
+              membre_id: demande.membre_id ?? null,
+              montant: financement.montant,
+              motif:
+                `Décaissement prêt approuvé - ` +
+                `demande ${
+                  demande.reference_unique ?? demande.id
+                } - ${financement.rubriqueNom}`,
+              created_by: context.authUserId,
+            })
+            .select("id")
+            .single();
+
+        if (decaissementError || !decaissement?.id) {
+          throw new Error(
+            decaissementError?.message ||
+              "Échec de création d'un décaissement."
+          );
+        }
+
+        createdDecaissementIds.push(decaissement.id);
+
+        const { data: pretFinancement, error: financementError } =
+          await supabaseAdmin
+            .from("pret_financements")
+            .insert({
+              demande_pret_id: demandeId,
+              rubrique_id: financement.rubriqueId,
+              caisse_id: financement.caisseId,
+              montant_finance: financement.montant,
+              decaissement_id: decaissement.id,
+              created_by: utilisateurId,
+            })
+            .select("id")
+            .single();
+
+        if (financementError || !pretFinancement?.id) {
+          throw new Error(
+            financementError?.message ||
+              "Échec d'enregistrement de la ventilation du prêt."
+          );
+        }
+
+        createdFinancementIds.push(pretFinancement.id);
+      }
+    }
+
+    const rebuilt = rebuildDocument({
+      demande,
+      decision: decision as "APPROUVEE" | "REFUSEE",
+      montantAccorde:
+        decision === "APPROUVEE" ? montantAccorde : null,
+      motifReduction:
+        decision === "APPROUVEE" ? motifReduction : null,
+      commentaireDecision,
+      financements: financementsValides,
+      dateTraitement: now,
+    });
+
+    const existingDocumentJson =
+      demande.document_json &&
+      typeof demande.document_json === "object"
+        ? demande.document_json
+        : {};
+
+    const updatedDocumentJson = {
+      ...existingDocumentJson,
+      decision,
+      montant_demande: montantDemande,
+      montant_accorde:
+        decision === "APPROUVEE" ? montantAccorde : null,
+      motif_reduction:
+        decision === "APPROUVEE" ? motifReduction : null,
+      commentaire_decision: commentaireDecision,
+      date_traitement: now,
+      financements: financementsValides.map((item) => ({
+        rubrique_id: item.rubriqueId,
+        rubrique_nom: item.rubriqueNom,
+        caisse_id: item.caisseId,
+        caisse_libelle: item.caisseLibelle,
+        montant_finance: item.montant,
+      })),
+      signature_decision_hash: rebuilt.hash,
+    };
 
     const { error: updateError } = await supabaseAdmin
       .from("demandes_prets")
       .update({
         statut: decision,
-        montant_accorde: montantFinal,
+        montant_accorde:
+          decision === "APPROUVEE" ? montantAccorde : null,
         traite_par: context.authUserId,
         date_traitement: now,
-        commentaire_decision: commentaireDecision,
+        commentaire_decision:
+          decision === "APPROUVEE" && motifReduction
+            ? `Motif de réduction : ${motifReduction}${
+                commentaireDecision
+                  ? `\nCommentaire : ${commentaireDecision}`
+                  : ""
+              }`
+            : commentaireDecision,
         signature_hash: rebuilt.hash,
         document_texte: rebuilt.text,
+        document_json: updatedDocumentJson,
       })
-      .eq("id", demandeId);
+      .eq("id", demandeId)
+      .eq("statut", "EN_ATTENTE");
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      throw updateError;
+    }
 
-    const message =
+    const notificationTitre =
       decision === "APPROUVEE"
-        ? `Demande de prêt acceptée. Montant demandé : ${montantDemande} FCFA. Montant accordé : ${montantFinal} FCFA. Décaissement effectué dans la caisse sélectionnée et caisse mise à jour automatiquement.`
-        : "Demande de prêt refusée.";
+        ? "Demande de prêt approuvée"
+        : "Demande de prêt refusée";
 
-    return NextResponse.json({ success: true, message });
+    const notificationMessage =
+      decision === "APPROUVEE"
+        ? `Votre demande de prêt de ${formatMoney(
+            montantDemande
+          )} FCFA a été approuvée. Montant accordé : ${formatMoney(
+            montantAccorde ?? 0
+          )} FCFA.`
+        : `Votre demande de prêt de ${formatMoney(
+            montantDemande
+          )} FCFA a été refusée.${
+            commentaireDecision
+              ? ` Motif : ${commentaireDecision}`
+              : ""
+          }`;
+
+    const notificationResult = await supabaseAdmin.rpc(
+      "fn_notifications_creer",
+      {
+        p_membre_id: demande.membre_id,
+        p_type_notification:
+          decision === "APPROUVEE"
+            ? "DEMANDE_PRET_APPROUVEE"
+            : "DEMANDE_PRET_REFUSEE",
+        p_titre: notificationTitre,
+        p_message: notificationMessage,
+        p_url_cible: `/prets/demande/${demandeId}`,
+        p_donnees: {
+          demande_id: demandeId,
+          decision,
+          montant_demande: montantDemande,
+          montant_accorde:
+            decision === "APPROUVEE" ? montantAccorde : null,
+        },
+      }
+    );
+
+    const notificationWarning = notificationResult.error
+      ? notificationResult.error.message
+      : null;
+
+    return NextResponse.json({
+      success: true,
+      message:
+        decision === "APPROUVEE"
+          ? `Demande approuvée. ${financementsValides.length} décaissement(s) créé(s) pour un montant total de ${formatMoney(
+              montantAccorde ?? 0
+            )} FCFA.`
+          : "Demande de prêt refusée.",
+      data: {
+        demande_id: demandeId,
+        decision,
+        montant_demande: montantDemande,
+        montant_accorde:
+          decision === "APPROUVEE" ? montantAccorde : null,
+        financements: financementsValides,
+        decaissements_crees: createdDecaissementIds.length,
+        notification_warning: notificationWarning,
+      },
+    });
   } catch (error: any) {
+    if (supabaseAdmin) {
+      await rollbackFinancialOperations({
+        supabaseAdmin,
+        financementIds: createdFinancementIds,
+        decaissementIds: createdDecaissementIds,
+      });
+    }
+
+    console.error(
+      "Erreur traitement multi-caisses du prêt :",
+      error
+    );
+
     return NextResponse.json(
-      { success: false, message: error?.message || "Erreur lors du traitement de la demande de prêt." },
+      {
+        success: false,
+        message:
+          error?.message ||
+          "Erreur lors du traitement de la demande de prêt.",
+      },
       { status: 500 }
     );
   }
 }
-
