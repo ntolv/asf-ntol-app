@@ -24,7 +24,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/prets-aides": "Prêts / Aides",
   "/documents": "Documents",
   "/admin/roles": "Administration des rôles",
-  "/admin/import-export": "Import / Export",
 };
 
 function resolveTitle(pathname: string) {

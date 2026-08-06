@@ -32,7 +32,6 @@ const navItems: NavItem[] = [
 
   { href: "/admin/roles", label: "Administration", icon: "⚙️", section: "admin" },
   { href: "/admin/notifications", label: "Notifications", icon: "📢", section: "admin" },
-  { href: "/admin/import-export", label: "Import / Export", icon: "\uD83D\uDCE5", section: "admin" },
 ];
 
 const sections = [
