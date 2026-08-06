@@ -178,11 +178,7 @@ function roleFor(header: string) {
   if (/(^| )(mois|periode)( |$)/.test(value)) return "Mois";
   if (/(^| )(annee|exercice)( |$)/.test(value)) return "Année";
   if (
-    value === "total" ||
-    value.startsWith("total du mois") ||
-    value.startsWith("total mensuel") ||
-    value.startsWith("montant total") ||
-    value.includes("total du mois")
+    /(^| )(total|montant total|total du mois|total mensuel)( |$)/.test(value)
   ) {
     return "Total";
   }
