@@ -29,44 +29,16 @@ function getAdminClient() {
   });
 }
 
-function parseYear(yearValue: string) {
+function getYearRange(yearValue: string) {
   const match = /^(\d{4})$/.exec(yearValue);
   if (!match) return null;
 
   const year = Number(match[1]);
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return null;
 
-  return year;
-}
-
-function getDateRange(yearValue: string, monthValue: string) {
-  const year = parseYear(yearValue);
-  if (!year) return null;
-
-  if (!monthValue) {
-    return {
-      start: `${year}-01-01`,
-      end: `${year + 1}-01-01`,
-    };
-  }
-
-  const month = Number(monthValue);
-  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
-
-  const startMonth = String(month).padStart(2, "0");
-
-  if (month === 12) {
-    return {
-      start: `${year}-${startMonth}-01`,
-      end: `${year + 1}-01-01`,
-    };
-  }
-
-  const endMonth = String(month + 1).padStart(2, "0");
-
   return {
-    start: `${year}-${startMonth}-01`,
-    end: `${year}-${endMonth}-01`,
+    start: `${year}-01-01`,
+    end: `${year + 1}-01-01`,
   };
 }
 
@@ -77,15 +49,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const membreId = searchParams.get("membre_id")?.trim() || "";
     const annee = searchParams.get("annee")?.trim() || "";
-    const mois = searchParams.get("mois")?.trim() || "";
     const rubriqueId = searchParams.get("rubrique_id")?.trim() || "";
-
-    if (mois && !annee) {
-      return NextResponse.json(
-        { success: false, message: "Une année doit être sélectionnée pour filtrer par mois" },
-        { status: 400 }
-      );
-    }
 
     let query = supabase
       .from("v_contributions_imputations")
@@ -103,16 +67,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (annee) {
-      const range = getDateRange(annee, mois);
-
+      const range = getYearRange(annee);
       if (!range) {
         return NextResponse.json(
-          {
-            success: false,
-            message: mois
-              ? "Année ou mois invalide"
-              : "Année invalide. Format attendu : YYYY",
-          },
+          { success: false, message: "Année invalide. Format attendu : YYYY" },
           { status: 400 }
         );
       }
@@ -185,7 +143,6 @@ export async function GET(request: NextRequest) {
       filters: {
         membre_id: membreId || null,
         annee: annee || null,
-        mois: mois || null,
         rubrique_id: rubriqueId || null,
       },
       count: contributions.length,
@@ -201,4 +158,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

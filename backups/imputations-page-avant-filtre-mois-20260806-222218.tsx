@@ -50,22 +50,6 @@ type EncaissementsResponse = {
   message?: string;
 };
 
-const MOIS_OPTIONS = [
-  { value: "", label: "Tous les mois" },
-  { value: "1", label: "Janvier" },
-  { value: "2", label: "Février" },
-  { value: "3", label: "Mars" },
-  { value: "4", label: "Avril" },
-  { value: "5", label: "Mai" },
-  { value: "6", label: "Juin" },
-  { value: "7", label: "Juillet" },
-  { value: "8", label: "Août" },
-  { value: "9", label: "Septembre" },
-  { value: "10", label: "Octobre" },
-  { value: "11", label: "Novembre" },
-  { value: "12", label: "Décembre" },
-];
-
 function formatFcfa(value: number) {
   return `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 }
@@ -81,10 +65,6 @@ function getCurrentYear() {
   return String(new Date().getFullYear());
 }
 
-function getCurrentMonth() {
-  return String(new Date().getMonth() + 1);
-}
-
 export default function ImputationsPage() {
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
@@ -94,7 +74,6 @@ export default function ImputationsPage() {
   const [rubriques, setRubriques] = useState<RubriqueOption[]>([]);
   const [membreId, setMembreId] = useState("");
   const [annee, setAnnee] = useState(getCurrentYear());
-  const [mois, setMois] = useState(getCurrentMonth());
   const [rubriqueId, setRubriqueId] = useState("");
   const [contributions, setContributions] = useState<EncaissementContribution[]>([]);
 
@@ -151,7 +130,6 @@ export default function ImputationsPage() {
         const params = new URLSearchParams();
         if (membreId) params.set("membre_id", membreId);
         if (annee) params.set("annee", annee);
-        if (mois) params.set("mois", mois);
         if (rubriqueId) params.set("rubrique_id", rubriqueId);
 
         const suffix = params.toString() ? `?${params.toString()}` : "";
@@ -181,7 +159,7 @@ export default function ImputationsPage() {
     return () => {
       mounted = false;
     };
-  }, [membreId, annee, mois, rubriqueId]);
+  }, [membreId, annee, rubriqueId]);
 
   const totalEncaisse = useMemo(() => {
     return contributions.reduce((sum, item) => sum + Number(item.montant_total ?? 0), 0);
@@ -215,50 +193,27 @@ export default function ImputationsPage() {
   const rubriqueLabel =
     rubriques.find((rubrique) => rubrique.id === rubriqueId)?.nom || "Toutes les rubriques";
 
-  const moisLabel = MOIS_OPTIONS.find((item) => item.value === mois)?.label || "Tous les mois";
-  const periodeLabel = mois ? `${moisLabel} ${annee}` : `Année ${annee}`;
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Historique Encaissements"
-        subtitle="Consultation des encaissements enregistrés, ventilés par membre et par rubrique."
+        subtitle="Consultation annuelle des encaissements enregistrés, ventilés par membre et par rubrique."
         size="lg"
       />
 
       <SectionCard padding="md">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 lg:grid-cols-4">
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-700">Année</span>
             <select
               value={annee}
-              onChange={(e) => {
-                const nouvelleAnnee = e.target.value;
-                setAnnee(nouvelleAnnee);
-                setMois(nouvelleAnnee === getCurrentYear() ? getCurrentMonth() : "");
-              }}
+              onChange={(e) => setAnnee(e.target.value)}
               disabled={loadingFilters}
               className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
             >
               {annees.map((item) => (
                 <option key={item} value={item}>
                   {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-700">Mois</span>
-            <select
-              value={mois}
-              onChange={(e) => setMois(e.target.value)}
-              disabled={loadingFilters || !annee}
-              className="w-full rounded-[12px] border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 disabled:opacity-60"
-            >
-              {MOIS_OPTIONS.map((item) => (
-                <option key={item.value || "tous"} value={item.value}>
-                  {item.label}
                 </option>
               ))}
             </select>
@@ -306,7 +261,6 @@ export default function ImputationsPage() {
               onClick={() => {
                 setMembreId("");
                 setAnnee(getCurrentYear());
-                setMois(getCurrentMonth());
                 setRubriqueId("");
               }}
             >
@@ -322,7 +276,7 @@ export default function ImputationsPage() {
 
       {!loadingFilters && !loadingData && (
         <SectionCard
-          title={`Résumé des encaissements — ${periodeLabel}`}
+          title={`Résumé des encaissements ${annee}`}
           subtitle={`Rubrique : ${rubriqueLabel}`}
           padding="md"
         >
@@ -371,7 +325,7 @@ export default function ImputationsPage() {
       ) : null}
 
       <SectionCard
-        title={`Historique détaillé — ${periodeLabel}`}
+        title="Historique détaillé"
         subtitle="Chaque encaissement affiche les rubriques concernées et les montants ventilés."
         padding="md"
       >
@@ -383,66 +337,67 @@ export default function ImputationsPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            {contributions.map((item) => (
-              <article
-                key={item.contribution_id}
-                className="rounded-[20px] border border-slate-200 bg-slate-50 p-4"
-              >
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-lg font-semibold text-slate-900">{item.membre_nom}</p>
-                    <p className="text-sm text-slate-500">
-                      Encaissement du {formatDate(item.date_contribution)}
-                    </p>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[320px]">
-                    <div className="rounded-[12px] border border-white bg-white p-4">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Statut</p>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">{item.statut}</p>
-                    </div>
-
-                    <div className="rounded-[12px] border border-white bg-white p-4">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total encaissé</p>
-                      <p className="mt-2 text-sm font-semibold text-emerald-700">
-                        {formatFcfa(item.montant_total)}
+            {contributions.map((item) => {
+              return (
+                <article
+                  key={item.contribution_id}
+                  className="rounded-[20px] border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold text-slate-900">{item.membre_nom}</p>
+                      <p className="text-sm text-slate-500">
+                        Encaissement du {formatDate(item.date_contribution)}
                       </p>
                     </div>
-                  </div>
-                </div>
 
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full border-separate border-spacing-y-2">
-                    <thead>
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                          Rubrique
-                        </th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                          Montant
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {item.lignes.map((ligne) => (
-                        <tr key={ligne.ligne_id}>
-                          <td className="rounded-l-[12px] border border-slate-200 border-r-0 bg-white px-3 py-3 text-sm font-medium text-slate-700">
-                            {ligne.rubrique_nom}
-                          </td>
-                          <td className="rounded-r-[12px] border border-slate-200 border-l-0 bg-white px-3 py-3 text-right text-sm font-semibold text-slate-900">
-                            {formatFcfa(ligne.montant_ligne)}
-                          </td>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[320px]">
+                      <div className="rounded-[12px] border border-white bg-white p-4">
+                        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Statut</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{item.statut}</p>
+                      </div>
+
+                      <div className="rounded-[12px] border border-white bg-white p-4">
+                        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total encaissé</p>
+                        <p className="mt-2 text-sm font-semibold text-emerald-700">
+                          {formatFcfa(item.montant_total)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full border-separate border-spacing-y-2">
+                      <thead>
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                            Rubrique
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                            Montant
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ))}
+                      </thead>
+                      <tbody>
+                        {item.lignes.map((ligne) => (
+                          <tr key={ligne.ligne_id}>
+                            <td className="rounded-l-[12px] border border-slate-200 border-r-0 bg-white px-3 py-3 text-sm font-medium text-slate-700">
+                              {ligne.rubrique_nom}
+                            </td>
+                            <td className="rounded-r-[12px] border border-slate-200 border-l-0 bg-white px-3 py-3 text-right text-sm font-semibold text-slate-900">
+                              {formatFcfa(ligne.montant_ligne)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </SectionCard>
     </div>
   );
 }
-
