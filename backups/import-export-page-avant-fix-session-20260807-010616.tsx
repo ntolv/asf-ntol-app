@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import * as XLSX from "xlsx";
+import { createClient } from "@supabase/supabase-js";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ActionButton from "@/components/ui/ActionButton";
@@ -764,6 +765,22 @@ export default function ImportExportPage() {
 
       setImportProgress(30);
 
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !anonKey) {
+        throw new Error("Configuration Supabase manquante");
+      }
+
+      const supabase = createClient(supabaseUrl, anonKey);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Session utilisateur introuvable");
+      }
+
       setImportProgress(50);
 
       const response = await fetch(
@@ -772,8 +789,8 @@ export default function ImportExportPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
           },
-          credentials: "same-origin",
           body: JSON.stringify({
             year,
             replace_existing: existingCount > 0,

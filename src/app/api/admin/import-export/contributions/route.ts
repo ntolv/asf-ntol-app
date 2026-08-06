@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 
 type ImportBody = {
   year?: number;
@@ -8,80 +9,99 @@ type ImportBody = {
   rubriques?: unknown[];
 };
 
-function getEnvironment() {
+function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !anonKey || !serviceRoleKey) {
-    throw new Error("Variables Supabase manquantes");
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "Variables Supabase manquantes : NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"
+    );
   }
 
-  return { url, anonKey, serviceRoleKey };
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authorization = request.headers.get("authorization") || "";
+    const supabase = await createSupabaseServerClient();
 
-    if (!authorization.startsWith("Bearer ")) {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json(
-        { success: false, message: "Authentification requise" },
+        {
+          success: false,
+          message: userError?.message || "Utilisateur non connecté",
+        },
         { status: 401 }
       );
     }
 
-    const { url, anonKey, serviceRoleKey } = getEnvironment();
+    const { data: isAdmin, error: adminCheckError } = await supabase.rpc(
+      "fn_is_current_user_admin"
+    );
 
-    const userClient = createClient(url, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        headers: {
-          Authorization: authorization,
-        },
-      },
-    });
+    if (adminCheckError) {
+      throw adminCheckError;
+    }
 
-    const { data: isAdmin, error: adminError } =
-      await userClient.rpc("fn_is_current_user_admin");
-
-    if (adminError || !isAdmin) {
+    if (!isAdmin) {
       return NextResponse.json(
-        { success: false, message: "Accès réservé aux administrateurs" },
+        {
+          success: false,
+          message: "Accès réservé aux administrateurs",
+        },
         { status: 403 }
       );
     }
 
     const body = (await request.json()) as ImportBody;
-    const year = Number(body.year);
-    const rows = Array.isArray(body.rows) ? body.rows : [];
-    const rubriques = Array.isArray(body.rubriques) ? body.rubriques : [];
-    const replaceExisting = Boolean(body.replace_existing);
+
+    const year = Number(body?.year);
+    const rows = Array.isArray(body?.rows) ? body.rows : [];
+    const rubriques = Array.isArray(body?.rubriques) ? body.rubriques : [];
+    const replaceExisting = Boolean(body?.replace_existing);
 
     if (!Number.isInteger(year) || year < 2000 || year > 2100) {
       return NextResponse.json(
-        { success: false, message: "Année invalide" },
+        {
+          success: false,
+          message: "Année invalide",
+        },
         { status: 400 }
       );
     }
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Aucun encaissement à importer" },
+        {
+          success: false,
+          message: "Aucun encaissement à importer",
+        },
         { status: 400 }
       );
     }
 
     if (rubriques.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Aucune rubrique à importer" },
+        {
+          success: false,
+          message: "Aucune rubrique à importer",
+        },
         { status: 400 }
       );
     }
 
-    const adminClient = createClient(url, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const adminClient = getAdminClient();
 
     const { data, error } = await adminClient.rpc(
       "fn_import_contributions_year",
