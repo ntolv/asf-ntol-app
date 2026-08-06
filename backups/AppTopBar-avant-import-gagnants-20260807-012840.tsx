@@ -25,7 +25,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/documents": "Documents",
   "/admin/roles": "Administration des rôles",
   "/admin/import-export": "Import / Export",
-  "/admin/import-export/tontine-gagnants": "Import gagnants tontine",
 };
 
 function resolveTitle(pathname: string) {
