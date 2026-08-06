@@ -651,7 +651,9 @@ export default function ImportExportPage() {
     unresolvedMembers.length === 0 &&
     unresolvedRubrics.length === 0 &&
     (rubricsToCreate.length === 0 || confirmCreateRubrics) &&
-    (existingCount === 0 || confirmReplaceYear);
+    (existingCount === 0 || confirmReplaceYear) &&
+    Boolean(totalColumn) &&
+    lineInconsistencies.length === 0;
 
 
   function parseMonthValue(value: unknown) {
@@ -1354,6 +1356,94 @@ export default function ImportExportPage() {
           </SectionCard>
 
           <SectionCard
+            title="Contrôle des totaux mensuels"
+            subtitle="La somme des rubriques de chaque ligne doit correspondre au Total du mois."
+            padding="md"
+          >
+            {!totalColumn ? (
+              <div className="rounded-[16px] border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-medium text-red-700">
+                  La colonne « Total du mois » n'a pas été reconnue.
+                </p>
+              </div>
+            ) : lineInconsistencies.length === 0 ? (
+              <div className="rounded-[16px] border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-sm font-medium text-emerald-700">
+                  Toutes les lignes sont cohérentes. Montant total du fichier :
+                  {" "}{formatFcfa(total)}.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-[16px] border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-semibold text-red-700">
+                    {lineInconsistencies.length} incohérence(s) détectée(s).
+                    L'import est bloqué.
+                  </p>
+                </div>
+
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full border-separate border-spacing-y-2">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-400">
+                          Ligne
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-400">
+                          Membre
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-400">
+                          Mois
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-slate-400">
+                          Total du mois
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-slate-400">
+                          Somme rubriques
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-slate-400">
+                          Écart
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {lineInconsistencies.slice(0, 100).map((item) => (
+                        <tr key={item.rowNumber}>
+                          <td className="rounded-l-[12px] border border-r-0 border-red-200 bg-white px-3 py-3 text-sm text-slate-700">
+                            {item.rowNumber}
+                          </td>
+                          <td className="border-y border-red-200 bg-white px-3 py-3 text-sm text-slate-700">
+                            {item.member}
+                          </td>
+                          <td className="border-y border-red-200 bg-white px-3 py-3 text-sm text-slate-700">
+                            {item.month}
+                          </td>
+                          <td className="border-y border-red-200 bg-white px-3 py-3 text-right text-sm text-slate-700">
+                            {formatFcfa(item.declaredTotal)}
+                          </td>
+                          <td className="border-y border-red-200 bg-white px-3 py-3 text-right text-sm text-slate-700">
+                            {formatFcfa(item.calculatedTotal)}
+                          </td>
+                          <td className="rounded-r-[12px] border border-l-0 border-red-200 bg-white px-3 py-3 text-right text-sm font-semibold text-red-700">
+                            {formatFcfa(item.difference)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {lineInconsistencies.length > 100 ? (
+                  <p className="mt-3 text-sm text-slate-500">
+                    Seules les 100 premières incohérences sont affichées.
+                  </p>
+                ) : null}
+              </>
+            )}
+          </SectionCard>
+
+          <SectionCard
             title="Résumé avant import"
             subtitle="Cette étape prépare l'import réel sans écrire dans la base."
             padding="md"
@@ -1367,6 +1457,7 @@ export default function ImportExportPage() {
                 ["Rubriques à créer", rubricsToCreate.length],
                 ["Rubriques ignorées", ignoredRubrics.length],
                 ["Données remplacées", existingCount],
+                ["Lignes incohérentes", lineInconsistencies.length],
               ].map(([label, value]) => (
                 <div
                   key={String(label)}
@@ -1412,6 +1503,16 @@ export default function ImportExportPage() {
                     <p>• Le remplacement des données existantes doit être confirmé.</p>
                   ) : null}
 
+                  {!totalColumn ? (
+                    <p>• La colonne « Total du mois » n'a pas été reconnue.</p>
+                  ) : null}
+
+                  {lineInconsistencies.length > 0 ? (
+                    <p>
+                      • {lineInconsistencies.length} ligne(s) présentent un écart
+                      entre la somme des rubriques et le total du mois.
+                    </p>
+                  ) : null}
                 </div>
               )}
             </div>
