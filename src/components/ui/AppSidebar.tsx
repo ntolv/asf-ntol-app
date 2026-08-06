@@ -21,13 +21,13 @@ const navItems: NavItem[] = [
 
   { href: "/membres", label: "Membres", icon: "👥", section: "operations" },
   { href: "/contributions", label: "Contributions", icon: "💰", section: "operations" },
-  { href: "/imputations", label: "Imputations", icon: "🧾", section: "operations" },
+  { href: "/imputations", label: "Historique Encaissements", icon: "🧾", section: "operations" },
   { href: "/montants-attendus", label: "Montants attendus", icon: "📌", section: "operations" },
   { href: "/decaissements", label: "Décaissements", icon: "💸", section: "operations" },
 
   { href: "/aides", label: "Aides / Secours / Prêts", icon: "🤝", section: "support" },
   { href: "/gestion-demandes", label: "Gestion des demandes", icon: "🗂️", section: "support" },
-  { href: "/prets-aides", label: "Prêts / Aides", icon: "📉", section: "support" },
+  { href: "/prets-aides", label: "Suivi Prêts / Aides", icon: "📉", section: "support" },
   { href: "/documents", label: "Documents", icon: "📂", section: "support" },
 
   { href: "/admin/roles", label: "Administration", icon: "⚙️", section: "admin" },
