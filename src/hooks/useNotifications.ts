@@ -16,11 +16,12 @@ interface Notification {
   date_lecture: string | null;
   created_at: string;
   updated_at: string | null;
+  url_cible: string | null;
+  donnees?: Record<string, unknown> | null;
   lue: boolean;
   type: "info" | "success" | "warning" | "error";
   date_creation: string;
 }
-
 interface NotificationsState {
   notifications: Notification[];
   loading: boolean;

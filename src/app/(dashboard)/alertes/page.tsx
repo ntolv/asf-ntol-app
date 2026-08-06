@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -15,15 +16,26 @@ function formatDate(value: string) {
 }
 
 function badgeClass(type: string) {
-  if (type === "success") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (type === "warning") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (type === "error") return "border-red-200 bg-red-50 text-red-700";
+  if (type === "success") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (type === "warning") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  if (type === "error") {
+    return "border-red-200 bg-red-50 text-red-700";
+  }
+
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 export default function AlertesPage() {
+  const router = useRouter();
   const auth = useAuth();
   const membreId = auth.member?.id || undefined;
+
   const {
     notifications,
     loading,
@@ -33,15 +45,35 @@ export default function AlertesPage() {
     markAllAsRead,
   } = useNotifications(membreId);
 
+  async function openNotification(
+    notificationId: string,
+    urlCible: string | null,
+    alreadyRead: boolean
+  ) {
+    try {
+      if (!alreadyRead) {
+        await markAsRead(notificationId);
+      }
+
+      if (urlCible) {
+        router.push(urlCible);
+      }
+    } catch (err) {
+      console.error("Erreur lors de l’ouverture de la notification :", err);
+    }
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6">
       <section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
           Alertes reçues
         </p>
+
         <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
           Centre d’alertes
         </h1>
+
         <p className="mt-3 text-sm text-slate-600">
           Consulte les alertes envoyées à ton compte et marque-les comme lues.
         </p>
@@ -53,6 +85,7 @@ export default function AlertesPage() {
             <p className="text-sm font-semibold text-slate-500">
               Non lues
             </p>
+
             <p className="text-2xl font-bold text-slate-900">
               {loading ? "..." : unreadCount}
             </p>
@@ -85,53 +118,97 @@ export default function AlertesPage() {
             Aucune alerte pour le moment.
           </div>
         ) : (
-          notifications.map((notification) => (
-            <article
-              key={notification.id}
-              className={[
-                "rounded-[24px] border bg-white p-5 shadow-sm",
-                notification.lue ? "border-slate-200" : "border-emerald-200",
-              ].join(" ")}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full border px-3 py-1 text-xs font-bold ${badgeClass(notification.type)}`}>
-                      {notification.type}
-                    </span>
+          notifications.map((notification) => {
+            const clickable = Boolean(notification.url_cible);
 
-                    {!notification.lue ? (
-                      <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
-                        Non lue
+            return (
+              <article
+                key={notification.id}
+                role={clickable ? "button" : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onClick={() =>
+                  openNotification(
+                    notification.id,
+                    notification.url_cible,
+                    notification.lue
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (!clickable) return;
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+
+                    openNotification(
+                      notification.id,
+                      notification.url_cible,
+                      notification.lue
+                    );
+                  }
+                }}
+                className={[
+                  "rounded-[24px] border bg-white p-5 shadow-sm transition",
+                  notification.lue
+                    ? "border-slate-200"
+                    : "border-emerald-200",
+                  clickable
+                    ? "cursor-pointer hover:border-emerald-300 hover:shadow-md"
+                    : "",
+                ].join(" ")}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${badgeClass(
+                          notification.type
+                        )}`}
+                      >
+                        {notification.type}
                       </span>
+
+                      {!notification.lue ? (
+                        <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
+                          Non lue
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <h2 className="mt-3 text-lg font-bold text-slate-900">
+                      {notification.titre}
+                    </h2>
+
+                    <p className="mt-2 text-sm text-slate-600">
+                      {notification.message}
+                    </p>
+
+                    <p className="mt-3 text-xs text-slate-400">
+                      {formatDate(notification.date_creation)}
+                    </p>
+
+                    {clickable ? (
+                      <p className="mt-3 text-xs font-semibold text-emerald-700">
+                        Cliquer pour ouvrir
+                      </p>
                     ) : null}
                   </div>
 
-                  <h2 className="mt-3 text-lg font-bold text-slate-900">
-                    {notification.titre}
-                  </h2>
-
-                  <p className="mt-2 text-sm text-slate-600">
-                    {notification.message}
-                  </p>
-
-                  <p className="mt-3 text-xs text-slate-400">
-                    {formatDate(notification.date_creation)}
-                  </p>
+                  {!notification.lue ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        markAsRead(notification.id);
+                      }}
+                      className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900"
+                    >
+                      Lu
+                    </button>
+                  ) : null}
                 </div>
-
-                {!notification.lue ? (
-                  <button
-                    type="button"
-                    onClick={() => markAsRead(notification.id)}
-                    className="shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900"
-                  >
-                    Lu
-                  </button>
-                ) : null}
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         )}
       </section>
     </div>
