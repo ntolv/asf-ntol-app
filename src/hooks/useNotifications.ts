@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -79,6 +79,16 @@ function normalizeNotification(row: any): Notification {
   };
 }
 
+async function readJsonSafe(response: Response) {
+  const rawText = await response.text();
+
+  try {
+    return rawText ? JSON.parse(rawText) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useNotifications(userId: string | undefined) {
   const [state, setState] = useState<NotificationsState>({
     notifications: [],
@@ -89,12 +99,12 @@ export function useNotifications(userId: string | undefined) {
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) {
-      setState((previous) => ({
-        ...previous,
-        loading: false,
+      setState({
         notifications: [],
+        loading: false,
+        error: null,
         unreadCount: 0,
-      }));
+      });
       return;
     }
 
@@ -118,15 +128,14 @@ export function useNotifications(userId: string | undefined) {
       }
 
       const notifications = (data || []).map(normalizeNotification);
-      const unreadCount = notifications.filter(
-        (notification) => !notification.lue
-      ).length;
 
       setState({
         notifications,
         loading: false,
         error: null,
-        unreadCount,
+        unreadCount: notifications.filter(
+          (notification) => !notification.lue
+        ).length,
       });
     } catch (error: any) {
       setState((previous) => ({
@@ -254,7 +263,6 @@ export function useNotifications(userId: string | undefined) {
 
     const readAt = new Date().toISOString();
 
-    // Mise à jour immédiate de toutes les instances du hook.
     window.dispatchEvent(
       new CustomEvent(NOTIFICATION_READ_EVENT, {
         detail: {
@@ -265,23 +273,24 @@ export function useNotifications(userId: string | undefined) {
     );
 
     try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({
-          date_lecture: readAt,
-          updated_at: readAt,
-        })
-        .eq("id", notificationId)
-        .eq("membre_id", userId);
+      const response = await fetch("/api/notifications/lecture", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          notification_id: notificationId,
+        }),
+      });
 
-      if (error) {
-        console.error(
-          "Erreur lors du marquage comme lu :",
-          error
+      const result = await readJsonSafe(response);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(
+          result?.message ||
+            "Impossible d'enregistrer la lecture de la notification."
         );
-
-        await fetchNotifications();
-        return false;
       }
 
       return true;
@@ -301,31 +310,29 @@ export function useNotifications(userId: string | undefined) {
       return true;
     }
 
-    const now = new Date().toISOString();
-
-    // Le compteur passe immédiatement à zéro partout.
     window.dispatchEvent(
       new CustomEvent(ALL_NOTIFICATIONS_READ_EVENT)
     );
 
     try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({
-          date_lecture: now,
-          updated_at: now,
-        })
-        .eq("membre_id", userId)
-        .is("date_lecture", null);
+      const response = await fetch("/api/notifications/lecture", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          tout: true,
+        }),
+      });
 
-      if (error) {
-        console.error(
-          "Erreur lors du marquage de toutes comme lues :",
-          error
+      const result = await readJsonSafe(response);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(
+          result?.message ||
+            "Impossible d'enregistrer la lecture des notifications."
         );
-
-        await fetchNotifications();
-        return false;
       }
 
       return true;
