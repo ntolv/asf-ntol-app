@@ -61,16 +61,26 @@ type HistoriqueItem = {
   created_at: string | null | undefined;
   date_traitement: string | null | undefined;
   document_link: string | null;
+  amortissement_link: string | null;
 };
 
 function formatMoney(value: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR").format(Number(value || 0)) + " FCFA";
+  return (
+    new Intl.NumberFormat("fr-FR", {
+      maximumFractionDigits: 0,
+    }).format(Math.round(Number(value || 0))) + " FCFA"
+  );
 }
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -115,7 +125,8 @@ export default function PretsAidesPage() {
 
   const [appliedSearch, setAppliedSearch] = useState("");
   const [appliedTypeFilter, setAppliedTypeFilter] = useState("TOUS");
-  const [appliedStatusFilter, setAppliedStatusFilter] = useState("TOUS");
+  const [appliedStatusFilter, setAppliedStatusFilter] =
+    useState("TOUS");
 
   async function loadData() {
     try {
@@ -135,21 +146,40 @@ export default function PretsAidesPage() {
       let json: ApiResponse | null = null;
 
       try {
-        json = rawText ? (JSON.parse(rawText) as ApiResponse) : null;
+        json = rawText
+          ? (JSON.parse(rawText) as ApiResponse)
+          : null;
       } catch {
-        throw new Error("L'API /api/prets-aides ne renvoie pas du JSON.");
+        throw new Error(
+          "L'API /api/prets-aides ne renvoie pas du JSON."
+        );
       }
 
       if (!response.ok || !json?.success) {
-        throw new Error(json?.message || "Erreur lors du chargement des demandes.");
+        throw new Error(
+          json?.message ||
+            "Erreur lors du chargement des demandes."
+        );
       }
 
-      setAides(Array.isArray(json.data?.aides) ? json.data!.aides : []);
-      setPrets(Array.isArray(json.data?.prets) ? json.data!.prets : []);
+      setAides(
+        Array.isArray(json.data?.aides)
+          ? json.data.aides
+          : []
+      );
+
+      setPrets(
+        Array.isArray(json.data?.prets)
+          ? json.data.prets
+          : []
+      );
     } catch (err: any) {
       setAides([]);
       setPrets([]);
-      setError(err?.message || "Erreur lors du chargement des demandes.");
+      setError(
+        err?.message ||
+          "Erreur lors du chargement des demandes."
+      );
     } finally {
       setLoading(false);
     }
@@ -160,52 +190,99 @@ export default function PretsAidesPage() {
   }, []);
 
   const historique = useMemo<HistoriqueItem[]>(() => {
-    const aidesMapped: HistoriqueItem[] = aides.map((item) => ({
-      id: item.id,
-      type: "AIDE",
-      membre_nom: item.membres?.nom_complet || "-",
-      numero_membre: item.membres?.numero_membre || "-",
-      montant_demande: Number(item.montant_demande || 0),
-      montant_accorde: Number(item.montant_accorde || 0),
-      motif: item.motif || "-",
-      statut: item.statut || "-",
-      reference: item.id,
-      created_at: item.created_at,
-      date_traitement: item.date_traitement,
-      document_link: null,
-    }));
+    const aidesMapped: HistoriqueItem[] = aides.map(
+      (item) => ({
+        id: item.id,
+        type: "AIDE",
+        membre_nom: item.membres?.nom_complet || "-",
+        numero_membre:
+          item.membres?.numero_membre || "-",
+        montant_demande: Number(
+          item.montant_demande || 0
+        ),
+        montant_accorde: Number(
+          item.montant_accorde || 0
+        ),
+        motif: item.motif || "-",
+        statut: item.statut || "-",
+        reference: item.id,
+        created_at: item.created_at,
+        date_traitement: item.date_traitement,
+        document_link: null,
+        amortissement_link: null,
+      })
+    );
 
-    const pretsMapped: HistoriqueItem[] = prets.map((item) => ({
-      id: item.id,
-      type: "PRET",
-      membre_nom: item.membres?.nom_complet || "-",
-      numero_membre: item.membres?.numero_membre || "-",
-      montant_demande: Number(item.montant_demande || 0),
-      montant_accorde: Number(item.montant_accorde || 0),
-      motif: item.objet_pret || item.motif || "-",
-      statut: normalizePretStatus(item),
-      reference: item.reference_unique || item.id,
-      created_at: item.created_at,
-      date_traitement: item.date_traitement,
-      document_link: `/prets/demande/${item.id}`,
-    }));
+    const pretsMapped: HistoriqueItem[] = prets.map(
+      (item) => {
+        const statut = normalizePretStatus(item);
 
-    return [...aidesMapped, ...pretsMapped].sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateB - dateA;
-    });
+        const pretApprouve = String(statut)
+          .toUpperCase()
+          .includes("APPROUV");
+
+        return {
+          id: item.id,
+          type: "PRET",
+          membre_nom:
+            item.membres?.nom_complet || "-",
+          numero_membre:
+            item.membres?.numero_membre || "-",
+          montant_demande: Number(
+            item.montant_demande || 0
+          ),
+          montant_accorde: Number(
+            item.montant_accorde || 0
+          ),
+          motif:
+            item.objet_pret ||
+            item.motif ||
+            "-",
+          statut,
+          reference:
+            item.reference_unique || item.id,
+          created_at: item.created_at,
+          date_traitement: item.date_traitement,
+          document_link: `/prets/demande/${item.id}`,
+          amortissement_link: pretApprouve
+            ? `/prets/amortissement/${item.id}`
+            : null,
+        };
+      }
+    );
+
+    return [...aidesMapped, ...pretsMapped].sort(
+      (a, b) => {
+        const dateA = a.created_at
+          ? new Date(a.created_at).getTime()
+          : 0;
+
+        const dateB = b.created_at
+          ? new Date(b.created_at).getTime()
+          : 0;
+
+        return dateB - dateA;
+      }
+    );
   }, [aides, prets]);
 
   const filteredHistorique = useMemo(() => {
-    const searchValue = appliedSearch.trim().toLowerCase();
+    const searchValue = appliedSearch
+      .trim()
+      .toLowerCase();
 
     return historique.filter((item) => {
-      const matchesType = appliedTypeFilter === "TOUS" ? true : item.type === appliedTypeFilter;
+      const matchesType =
+        appliedTypeFilter === "TOUS"
+          ? true
+          : item.type === appliedTypeFilter;
+
       const matchesStatus =
         appliedStatusFilter === "TOUS"
           ? true
-          : String(item.statut || "").toUpperCase().includes(appliedStatusFilter);
+          : String(item.statut || "")
+              .toUpperCase()
+              .includes(appliedStatusFilter);
 
       const haystack = [
         item.membre_nom,
@@ -218,11 +295,22 @@ export default function PretsAidesPage() {
         .join(" ")
         .toLowerCase();
 
-      const matchesSearch = searchValue ? haystack.includes(searchValue) : true;
+      const matchesSearch = searchValue
+        ? haystack.includes(searchValue)
+        : true;
 
-      return matchesType && matchesStatus && matchesSearch;
+      return (
+        matchesType &&
+        matchesStatus &&
+        matchesSearch
+      );
     });
-  }, [historique, appliedSearch, appliedTypeFilter, appliedStatusFilter]);
+  }, [
+    historique,
+    appliedSearch,
+    appliedTypeFilter,
+    appliedStatusFilter,
+  ]);
 
   function applyFilters() {
     setAppliedSearch(search);
@@ -234,6 +322,7 @@ export default function PretsAidesPage() {
     setSearch("");
     setTypeFilter("TOUS");
     setStatusFilter("TOUS");
+
     setAppliedSearch("");
     setAppliedTypeFilter("TOUS");
     setAppliedStatusFilter("TOUS");
@@ -242,13 +331,25 @@ export default function PretsAidesPage() {
   const stats = useMemo(() => {
     return {
       total: historique.length,
-      aides: historique.filter((item) => item.type === "AIDE").length,
-      prets: historique.filter((item) => item.type === "PRET").length,
-      approuves: historique.filter((item) =>
-        String(item.statut).toUpperCase().includes("APPROUV")
+
+      aides: historique.filter(
+        (item) => item.type === "AIDE"
       ).length,
+
+      prets: historique.filter(
+        (item) => item.type === "PRET"
+      ).length,
+
+      approuves: historique.filter((item) =>
+        String(item.statut)
+          .toUpperCase()
+          .includes("APPROUV")
+      ).length,
+
       enAttente: historique.filter((item) =>
-        String(item.statut).toUpperCase().includes("ATTENTE")
+        String(item.statut)
+          .toUpperCase()
+          .includes("ATTENTE")
       ).length,
     };
   }, [historique]);
@@ -261,12 +362,16 @@ export default function PretsAidesPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
               Prêts / Aides
             </p>
+
             <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
               Historique global des demandes des membres
             </h1>
+
             <p className="mt-3 text-sm text-slate-600 md:text-base">
-              Cette page est réservée au bureau. Elle centralise l'historique complet
-              des demandes d'aides et de prêts de tous les membres.
+              Cette page est réservée au bureau. Elle
+              centralise l&apos;historique complet des
+              demandes d&apos;aides et de prêts de tous les
+              membres.
             </p>
           </div>
 
@@ -297,7 +402,7 @@ export default function PretsAidesPage() {
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
-          Chargement de l'historique...
+          Chargement de l&apos;historique...
         </div>
       ) : (
         <>
@@ -306,35 +411,50 @@ export default function PretsAidesPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Total demandes
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{stats.total}</p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.total}
+              </p>
             </article>
 
             <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Aides
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{stats.aides}</p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.aides}
+              </p>
             </article>
 
             <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Prêts
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{stats.prets}</p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.prets}
+              </p>
             </article>
 
             <article className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
                 Approuvées
               </p>
-              <p className="mt-2 text-2xl font-bold text-emerald-700">{stats.approuves}</p>
+
+              <p className="mt-2 text-2xl font-bold text-emerald-700">
+                {stats.approuves}
+              </p>
             </article>
 
             <article className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
                 En attente
               </p>
-              <p className="mt-2 text-2xl font-bold text-amber-700">{stats.enAttente}</p>
+
+              <p className="mt-2 text-2xl font-bold text-amber-700">
+                {stats.enAttente}
+              </p>
             </article>
           </section>
 
@@ -342,14 +462,18 @@ export default function PretsAidesPage() {
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_220px_220px_180px]">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Rechercher un membre, un motif, une référence
+                  Rechercher un membre, un motif, une
+                  référence
                 </label>
+
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
                       applyFilters();
                     }
                   }}
@@ -362,9 +486,12 @@ export default function PretsAidesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Type
                 </label>
+
                 <select
                   value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
+                  onChange={(event) =>
+                    setTypeFilter(event.target.value)
+                  }
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                 >
                   <option value="TOUS">Tous</option>
@@ -377,16 +504,27 @@ export default function PretsAidesPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Statut
                 </label>
+
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value)
+                  }
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
                 >
                   <option value="TOUS">Tous</option>
-                  <option value="ATTENTE">En attente</option>
-                  <option value="APPROUV">Approuvées</option>
-                  <option value="REFUS">Refusées</option>
-                  <option value="REMBOURS">Remboursées</option>
+                  <option value="ATTENTE">
+                    En attente
+                  </option>
+                  <option value="APPROUV">
+                    Approuvées
+                  </option>
+                  <option value="REFUS">
+                    Refusées
+                  </option>
+                  <option value="REMBOURS">
+                    Remboursées
+                  </option>
                 </select>
               </div>
 
@@ -416,6 +554,7 @@ export default function PretsAidesPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
                   Historique
                 </p>
+
                 <h2 className="mt-2 text-xl font-bold text-slate-900">
                   Toutes les demandes de tous les membres
                 </h2>
@@ -443,8 +582,11 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Type
                           </p>
+
                           <p className="mt-1 text-sm font-bold text-slate-900">
-                            {item.type === "AIDE" ? "Aide / Secours" : "Prêt"}
+                            {item.type === "AIDE"
+                              ? "Aide / Secours"
+                              : "Prêt"}
                           </p>
                         </div>
 
@@ -452,9 +594,11 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Membre
                           </p>
+
                           <p className="mt-1 text-sm font-bold text-slate-900">
                             {item.membre_nom}
                           </p>
+
                           <p className="mt-1 text-xs text-slate-500">
                             {item.numero_membre}
                           </p>
@@ -464,11 +608,14 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Statut
                           </p>
+
                           <div className="mt-2">
                             <span
                               className={[
                                 "inline-flex rounded-full px-3 py-1 text-xs font-bold",
-                                getStatutClasses(item.statut),
+                                getStatutClasses(
+                                  item.statut
+                                ),
                               ].join(" ")}
                             >
                               {item.statut || "-"}
@@ -480,8 +627,11 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Montant demandé
                           </p>
+
                           <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMoney(item.montant_demande)}
+                            {formatMoney(
+                              item.montant_demande
+                            )}
                           </p>
                         </div>
 
@@ -489,8 +639,11 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
                             Montant accordé
                           </p>
+
                           <p className="mt-1 text-sm font-bold text-emerald-700">
-                            {formatMoney(item.montant_accorde)}
+                            {formatMoney(
+                              item.montant_accorde
+                            )}
                           </p>
                         </div>
 
@@ -498,7 +651,8 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Référence
                           </p>
-                          <p className="mt-1 text-sm text-slate-700">
+
+                          <p className="mt-1 break-all text-sm text-slate-700">
                             {item.reference}
                           </p>
                         </div>
@@ -507,6 +661,7 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Motif / Objet
                           </p>
+
                           <p className="mt-1 text-sm text-slate-700">
                             {item.motif}
                           </p>
@@ -516,6 +671,7 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Date demande
                           </p>
+
                           <p className="mt-1 text-sm text-slate-700">
                             {formatDate(item.created_at)}
                           </p>
@@ -525,8 +681,11 @@ export default function PretsAidesPage() {
                           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                             Date traitement
                           </p>
+
                           <p className="mt-1 text-sm text-slate-700">
-                            {formatDate(item.date_traitement)}
+                            {formatDate(
+                              item.date_traitement
+                            )}
                           </p>
                         </div>
                       </div>
@@ -536,20 +695,29 @@ export default function PretsAidesPage() {
                           Action
                         </p>
 
-                        {item.document_link ? (
-                          <div className="mt-4">
+                        <div className="mt-4 space-y-3">
+                          {item.document_link ? (
                             <Link
                               href={item.document_link}
-                              className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                              className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
                             >
                               Ouvrir la demande complète signée
                             </Link>
-                          </div>
-                        ) : (
-                          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-                            Pas de document à ouvrir pour cette aide.
-                          </div>
-                        )}
+                          ) : (
+                            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                              Pas de document à ouvrir pour cette aide.
+                            </div>
+                          )}
+
+                          {item.amortissement_link ? (
+                            <Link
+                              href={item.amortissement_link}
+                              className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-700"
+                            >
+                              Tableau d&apos;amortissement
+                            </Link>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -562,4 +730,3 @@ export default function PretsAidesPage() {
     </div>
   );
 }
-
