@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 import AppSidebar from "@/components/ui/AppSidebar";
@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <div className="flex min-w-0 min-h-0 flex-1 flex-col">
           <main
             data-dashboard-main="true"
-            className="flex-1 min-h-0 overflow-y-auto px-4 py-5 pb-[140px] md:px-6 md:py-6 xl:pb-10"
+            className="flex-1 min-h-0 overflow-y-auto xl:overflow-visible px-4 py-5 pb-[140px] md:px-6 md:py-6 xl:pb-10"
           >
             {children}
           </main>
@@ -43,3 +43,4 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     </div>
   );
 }
+

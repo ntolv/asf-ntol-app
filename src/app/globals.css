@@ -1615,3 +1615,53 @@ body {
 
 /* === ASF-NTOL ANDROID SCROLL FINAL PATCH END === */
 
+
+/* === ASF-NTOL DESKTOP SCROLL DEFINITIF START === */
+/*
+   Desktop >= 1280px :
+   - le navigateur gère le scroll vertical
+   - aucun scroll vertical interne dans le contenu principal
+   - le comportement mobile/tablette reste inchangé
+*/
+@media (min-width: 1280px) {
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    scroll-behavior: auto !important;
+  }
+
+  body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    overscroll-behavior-y: auto !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  [data-dashboard-layout-root="true"] {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  [data-dashboard-shell="true"] {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    align-items: stretch;
+  }
+
+  [data-dashboard-main="true"] {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    overscroll-behavior-y: auto !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+}
+/* === ASF-NTOL DESKTOP SCROLL DEFINITIF END === */

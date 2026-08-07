@@ -63,7 +63,7 @@ export default function RootLayout({
       lang="fr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full overflow-hidden flex flex-col">
+      <body className="min-h-full overflow-x-hidden xl:overflow-y-auto flex flex-col">
         <VersionManager />
         {children}
         <AppPwaRegister />
@@ -71,3 +71,4 @@ export default function RootLayout({
     </html>
   );
 }
+
