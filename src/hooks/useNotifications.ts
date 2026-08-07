@@ -354,3 +354,4 @@ export function useNotifications(userId: string | undefined) {
     refreshNotifications: fetchNotifications,
   };
 }
+
