@@ -3,8 +3,11 @@ import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
 
-function isBureauRole(role: { code?: string | null; libelle?: string | null } | null | undefined) {
+function isBureauRole(
+  role: { code?: string | null; libelle?: string | null } | null | undefined
+) {
   const raw = `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
+
   return (
     raw.includes("admin") ||
     raw.includes("président") ||
@@ -34,7 +37,9 @@ async function getAuthenticatedUser() {
 
     if (authTokenCookie.startsWith("base64-")) {
       const encoded = authTokenCookie.replace(/^base64-/, "");
-      session = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+      session = JSON.parse(
+        Buffer.from(encoded, "base64").toString("utf8")
+      );
     } else {
       session = JSON.parse(atob(authTokenCookie));
     }
@@ -52,7 +57,10 @@ async function getAuthenticatedUser() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
     }
   );
 
@@ -65,7 +73,7 @@ async function getAuthenticatedUser() {
   return data.user;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getAuthenticatedUser();
     const context = await getUserContext(user);
@@ -75,7 +83,7 @@ export async function GET() {
         {
           success: false,
           message: context?.message || "Contexte utilisateur introuvable.",
-          data: { global: null, rubriques: [], membres: [] },
+          data: null,
         },
         { status: 401 }
       );
@@ -86,7 +94,7 @@ export async function GET() {
         {
           success: false,
           message: "Accès refusé. Page réservée au bureau.",
-          data: { global: null, rubriques: [], membres: [] },
+          data: null,
         },
         { status: 403 }
       );
@@ -95,86 +103,181 @@ export async function GET() {
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
     );
 
-    const { data: global, error: globalError } = await supabaseAdmin
-      .from("v_bilan_general")
-      .select("*")
-      .maybeSingle();
+    const url = new URL(request.url);
+    const anneeParam = url.searchParams.get("annee");
+    const anneeDemandee = anneeParam ? Number(anneeParam) : NaN;
 
-    if (globalError) throw globalError;
-
-    const { data: rubriques, error: rubriquesError } = await supabaseAdmin
-      .from("v_bilan_rubriques")
-      .select("*")
-      .order("rubrique_nom", { ascending: true });
-
-    if (rubriquesError) throw rubriquesError;
-
-    const { data: membres, error: membresError } = await supabaseAdmin
-      .from("v_bilan_membres")
-      .select("*")
-      .order("nom_complet", { ascending: true });
-
-    if (membresError) throw membresError;
-
-    const { data: bilanPro, error: bilanProError } = await supabaseAdmin
+    const { data: anneesRows, error: anneesError } = await supabaseAdmin
       .from("v_bilan_asf_ntol_pro_max")
-      .select("*")
-      .maybeSingle();
+      .select("annee")
+      .order("annee", { ascending: false });
 
-    if (bilanProError) throw bilanProError;
+    if (anneesError) throw anneesError;
 
-    const { data: flux, error: fluxError } = await supabaseAdmin
-      .from("v_bilan_asf_ntol_flux")
-      .select("*")
-      .order("type_flux", { ascending: true })
-      .order("categorie", { ascending: true });
+    const annees = Array.from(
+      new Set(
+        (anneesRows ?? [])
+          .map((row: any) => Number(row.annee))
+          .filter((annee) => Number.isFinite(annee))
+      )
+    ).sort((a, b) => b - a);
 
-    if (fluxError) throw fluxError;
+    if (annees.length === 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Aucun exercice disponible.",
+          data: {
+            annees: [],
+            anneeSelectionnee: null,
+            bilanPro: null,
+            bilanPrecedent: null,
+            rubriques: [],
+            membres: [],
+            membresRubriques: [],
+            details: [],
+            importsHistoriques: [],
+          },
+        },
+        { status: 200 }
+      );
+    }
 
-    const { data: tontineKpi, error: tontineKpiError } = await supabaseAdmin
-      .from("v_tontine_kpi")
-      .select("*")
-      .maybeSingle();
+    const anneeSelectionnee =
+      Number.isFinite(anneeDemandee) && annees.includes(anneeDemandee)
+        ? anneeDemandee
+        : annees[0];
 
-    if (tontineKpiError) throw tontineKpiError;
+    const [
+      bilanResult,
+      rubriquesResult,
+      membresResult,
+      membresRubriquesResult,
+      detailsResult,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("v_bilan_asf_ntol_pro_max")
+        .select("*")
+        .eq("annee", anneeSelectionnee)
+        .maybeSingle(),
 
-    const { data: details, error: detailsError } = await supabaseAdmin
-      .from("v_bilan_asf_ntol_details")
-      .select("*")
-      .order("type_flux", { ascending: true })
-      .order("categorie", { ascending: true })
-      .order("date_operation", { ascending: false });
+      supabaseAdmin
+        .from("v_bilan_rubriques_exercice")
+        .select("*")
+        .eq("annee", anneeSelectionnee)
+        .order("ordre_affichage", { ascending: true }),
 
-    if (detailsError) throw detailsError;
+      supabaseAdmin
+        .from("v_bilan_membres_exercice")
+        .select("*")
+        .eq("annee", anneeSelectionnee)
+        .order("nom_complet", { ascending: true }),
 
-    return NextResponse.json({
-      success: true,
-        message: "Bilan chargé",
+      supabaseAdmin
+        .from("v_bilan_membres_rubriques_exercice")
+        .select("*")
+        .eq("annee", anneeSelectionnee)
+        .order("rubrique_nom", { ascending: true })
+        .order("nom_complet", { ascending: true }),
+
+      supabaseAdmin
+        .from("v_bilan_details_exercice")
+        .select("*")
+        .eq("annee", anneeSelectionnee)
+        .order("date_operation", { ascending: false }),
+    ]);
+
+    if (bilanResult.error) throw bilanResult.error;
+    if (rubriquesResult.error) throw rubriquesResult.error;
+    if (membresResult.error) throw membresResult.error;
+    if (membresRubriquesResult.error) throw membresRubriquesResult.error;
+    if (detailsResult.error) throw detailsResult.error;
+
+    const bilanPro: any = bilanResult.data ?? null;
+
+    let bilanPrecedent: any = null;
+
+    if (bilanPro?.annee_precedente) {
+      const { data, error } = await supabaseAdmin
+        .from("v_bilan_asf_ntol_pro_max")
+        .select("*")
+        .eq("annee", Number(bilanPro.annee_precedente))
+        .maybeSingle();
+
+      if (error) throw error;
+
+      bilanPrecedent = data ?? null;
+    }
+
+    const details = detailsResult.data ?? [];
+
+    const importsHistoriques = details.filter(
+      (row: any) => row.import_historique === true
+    );
+
+    const rubriques = rubriquesResult.data ?? [];
+    const membresRubriques = membresRubriquesResult.data ?? [];
+
+    const controleRubriques = rubriques.map((rubrique: any) => {
+      const lignesMembres = membresRubriques.filter(
+        (row: any) => row.rubrique_id === rubrique.rubrique_id
+      );
+
+      const entreesMembres = lignesMembres.reduce(
+        (sum: number, row: any) => sum + Number(row.total_entrees ?? 0),
+        0
+      );
+
+      const entreesRubrique = Number(rubrique.total_entrees ?? 0);
+
+      return {
+        rubrique_id: rubrique.rubrique_id,
+        rubrique_nom: rubrique.rubrique_nom,
+        entrees_rubrique: entreesRubrique,
+        entrees_membres: entreesMembres,
+        ecart_entrees: entreesRubrique - entreesMembres,
+        conforme_entrees:
+          Math.abs(entreesRubrique - entreesMembres) < 0.01,
+      };
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Bilan annuel chargé",
         data: {
-          global: global ?? null,
-          rubriques: rubriques ?? [],
-          membres: membres ?? [],
-          bilanPro: bilanPro ?? null,
-          flux: flux ?? [],
-          tontineKpi: tontineKpi ?? null,
-          details: details ?? [],
+          annees,
+          anneeSelectionnee,
+          bilanPro,
+          bilanPrecedent,
+          rubriques,
+          membres: membresResult.data ?? [],
+          membresRubriques,
+          details,
+          importsHistoriques,
+          controleRubriques,
         },
       },
       { status: 200 }
     );
   } catch (error: any) {
+    console.error("Erreur GET /api/bilan:", error);
+
     return NextResponse.json(
       {
         success: false,
         message: error?.message || "Erreur lors du chargement du bilan.",
-        data: { global: null, rubriques: [], membres: [] },
+        data: null,
       },
-      { status: 401 }
+      { status: 500 }
     );
   }
 }
-
-
