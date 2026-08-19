@@ -1,11 +1,15 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 import AppSidebar from "@/components/ui/AppSidebar";
 import MobileBottomNav from "@/components/ui/MobileBottomNav";
 import AlertesButton from "@/components/alertes/AlertesButton";
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -23,16 +27,16 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     >
       <div
         data-dashboard-shell="true"
-        className="mx-auto flex h-full min-h-0 w-full max-w-[1800px]"
+        className="mx-auto flex h-full min-h-0 w-full max-w-[1800px] xl:h-auto xl:min-h-screen xl:items-start"
       >
         <AppSidebar />
 
         <AlertesButton />
 
-        <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <main
             data-dashboard-main="true"
-            className="flex-1 min-h-0 overflow-y-auto xl:overflow-visible px-4 py-5 pb-[140px] md:px-6 md:py-6 xl:pb-10"
+            className="min-h-0 flex-1 overflow-y-auto px-4 py-5 pb-[140px] md:px-6 md:py-6 xl:overflow-visible xl:pb-10"
           >
             {children}
           </main>
@@ -43,4 +47,3 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     </div>
   );
 }
-

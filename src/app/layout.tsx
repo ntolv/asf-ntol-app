@@ -1,4 +1,4 @@
-﻿import type { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppPwaRegister from "@/components/app/AppPwaRegister";
@@ -63,7 +63,7 @@ export default function RootLayout({
       lang="fr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full overflow-x-hidden xl:overflow-y-auto flex flex-col">
+      <body className="min-h-full flex flex-col">
         <VersionManager />
         {children}
         <AppPwaRegister />
