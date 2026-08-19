@@ -8,8 +8,8 @@ type ResultatCycle = {
   total_sessions: number;
   total_lots: number;
   total_gagnants_uniques: number;
-  mise_brute_totale: number;
-  relances_totales: number;
+  mise_brute_totale: number | null;
+  relances_totales: number | null;
   gains_reels_totaux: number;
 };
 
@@ -22,8 +22,8 @@ type ResultatMembreSession = {
   membre_id: string;
   nom_complet: string;
   total_lots_gagnes_session: number;
-  mise_brute_totale_gagnee_session: number;
-  total_relances_session: number;
+  mise_brute_totale_gagnee_session: number | null;
+  total_relances_session: number | null;
   gain_reel_total_session: number;
   derniere_date_cloture_session: string | null;
 };
@@ -34,8 +34,8 @@ type ResultatMembreCycle = {
   nom_complet: string;
   total_lots_gagnes_cycle: number;
   total_sessions_gagnees_cycle: number;
-  mise_brute_totale_gagnee_cycle: number;
-  total_relances_cycle: number;
+  mise_brute_totale_gagnee_cycle: number | null;
+  total_relances_cycle: number | null;
   gain_reel_total_cycle: number;
   premiere_session_gagnee: number | null;
   derniere_session_gagnee: number | null;
@@ -55,8 +55,8 @@ type ResultatLot = {
   membre_id: string;
   nom_complet: string;
   montant_depart_enchere: number;
-  mise_brute_lot: number;
-  montant_total_relances: number;
+  mise_brute_lot: number | null;
+  montant_total_relances: number | null;
   gain_reel: number;
   date_ouverture: string | null;
   date_cloture: string | null;
@@ -72,8 +72,8 @@ type AnomalieSession = {
   membre_id: string;
   nom_complet: string;
   total_lots_gagnes_session: number;
-  mise_brute_totale_gagnee_session: number;
-  total_relances_session: number;
+  mise_brute_totale_gagnee_session: number | null;
+  total_relances_session: number | null;
   gain_reel_total_session: number;
 };
 
@@ -82,7 +82,31 @@ function formatMontant(value: number | null | undefined) {
     style: "currency",
     currency: "XOF",
     maximumFractionDigits: 0,
-  }).format(value || 0);
+  }).format(value ?? 0);
+}
+
+function formatMise(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "À reconstruire";
+  }
+
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "XOF",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatEnchere(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "À reconstruire";
+  }
+
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "XOF",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function formatDate(value?: string | null) {
@@ -512,7 +536,7 @@ useEffect(() => {
                               Mise brute gagnée
                             </p>
                             <p className="mt-1 text-sm font-bold text-emerald-800">
-                              {formatMontant(membre.mise_brute_totale_gagnee_session)}
+                              {formatMise(membre.mise_brute_totale_gagnee_session)}
                             </p>
                           </div>
 
@@ -521,7 +545,7 @@ useEffect(() => {
                               Total relances
                             </p>
                             <p className="mt-1 text-sm font-bold text-slate-900">
-                              {formatMontant(membre.total_relances_session)}
+                              {formatEnchere(membre.total_relances_session)}
                             </p>
                           </div>
 
@@ -676,7 +700,7 @@ useEffect(() => {
                             Mise brute
                           </p>
                           <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(lot.mise_brute_lot)}
+                            {formatMise(lot.mise_brute_lot)}
                           </p>
                         </div>
 
@@ -685,7 +709,7 @@ useEffect(() => {
                             Relances
                           </p>
                           <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(lot.montant_total_relances)}
+                            {formatEnchere(lot.montant_total_relances)}
                           </p>
                         </div>
 
@@ -751,7 +775,7 @@ useEffect(() => {
                             Mise brute gagnée
                           </p>
                           <p className="mt-1 text-sm font-bold text-emerald-800">
-                            {formatMontant(membre.mise_brute_totale_gagnee_cycle)}
+                            {formatMise(membre.mise_brute_totale_gagnee_cycle)}
                           </p>
                         </div>
 
@@ -760,7 +784,7 @@ useEffect(() => {
                             Relances cycle
                           </p>
                           <p className="mt-1 text-sm font-bold text-slate-900">
-                            {formatMontant(membre.total_relances_cycle)}
+                            {formatEnchere(membre.total_relances_cycle)}
                           </p>
                         </div>
 
@@ -793,4 +817,6 @@ useEffect(() => {
     </main>
   );
 }
+
+
 

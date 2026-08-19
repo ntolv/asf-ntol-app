@@ -33,16 +33,42 @@ type MembreRow = {
   annee_precedente: number;
   membre_id: string;
   nom_complet: string;
-  report_participations: number | string | null;
-  participations_annee: number | string | null;
-  sorties_personnelles_annee: number | string | null;
-  participations_fin_exercice: number | string | null;
   report_prets_a_rembourser: number | string | null;
   prets_octroyes_annee: number | string | null;
   remboursements_annee: number | string | null;
   prets_a_rembourser_fin_exercice: number | string | null;
 };
 
+type PatrimoineRow = {
+  annee: number;
+  annee_precedente: number;
+  membre_id: string;
+  nom_complet: string;
+
+  report_patrimoine: number | string | null;
+  contributions_annee: number | string | null;
+  capital_immobilise_annee: number | string | null;
+  capital_restitue_annee: number | string | null;
+  interets_annee: number | string | null;
+  patrimoine_fin_exercice: number | string | null;
+};
+
+type PatrimoineRubriqueRow = {
+  annee: number;
+  annee_precedente: number;
+
+  membre_id: string;
+  nom_complet: string;
+
+  rubrique_id: string;
+  rubrique_nom: string;
+
+  report_precedent: number | string | null;
+  contributions_annee: number | string | null;
+  capital_immobilise_annee: number | string | null;
+  capital_restitue_annee: number | string | null;
+  fonds_disponible_fin_exercice: number | string | null;
+};
 type MembreRubriqueRow = {
   annee: number;
   annee_precedente: number;
@@ -73,6 +99,15 @@ type DetailRow = {
   import_historique: boolean;
 };
 
+type TontineRow = {
+  annee: number;
+  membre_id: string;
+  nom_complet: string;
+  cotisations: number | string | null;
+  gain: number | string | null;
+  statut: string;
+};
+
 type ControleRubrique = {
   rubrique_id: string;
   rubrique_nom: string;
@@ -85,6 +120,7 @@ type ControleRubrique = {
 type SectionKey =
   | "rubriques"
   | "reports-membres"
+  | "tontine"
   | "prets"
   | "controle"
   | "mouvements";
@@ -99,9 +135,12 @@ type ApiResponse = {
     bilanPrecedent?: BilanPro | null;
     rubriques?: RubriqueRow[];
     membres?: MembreRow[];
+    patrimoine?: PatrimoineRow[];
+    patrimoineRubriques?: PatrimoineRubriqueRow[];
     membresRubriques?: MembreRubriqueRow[];
     details?: DetailRow[];
     importsHistoriques?: DetailRow[];
+    tontine?: TontineRow[];
     controleRubriques?: ControleRubrique[];
   };
 };
@@ -216,10 +255,15 @@ export default function BilanPage() {
 
   const [rubriques, setRubriques] = useState<RubriqueRow[]>([]);
   const [membres, setMembres] = useState<MembreRow[]>([]);
+  const [patrimoine, setPatrimoine] = useState<PatrimoineRow[]>([]);
+  const [patrimoineRubriques, setPatrimoineRubriques] =
+    useState<PatrimoineRubriqueRow[]>([]);
   const [membresRubriques, setMembresRubriques] =
     useState<MembreRubriqueRow[]>([]);
   const [details, setDetails] = useState<DetailRow[]>([]);
   const [imports, setImports] = useState<DetailRow[]>([]);
+  const [tontine, setTontine] = useState<TontineRow[]>([]);
+  const [membreTontineSelectionne, setMembreTontineSelectionne] = useState("");
   const [controles, setControles] =
     useState<ControleRubrique[]>([]);
 
@@ -296,6 +340,18 @@ export default function BilanPage() {
           : []
       );
 
+      setPatrimoine(
+        Array.isArray(json.data?.patrimoine)
+          ? json.data!.patrimoine!
+          : []
+      );
+
+      setPatrimoineRubriques(
+        Array.isArray(json.data?.patrimoineRubriques)
+          ? json.data!.patrimoineRubriques!
+          : []
+      );
+
       setMembresRubriques(
         Array.isArray(json.data?.membresRubriques)
           ? json.data!.membresRubriques!
@@ -311,6 +367,12 @@ export default function BilanPage() {
       setImports(
         Array.isArray(json.data?.importsHistoriques)
           ? json.data!.importsHistoriques!
+          : []
+      );
+
+      setTontine(
+        Array.isArray(json.data?.tontine)
+          ? json.data!.tontine!
           : []
       );
 
@@ -393,26 +455,72 @@ export default function BilanPage() {
   );
 
   const membresDisponibles = useMemo(() => {
-    return Array.from(
-      new Map(
-        membresRubriques.map((row) => [
-          row.membre_id,
-          {
-            id: row.membre_id,
-            nom: row.nom_complet,
-          },
-        ])
-      ).values()
-    ).sort((a, b) => a.nom.localeCompare(b.nom));
-  }, [membresRubriques]);
+    return patrimoine
+      .map((row) => ({
+        id: row.membre_id,
+        nom: row.nom_complet,
+      }))
+      .sort((a, b) => a.nom.localeCompare(b.nom));
+  }, [patrimoine]);
+
+  const patrimoineMembreSelectionne = useMemo(() => {
+    if (!membreSelectionne) return null;
+
+    return (
+      patrimoine.find(
+        (row) => row.membre_id === membreSelectionne
+      ) ?? null
+    );
+  }, [patrimoine, membreSelectionne]);
 
   const lignesMembreSelectionne = useMemo(() => {
     if (!membreSelectionne) return [];
 
-    return membresRubriques.filter(
+    return patrimoineRubriques.filter(
       (row) => row.membre_id === membreSelectionne
     );
-  }, [membresRubriques, membreSelectionne]);
+  }, [patrimoineRubriques, membreSelectionne]);
+  const membresTontineDisponibles = useMemo(() => {
+    return [...tontine].sort((a, b) =>
+      a.nom_complet.localeCompare(b.nom_complet)
+    );
+  }, [tontine]);
+
+  const situationTontineSelectionnee = useMemo(() => {
+    if (!membreTontineSelectionne) return null;
+
+    return (
+      tontine.find(
+        (row) => row.membre_id === membreTontineSelectionne
+      ) ?? null
+    );
+  }, [tontine, membreTontineSelectionne]);
+
+  const totalCotisationsTontine = useMemo(() => {
+    return tontine.reduce(
+      (sum, row) => sum + n(row.cotisations),
+      0
+    );
+  }, [tontine]);
+
+  const totalGainsTontine = useMemo(() => {
+    return tontine.reduce(
+      (sum, row) => sum + n(row.gain),
+      0
+    );
+  }, [tontine]);
+
+  const nbGagnantsTontine = useMemo(() => {
+    return tontine.filter(
+      (row) => row.statut === "GAGNANT"
+    ).length;
+  }, [tontine]);
+
+  const nbAttenteTontine = useMemo(() => {
+    return tontine.filter(
+      (row) => row.statut !== "GAGNANT"
+    ).length;
+  }, [tontine]);
 
   const totalPrets = useMemo(
     () =>
@@ -485,6 +593,7 @@ export default function BilanPage() {
                     if (Number.isFinite(value)) {
                       setAnneeSelectionnee(value);
                       setMembreSelectionne("");
+                      setMembreTontineSelectionne("");
                       loadData(value);
                     }
                   }}
@@ -524,7 +633,7 @@ export default function BilanPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
             {
               key: "rubriques" as SectionKey,
@@ -535,8 +644,14 @@ export default function BilanPage() {
             {
               key: "reports-membres" as SectionKey,
               icon: "👥",
-              title: "Reports par membre",
-              description: "Répartition des reports et participations individuelles.",
+              title: "Situation patrimoniale",
+              description: "Épargne et Fonds Développement / Investissement du membre.",
+            },
+            {
+              key: "tontine" as SectionKey,
+              icon: "🎯",
+              title: "Situation Tontine",
+              description: "Cotisations, gain reçu et statut du membre dans le cycle.",
             },
             {
               key: "prets" as SectionKey,
@@ -722,26 +837,24 @@ export default function BilanPage() {
         {sectionActive === "reports-membres" ? (
           <Panel
             id="reports-membres"
-            title="Situation d'un membre"
-            subtitle={`Sélectionnez un membre pour consulter sa situation pour l'exercice ${
-              anneeSelectionnee ?? ""
-            }.`}
+            title="Situation patrimoniale d'un membre"
+            subtitle="Le patrimoine individuel comprend uniquement l'Épargne et le Fonds Développement / Investissement."
           >
             <div className="mb-6 max-w-xl">
               <label
-                htmlFor="membre-report"
+                htmlFor="membre-patrimoine"
                 className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-slate-500"
               >
-                Membre
+                Sélectionner un membre
               </label>
 
               <select
-                id="membre-report"
+                id="membre-patrimoine"
                 value={membreSelectionne}
                 onChange={(event) =>
                   setMembreSelectionne(event.target.value)
                 }
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-950 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-950 shadow-sm"
               >
                 <option value="">
                   Sélectionner un membre...
@@ -758,106 +871,114 @@ export default function BilanPage() {
               </select>
             </div>
 
-            {!membreSelectionne ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
-                <p className="font-bold text-slate-700">
-                  Sélectionnez un membre pour consulter sa situation.
-                </p>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Les reports et les mouvements de chaque rubrique seront affichés ici.
-                </p>
+            {!patrimoineMembreSelectionne ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-600">
+                Sélectionnez un membre pour consulter son patrimoine.
               </div>
             ) : (
               <>
-                {(() => {
-                  const membreSynthese = membres.find(
-                    (row) => row.membre_id === membreSelectionne
-                  );
+                <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 
-                  return membreSynthese ? (
-                    <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <KpiCard
-                        title={`Report participations (${
-                          bilan?.annee_precedente ?? "Initial"
-                        })`}
-                        value={money(
-                          membreSynthese.report_participations
-                        )}
-                        tone="blue"
-                      />
+                  <KpiCard
+                    title={`Report ${
+                      bilan?.annee_precedente ?? "Initial"
+                    }`}
+                    value={money(
+                      patrimoineMembreSelectionne.report_patrimoine
+                    )}
+                    tone="blue"
+                  />
 
-                      <KpiCard
-                        title={`Participations ${
-                          anneeSelectionnee ?? ""
-                        }`}
-                        value={money(
-                          membreSynthese.participations_annee
-                        )}
-                        tone="green"
-                      />
+                  <KpiCard
+                    title={`Contributions ${
+                      anneeSelectionnee ?? ""
+                    }`}
+                    value={money(
+                      patrimoineMembreSelectionne.contributions_annee
+                    )}
+                    tone="green"
+                  />
 
-                      <KpiCard
-                        title={`Participations fin ${
-                          anneeSelectionnee ?? ""
-                        }`}
-                        value={money(
-                          membreSynthese.participations_fin_exercice
-                        )}
-                        tone="slate"
-                      />
+                  <KpiCard
+                    title="Capital immobilisé"
+                    value={money(
+                      patrimoineMembreSelectionne.capital_immobilise_annee
+                    )}
+                    tone="amber"
+                  />
 
-                      <KpiCard
-                        title="Prêts à rembourser"
-                        value={money(
-                          membreSynthese.prets_a_rembourser_fin_exercice
-                        )}
-                        tone={
-                          n(
-                            membreSynthese.prets_a_rembourser_fin_exercice
-                          ) > 0
-                            ? "amber"
-                            : "green"
-                        }
-                      />
-                    </div>
-                  ) : null;
-                })()}
+                  <KpiCard
+                    title="Capital restitué"
+                    value={money(
+                      patrimoineMembreSelectionne.capital_restitue_annee
+                    )}
+                    tone="blue"
+                  />
+
+                  <KpiCard
+                    title="Intérêts redistribués"
+                    value={money(
+                      patrimoineMembreSelectionne.interets_annee
+                    )}
+                    tone="green"
+                  />
+
+                  <KpiCard
+                    title={`Patrimoine disponible ${
+                      anneeSelectionnee ?? ""
+                    }`}
+                    value={money(
+                      patrimoineMembreSelectionne.patrimoine_fin_exercice
+                    )}
+                    tone="slate"
+                  />
+
+                </div>
 
                 <div className="overflow-x-auto">
-                  <table className="min-w-[900px] w-full text-sm">
+
+                  <table className="min-w-[1050px] w-full text-sm">
+
                     <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
                       <tr>
+
                         <th className="p-3">
                           Rubrique
                         </th>
 
                         <th className="p-3 text-right">
-                          Report (
-                          {bilan?.annee_precedente ?? "Initial"})
+                          Report
                         </th>
 
                         <th className="p-3 text-right">
-                          Entrées {anneeSelectionnee}
+                          Contributions
                         </th>
 
                         <th className="p-3 text-right">
-                          Sorties {anneeSelectionnee}
+                          Capital immobilisé
                         </th>
 
                         <th className="p-3 text-right">
-                          Solde {anneeSelectionnee}
+                          Capital restitué
                         </th>
+
+                        <th className="p-3 text-right">
+                          Disponible
+                        </th>
+
                       </tr>
                     </thead>
 
                     <tbody>
+
                       {lignesMembreSelectionne.map((row) => (
+
                         <tr
                           key={`${row.membre_id}-${row.rubrique_id}`}
                           className="border-b border-slate-100"
                         >
-                          <td className="p-3 font-bold text-slate-900">
+
+                          <td className="p-3 font-black text-slate-950">
                             {row.rubrique_nom}
                           </td>
 
@@ -866,35 +987,247 @@ export default function BilanPage() {
                           </td>
 
                           <td className="p-3 text-right font-semibold text-emerald-700">
-                            {money(row.total_entrees)}
+                            {money(row.contributions_annee)}
                           </td>
 
-                          <td className="p-3 text-right font-semibold text-red-700">
-                            {money(
-                              row.total_sorties_personnelles
-                            )}
+                          <td className="p-3 text-right font-semibold text-amber-700">
+                            {money(row.capital_immobilise_annee)}
+                          </td>
+
+                          <td className="p-3 text-right font-semibold text-blue-700">
+                            {money(row.capital_restitue_annee)}
                           </td>
 
                           <td className="p-3 text-right font-black text-slate-950">
-                            {money(row.solde_fin_exercice)}
+                            {money(
+                              row.fonds_disponible_fin_exercice
+                            )}
                           </td>
+
                         </tr>
+
                       ))}
+
                     </tbody>
+
                   </table>
+
                 </div>
 
-                {lignesMembreSelectionne.length === 0 ? (
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
-                    Aucune situation par rubrique trouvée pour ce membre sur cet exercice.
-                  </div>
-                ) : null}
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-600">
+                    Calcul du patrimoine
+                  </p>
+
+                  <p className="mt-2 text-sm font-bold text-slate-900">
+                    Report + Contributions - Capital immobilisé + Capital restitué + Intérêts redistribués = Patrimoine disponible
+                  </p>
+
+                </div>
+
               </>
             )}
           </Panel>
         ) : null}
 
-        {sectionActive === "prets" ? (
+
+        
+{sectionActive === "tontine" ? (
+          <Panel
+            id="tontine"
+            title="Situation Tontine d'un membre"
+            subtitle={`Sélectionnez un membre pour consulter sa situation Tontine pour l'exercice ${
+              anneeSelectionnee ?? ""
+            }.`}
+          >
+
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+              <KpiCard
+                title={`Total cotisé ${anneeSelectionnee ?? ""}`}
+                value={money(totalCotisationsTontine)}
+                tone="green"
+              />
+
+              <KpiCard
+                title={`Total redistribué ${anneeSelectionnee ?? ""}`}
+                value={money(totalGainsTontine)}
+                tone="blue"
+              />
+
+              <KpiCard
+                title="Gagnants"
+                value={String(nbGagnantsTontine)}
+                tone="green"
+              />
+
+              <KpiCard
+                title="En attente"
+                value={String(nbAttenteTontine)}
+                tone="amber"
+              />
+
+            </div>
+
+
+            <div className="mb-6 max-w-xl">
+
+              <label
+                htmlFor="membre-tontine"
+                className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+              >
+                Sélectionner un membre
+              </label>
+
+              <select
+                id="membre-tontine"
+                value={membreTontineSelectionne}
+                onChange={(event) =>
+                  setMembreTontineSelectionne(event.target.value)
+                }
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-950 shadow-sm"
+              >
+
+                <option value="">
+                  Sélectionner un membre...
+                </option>
+
+                {membresTontineDisponibles.map((membre) => (
+                  <option
+                    key={membre.membre_id}
+                    value={membre.membre_id}
+                  >
+                    {membre.nom_complet}
+                  </option>
+                ))}
+
+              </select>
+
+            </div>
+
+
+            {!situationTontineSelectionnee ? (
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+
+                <p className="font-bold text-slate-700">
+                  Sélectionnez un membre pour consulter sa situation Tontine.
+                </p>
+
+              </div>
+
+            ) : (
+
+              <>
+
+                <div className="grid gap-4 md:grid-cols-3">
+
+                  <KpiCard
+                    title="Cotisations Tontine"
+                    value={money(
+                      situationTontineSelectionnee.cotisations
+                    )}
+                    tone="green"
+                  />
+
+                  <KpiCard
+                    title="Montant perçu"
+                    value={money(
+                      situationTontineSelectionnee.gain
+                    )}
+                    tone={
+                      n(situationTontineSelectionnee.gain) > 0
+                        ? "blue"
+                        : "slate"
+                    }
+                  />
+
+                  <KpiCard
+                    title="Statut"
+                    value={
+                      situationTontineSelectionnee.statut
+                    }
+                    tone={
+                      situationTontineSelectionnee.statut === "GAGNANT"
+                        ? "green"
+                        : "amber"
+                    }
+                  />
+
+                </div>
+
+
+                <div className="mt-6 overflow-x-auto">
+
+                  <table className="min-w-[700px] w-full text-sm">
+
+                    <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
+
+                      <tr>
+
+                        <th className="p-3">
+                          Membre
+                        </th>
+
+                        <th className="p-3 text-right">
+                          Cotisations
+                        </th>
+
+                        <th className="p-3 text-right">
+                          Montant perçu
+                        </th>
+
+                        <th className="p-3 text-center">
+                          Statut
+                        </th>
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      <tr className="border-b border-slate-100">
+
+                        <td className="p-3 font-black text-slate-950">
+                          {situationTontineSelectionnee.nom_complet}
+                        </td>
+
+                        <td className="p-3 text-right font-semibold text-emerald-700">
+                          {money(
+                            situationTontineSelectionnee.cotisations
+                          )}
+                        </td>
+
+                        <td className="p-3 text-right font-semibold text-blue-700">
+                          {money(
+                            situationTontineSelectionnee.gain
+                          )}
+                        </td>
+
+                        <td className="p-3 text-center font-black">
+                          {situationTontineSelectionnee.statut}
+                        </td>
+
+                      </tr>
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </>
+
+            )}
+
+          </Panel>
+        ) : null}
+
+
+        
+{sectionActive === "prets" ? (
 <Panel
           id="prets"
           title="Prêts à rembourser"
@@ -1259,6 +1592,9 @@ export default function BilanPage() {
     </main>
   );
 }
+
+
+
 
 
 
