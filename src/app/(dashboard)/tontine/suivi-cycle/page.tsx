@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import TontineQuickNav from "@/components/tontine/TontineQuickNav";
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -319,6 +321,7 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white px-4 py-6 md:px-6">
+      <TontineQuickNav />
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[32px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700">

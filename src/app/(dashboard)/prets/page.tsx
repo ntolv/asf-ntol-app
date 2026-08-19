@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import PretsAidesQuickNav from "@/components/prets-aides/PretsAidesQuickNav";
 
 import { useEffect, useState } from "react";
 
@@ -154,6 +156,7 @@ export default function PretsPage() {
   if (loading) {
     return (
       <main className="p-6">
+      <PretsAidesQuickNav />
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           Chargement des prêts...
         </div>

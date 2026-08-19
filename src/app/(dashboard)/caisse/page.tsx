@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceQuickNav from "@/components/finance/FinanceQuickNav";
+
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 

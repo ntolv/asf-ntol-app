@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import TontineQuickNav from "@/components/tontine/TontineQuickNav";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
