@@ -1,7 +1,4 @@
 "use client";
-
-import TontineQuickNav from "@/components/tontine/TontineQuickNav";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -598,7 +595,7 @@ export default function EncheresPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.08),_transparent_35%),linear-gradient(to_bottom,_#f0fdf4,_#ffffff_38%,_#ffffff)] px-4 py-6 md:px-6">
-      <TontineQuickNav />
+      
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[32px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm md:p-8">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">

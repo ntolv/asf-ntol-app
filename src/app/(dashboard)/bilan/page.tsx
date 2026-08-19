@@ -1,7 +1,4 @@
 "use client";
-
-import FinanceQuickNav from "@/components/finance/FinanceQuickNav";
-
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -550,7 +547,7 @@ export default function BilanPage() {
   if (loading && !bilan) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-8">
-      <FinanceQuickNav />
+      
         <div className="mx-auto max-w-7xl rounded-3xl border border-slate-200 bg-white p-10 text-center font-bold text-slate-700">
           Chargement du bilan...
         </div>

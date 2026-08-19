@@ -1,7 +1,4 @@
 "use client";
-
-import FinanceQuickNav from "@/components/finance/FinanceQuickNav";
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
