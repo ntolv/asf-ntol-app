@@ -5,6 +5,10 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
 
+const TAUX_INTERET_MENSUEL = 0.01;
+const TAUX_INTERET_LIBELLE =
+  "1 % par mois, capitalisé mensuellement";
+
 type FinancementInput = {
   rubrique_id?: string;
   caisse_id?: string;
@@ -104,6 +108,11 @@ function rebuildDocument(args: {
   const decisionLabel =
     decision === "APPROUVEE" ? "APPROUVÉE" : "REFUSÉE";
 
+  const tauxLine =
+    decision === "APPROUVEE"
+      ? `Taux d'intérêt : **${TAUX_INTERET_LIBELLE}**`
+      : "Taux d'intérêt : **Sans objet**";
+
   const baseWithoutHash = `DEMANDE DE PRÊT – ASSOCIATION FAMILLE NTOL (ASF-NTOL)
 
 ### 1. Identification du membre
@@ -147,6 +156,10 @@ Montant accordé : **${
       : "0 FCFA"
   }**
 
+${tauxLine}
+
+Mode d'intérêt : **capitalisation mensuelle**
+
 Motif de réduction :
 
 **${motifReduction ?? "Sans objet"}**
@@ -161,7 +174,9 @@ Date de traitement : **${dateTraitement}**
 
 ${financementLines}
 
-Le capital remboursé devra être restitué dans les caisses d’origine selon cette répartition.
+Le capital remboursé devra être restitué dans les caisses d'origine selon cette répartition.
+
+Les intérêts effectivement encaissés seront affectés conformément aux règles de répartition applicables aux caisses ayant financé le prêt.
 
 ### 6. Signature électronique du membre
 
@@ -176,7 +191,7 @@ Référence de la demande : **${demande.reference_unique ?? "-"}**
 Horodatage de décision : **${dateTraitement}**
 Empreinte numérique : **HASH_PLACEHOLDER**
 
-*Ce document constitue la trace officielle de la demande, de la décision du bureau et de la répartition des caisses ayant financé le prêt.*`;
+*Ce document constitue la trace officielle de la demande, de la décision du bureau, du taux d'intérêt et de la répartition des caisses ayant financé le prêt.*`;
 
   const hash = crypto
     .createHash("sha256")
@@ -191,10 +206,81 @@ Empreinte numérique : **HASH_PLACEHOLDER**
 
 async function rollbackFinancialOperations(args: {
   supabaseAdmin: any;
+  demandeId: string;
+  pretId: string | null;
   financementIds: string[];
   decaissementIds: string[];
 }) {
-  const { supabaseAdmin, financementIds, decaissementIds } = args;
+  const {
+    supabaseAdmin,
+    demandeId,
+    pretId,
+    financementIds,
+    decaissementIds,
+  } = args;
+
+  /*
+   * Le rollback est volontairement large.
+   * Si une étape échoue après la création du prêt,
+   * on retire aussi les données dérivées.
+   */
+
+  if (pretId) {
+    await supabaseAdmin
+      .from("pret_distributions_interets")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("pret_interets_ventilation_caisses")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("pret_restitutions_capital")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("pret_immobilisations_membres")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("pret_cles_repartition_interets")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("prets_interets_recalculs")
+      .delete()
+      .eq("pret_id", pretId);
+
+    await supabaseAdmin
+      .from("prets")
+      .delete()
+      .eq("id", pretId);
+  } else {
+    await supabaseAdmin
+      .from("pret_distributions_interets")
+      .delete()
+      .eq("demande_pret_id", demandeId);
+
+    await supabaseAdmin
+      .from("pret_restitutions_capital")
+      .delete()
+      .eq("demande_pret_id", demandeId);
+
+    await supabaseAdmin
+      .from("pret_immobilisations_membres")
+      .delete()
+      .eq("demande_pret_id", demandeId);
+
+    await supabaseAdmin
+      .from("pret_cles_repartition_interets")
+      .delete()
+      .eq("demande_pret_id", demandeId);
+  }
 
   if (financementIds.length > 0) {
     await supabaseAdmin
@@ -215,7 +301,9 @@ export async function POST(request: Request) {
   const createdDecaissementIds: string[] = [];
   const createdFinancementIds: string[] = [];
 
+  let createdPretId: string | null = null;
   let supabaseAdmin: any = null;
+  let demandeIdForRollback = "";
 
   try {
     const cookieStore = await cookies();
@@ -277,6 +365,9 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const demandeId = String(body?.demande_id ?? "").trim();
+
+    demandeIdForRollback = demandeId;
+
     const decision = String(body?.decision ?? "")
       .trim()
       .toUpperCase();
@@ -583,16 +674,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: utilisateurInterne } = await supabaseAdmin
-      .from("utilisateurs")
-      .select("id")
-      .eq("auth_user_id", context.authUserId)
-      .maybeSingle();
+    const { data: utilisateurInterne, error: utilisateurError } =
+      await supabaseAdmin
+        .from("utilisateurs")
+        .select("id")
+        .eq("auth_user_id", context.authUserId)
+        .maybeSingle();
+
+    if (utilisateurError) {
+      throw utilisateurError;
+    }
 
     const utilisateurId = utilisateurInterne?.id ?? null;
+
     const now = new Date().toISOString();
 
+    /*
+     * ========================================================
+     * APPROBATION
+     * ========================================================
+     */
     if (decision === "APPROUVEE") {
+      /*
+       * 1. Décaissements et ventilation des caisses
+       */
       for (const financement of financementsValides) {
         const { data: decaissement, error: decaissementError } =
           await supabaseAdmin
@@ -607,6 +712,7 @@ export async function POST(request: Request) {
                 `demande ${
                   demande.reference_unique ?? demande.id
                 } - ${financement.rubriqueNom}`,
+              date_decaissement: now,
               created_by: context.authUserId,
             })
             .select("id")
@@ -644,8 +750,97 @@ export async function POST(request: Request) {
 
         createdFinancementIds.push(pretFinancement.id);
       }
+
+      /*
+       * 2. Création du prêt réel
+       *
+       * 0.01 = 1 % par mois.
+       */
+      const { data: pretCree, error: pretError } =
+        await supabaseAdmin
+          .from("prets")
+          .insert({
+            demande_pret_id: demandeId,
+            membre_id: demande.membre_id,
+            date_octroi: now,
+            montant_accorde: montantAccorde,
+            taux_interet: TAUX_INTERET_MENSUEL,
+            mode_interet: "TAUX_CAPITALISE_MENSUEL",
+            capitalisation_interets: "MENSUELLE",
+            solde_restant: montantAccorde,
+            statut_pret: "ACTIF",
+            valide_par_user_id: utilisateurId,
+            commentaire: commentaireDecision,
+          })
+          .select("id")
+          .single();
+
+      if (pretError || !pretCree?.id) {
+        throw new Error(
+          pretError?.message ||
+            "Échec de création du prêt actif."
+        );
+      }
+
+      createdPretId = pretCree.id;
+
+      /*
+       * 2 bis. Rattachement définitif des financements au prêt.
+       *
+       * demande_pret_id conserve la traçabilité du workflow,
+       * mais pret_id devient la référence comptable principale.
+       */
+      const { error: rattachementFinancementsError } =
+        await supabaseAdmin
+          .from("pret_financements")
+          .update({
+            pret_id: createdPretId,
+          })
+          .in("id", createdFinancementIds);
+
+      if (rattachementFinancementsError) {
+        throw new Error(
+          rattachementFinancementsError.message ||
+            "Échec du rattachement des financements au prêt."
+        );
+      }
+
+      /*
+       * Le trigger trg_initialiser_interets_pret est exécuté
+       * automatiquement à l'insertion.
+       *
+       * Pour un nouveau prêt, aucun intérêt n'est créé avant
+       * la première échéance mensuelle.
+       */
+
+      /*
+       * 3. Immobilisation du patrimoine des membres
+       *    pour Épargne / Investissement uniquement.
+       *
+       * La fonction crée également les clés de répartition
+       * des intérêts par rubrique.
+       */
+      const { error: immobilisationError } =
+        await supabaseAdmin.rpc(
+          "fn_immobiliser_patrimoine_pret",
+          {
+            p_demande_pret_id: demandeId,
+          }
+        );
+
+      if (immobilisationError) {
+        throw new Error(
+          immobilisationError.message ||
+            "Échec de l'immobilisation du patrimoine lié au prêt."
+        );
+      }
     }
 
+    /*
+     * ========================================================
+     * DOCUMENT OFFICIEL
+     * ========================================================
+     */
     const rebuilt = rebuildDocument({
       demande,
       decision: decision as "APPROUVEE" | "REFUSEE",
@@ -666,14 +861,48 @@ export async function POST(request: Request) {
 
     const updatedDocumentJson = {
       ...existingDocumentJson,
+
       decision,
+
       montant_demande: montantDemande,
+
       montant_accorde:
         decision === "APPROUVEE" ? montantAccorde : null,
+
+      taux_interet_mensuel:
+        decision === "APPROUVEE"
+          ? TAUX_INTERET_MENSUEL
+          : null,
+
+      taux_interet_libelle:
+        decision === "APPROUVEE"
+          ? TAUX_INTERET_LIBELLE
+          : null,
+
+      mode_interet:
+        decision === "APPROUVEE"
+          ? "TAUX_CAPITALISE_MENSUEL"
+          : null,
+
+      capitalisation_interets:
+        decision === "APPROUVEE"
+          ? "MENSUELLE"
+          : null,
+
+      pret_id:
+        decision === "APPROUVEE"
+          ? createdPretId
+          : null,
+
       motif_reduction:
-        decision === "APPROUVEE" ? motifReduction : null,
+        decision === "APPROUVEE"
+          ? motifReduction
+          : null,
+
       commentaire_decision: commentaireDecision,
+
       date_traitement: now,
+
       financements: financementsValides.map((item) => ({
         rubrique_id: item.rubriqueId,
         rubrique_nom: item.rubriqueNom,
@@ -681,17 +910,32 @@ export async function POST(request: Request) {
         caisse_libelle: item.caisseLibelle,
         montant_finance: item.montant,
       })),
+
       signature_decision_hash: rebuilt.hash,
     };
 
-    const { error: updateError } = await supabaseAdmin
+    /*
+     * ========================================================
+     * MISE À JOUR DE LA DEMANDE
+     * ========================================================
+     */
+    const {
+      data: demandeMaj,
+      error: updateError,
+    } = await supabaseAdmin
       .from("demandes_prets")
       .update({
         statut: decision,
+
         montant_accorde:
-          decision === "APPROUVEE" ? montantAccorde : null,
+          decision === "APPROUVEE"
+            ? montantAccorde
+            : null,
+
         traite_par: context.authUserId,
+
         date_traitement: now,
+
         commentaire_decision:
           decision === "APPROUVEE" && motifReduction
             ? `Motif de réduction : ${motifReduction}${
@@ -700,17 +944,37 @@ export async function POST(request: Request) {
                   : ""
               }`
             : commentaireDecision,
+
         signature_hash: rebuilt.hash,
+
         document_texte: rebuilt.text,
+
         document_json: updatedDocumentJson,
       })
       .eq("id", demandeId)
-      .eq("statut", "EN_ATTENTE");
+      .eq("statut", "EN_ATTENTE")
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       throw updateError;
     }
 
+    /*
+     * Protection contre une demande modifiée entre
+     * la lecture initiale et la validation.
+     */
+    if (!demandeMaj?.id) {
+      throw new Error(
+        "La demande n'a pas pu être finalisée. Elle a peut-être déjà été traitée."
+      );
+    }
+
+    /*
+     * ========================================================
+     * NOTIFICATION
+     * ========================================================
+     */
     const notificationTitre =
       decision === "APPROUVEE"
         ? "Demande de prêt approuvée"
@@ -722,7 +986,7 @@ export async function POST(request: Request) {
             montantDemande
           )} FCFA a été approuvée. Montant accordé : ${formatMoney(
             montantAccorde ?? 0
-          )} FCFA.`
+          )} FCFA. Taux : ${TAUX_INTERET_LIBELLE}.`
         : `Votre demande de prêt de ${formatMoney(
             montantDemande
           )} FCFA a été refusée.${
@@ -735,19 +999,34 @@ export async function POST(request: Request) {
       "fn_notifications_creer",
       {
         p_membre_id: demande.membre_id,
+
         p_type_notification:
           decision === "APPROUVEE"
             ? "DEMANDE_PRET_APPROUVEE"
             : "DEMANDE_PRET_REFUSEE",
+
         p_titre: notificationTitre,
+
         p_message: notificationMessage,
+
         p_url_cible: `/prets/demande/${demandeId}`,
+
         p_donnees: {
           demande_id: demandeId,
+          pret_id:
+            decision === "APPROUVEE"
+              ? createdPretId
+              : null,
           decision,
           montant_demande: montantDemande,
           montant_accorde:
-            decision === "APPROUVEE" ? montantAccorde : null,
+            decision === "APPROUVEE"
+              ? montantAccorde
+              : null,
+          taux_interet_mensuel:
+            decision === "APPROUVEE"
+              ? TAUX_INTERET_MENSUEL
+              : null,
         },
       }
     );
@@ -756,29 +1035,66 @@ export async function POST(request: Request) {
       ? notificationResult.error.message
       : null;
 
+    /*
+     * ========================================================
+     * RÉPONSE
+     * ========================================================
+     */
     return NextResponse.json({
       success: true,
+
       message:
         decision === "APPROUVEE"
-          ? `Demande approuvée. ${financementsValides.length} décaissement(s) créé(s) pour un montant total de ${formatMoney(
+          ? `Demande approuvée. Prêt créé avec succès. ${financementsValides.length} décaissement(s) créé(s) pour un montant total de ${formatMoney(
               montantAccorde ?? 0
             )} FCFA.`
           : "Demande de prêt refusée.",
+
       data: {
         demande_id: demandeId,
+
+        pret_id:
+          decision === "APPROUVEE"
+            ? createdPretId
+            : null,
+
         decision,
+
         montant_demande: montantDemande,
+
         montant_accorde:
-          decision === "APPROUVEE" ? montantAccorde : null,
+          decision === "APPROUVEE"
+            ? montantAccorde
+            : null,
+
+        taux_interet_mensuel:
+          decision === "APPROUVEE"
+            ? TAUX_INTERET_MENSUEL
+            : null,
+
+        taux_interet_libelle:
+          decision === "APPROUVEE"
+            ? TAUX_INTERET_LIBELLE
+            : null,
+
         financements: financementsValides,
-        decaissements_crees: createdDecaissementIds.length,
-        notification_warning: notificationWarning,
+
+        decaissements_crees:
+          createdDecaissementIds.length,
+
+        notification_warning:
+          notificationWarning,
       },
     });
   } catch (error: any) {
-    if (supabaseAdmin) {
+    if (
+      supabaseAdmin &&
+      demandeIdForRollback
+    ) {
       await rollbackFinancialOperations({
         supabaseAdmin,
+        demandeId: demandeIdForRollback,
+        pretId: createdPretId,
         financementIds: createdFinancementIds,
         decaissementIds: createdDecaissementIds,
       });
