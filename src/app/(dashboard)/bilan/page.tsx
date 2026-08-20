@@ -618,7 +618,7 @@ export default function BilanPage() {
               </button>
 
               <Link
-                href="/dashboard"
+                href="/"
                 className="rounded-2xl border border-white/20 px-5 py-3 text-sm font-bold text-white"
               >
                 Dashboard

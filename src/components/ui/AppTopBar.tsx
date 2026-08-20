@@ -7,7 +7,6 @@ import LogoutButton from "@/components/ui/LogoutButton";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Accueil",
-  "/dashboard": "Dashboard",
   "/bilan": "Bilan",
   "/contributions": "Contributions",
   "/imputations": "Historique des encaissements",

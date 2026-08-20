@@ -69,7 +69,7 @@ const MENU_SECTIONS: MenuSection[] = [
     title: "Pilotage",
     items: [
       {
-        href: "/dashboard",
+        href: "/",
         label: "Dashboard",
         icon: LayoutDashboard,
       },

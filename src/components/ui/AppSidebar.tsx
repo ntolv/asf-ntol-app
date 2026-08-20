@@ -337,7 +337,7 @@ export default function AppSidebar() {
   }
 
   const dashboardActive =
-    pathname === "/dashboard";
+    pathname === "/";
 
   const documentsActive =
     pathname === "/documents";
@@ -445,7 +445,7 @@ export default function AppSidebar() {
       >
         <nav className="space-y-2">
           <Link
-            href="/dashboard"
+            href="/"
             aria-current={
               dashboardActive
                 ? "page"

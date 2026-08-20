@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Contributions", href: "/contributions", icon: CreditCard },
   { name: "Imputations", href: "/imputations", icon: FileText },
   { name: "Tontine", href: "/tontine", icon: TrendingUp },
