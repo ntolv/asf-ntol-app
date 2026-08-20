@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/prets-interets",
+      "schedule": "30 0 * * *"
+    }
+  ]
+}

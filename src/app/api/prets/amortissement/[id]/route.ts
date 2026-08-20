@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -8,6 +8,8 @@ type RemboursementRow = {
   id: string;
   date_remboursement: string;
   montant_rembourse: number | string;
+  mode_paiement?: string | null;
+  reference_paiement?: string | null;
 };
 
 type FinancementRow = {
@@ -21,6 +23,11 @@ type RubriqueRow = {
   id: string;
   nom?: string | null;
   libelle?: string | null;
+};
+
+type InteretRow = {
+  date_recalcul: string;
+  montant_interet_calcule: number | string;
 };
 
 type LigneAmortissement = {
@@ -61,19 +68,27 @@ function isBureauRole(
   );
 }
 
-function roundFcfa(value: number) {
-  return Math.round(Number(value || 0));
+function roundMoney(value: number) {
+  return Math.round(Number(value || 0) * 100) / 100;
 }
 
 function firstDayOfMonth(date: Date) {
   return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      1
+    )
   );
 }
 
 function nextMonth(date: Date) {
   return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + 1,
+      1
+    )
   );
 }
 
@@ -90,7 +105,10 @@ function monthLabel(date: Date) {
     timeZone: "UTC",
   }).format(date);
 
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  return (
+    label.charAt(0).toUpperCase() +
+    label.slice(1)
+  );
 }
 
 export async function GET(
@@ -101,17 +119,25 @@ export async function GET(
 ) {
   try {
     const params = await contextParams.params;
-    const demandeId = String(params?.id ?? "").trim();
+
+    const demandeId = String(
+      params?.id ?? ""
+    ).trim();
 
     if (!demandeId) {
       return NextResponse.json(
         {
           success: false,
-          message: "Identifiant de demande manquant.",
+          message:
+            "Identifiant de demande manquant.",
         },
         { status: 400 }
       );
     }
+
+    // ========================================================
+    // AUTHENTIFICATION
+    // ========================================================
 
     const cookieStore = await cookies();
 
@@ -139,15 +165,20 @@ export async function GET(
         {
           success: false,
           message:
-            userError?.message || "Utilisateur non authentifié.",
+            userError?.message ||
+            "Utilisateur non authentifié.",
         },
         { status: 401 }
       );
     }
 
-    const userContext = await getUserContext(user);
+    const userContext =
+      await getUserContext(user);
 
-    if (!userContext?.success || !userContext.membreId) {
+    if (
+      !userContext?.success ||
+      !userContext.membreId
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -158,6 +189,9 @@ export async function GET(
         { status: 401 }
       );
     }
+
+    const bureau =
+      isBureauRole(userContext.role);
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -170,12 +204,18 @@ export async function GET(
       }
     );
 
-    const { data: demande, error: demandeError } =
-      await supabaseAdmin
-        .from("demandes_prets")
-        .select("*")
-        .eq("id", demandeId)
-        .maybeSingle();
+    // ========================================================
+    // DEMANDE
+    // ========================================================
+
+    const {
+      data: demande,
+      error: demandeError,
+    } = await supabaseAdmin
+      .from("demandes_prets")
+      .select("*")
+      .eq("id", demandeId)
+      .maybeSingle();
 
     if (demandeError) {
       throw demandeError;
@@ -185,13 +225,19 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Demande de prêt introuvable.",
+          message:
+            "Demande de prêt introuvable.",
         },
         { status: 404 }
       );
     }
 
-    const bureau = isBureauRole(userContext.role);
+    // ========================================================
+    // SECURITE :
+    //
+    // Bureau => tous les prêts
+    // Membre => son propre prêt uniquement
+    // ========================================================
 
     const proprietaire =
       String(demande.membre_id ?? "") ===
@@ -201,17 +247,20 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Accès refusé à ce tableau d’amortissement.",
+          message:
+            "Accès refusé à ce tableau d’amortissement.",
         },
         { status: 403 }
       );
     }
 
-    const statut = String(
-      demande.statut ?? demande.statut_demande ?? ""
+    const statutDemande = String(
+      demande.statut ??
+        demande.statut_demande ??
+        ""
     ).toUpperCase();
 
-    if (!statut.includes("APPROUV")) {
+    if (!statutDemande.includes("APPROUV")) {
       return NextResponse.json(
         {
           success: false,
@@ -222,103 +271,104 @@ export async function GET(
       );
     }
 
-    const montantDemande = roundFcfa(
-      Number(demande.montant_demande || 0)
-    );
+    // ========================================================
+    // PRET COMPTABLE REEL
+    // ========================================================
 
-    const montantAccorde = roundFcfa(
-      Number(demande.montant_accorde || 0)
-    );
-
-    if (montantAccorde <= 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Le montant accordé est invalide.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const dateApprobationRaw =
-      demande.date_traitement ||
-      demande.date_decision ||
-      demande.created_at;
-
-    if (!dateApprobationRaw) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "La date d’approbation est introuvable.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const dateApprobation = new Date(dateApprobationRaw);
-
-    if (Number.isNaN(dateApprobation.getTime())) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "La date d’approbation est invalide.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const { data: membre, error: membreError } =
-      await supabaseAdmin
-        .from("membres")
-        .select("id, nom_complet, numero_membre")
-        .eq("id", demande.membre_id)
-        .maybeSingle();
-
-    if (membreError) {
-      throw membreError;
-    }
-
-    const { data: pret, error: pretError } =
-      await supabaseAdmin
-        .from("prets")
-        .select("*")
-        .eq("demande_pret_id", demandeId)
-        .maybeSingle();
+    const {
+      data: pret,
+      error: pretError,
+    } = await supabaseAdmin
+      .from("prets")
+      .select(
+        `
+          id,
+          demande_pret_id,
+          membre_id,
+          date_octroi,
+          montant_accorde,
+          taux_interet,
+          mode_interet,
+          capitalisation_interets,
+          solde_restant,
+          statut_pret,
+          date_prochain_recalcul_interet
+        `
+      )
+      .eq("demande_pret_id", demandeId)
+      .maybeSingle();
 
     if (pretError) {
       throw pretError;
     }
 
-    let remboursements: RemboursementRow[] = [];
-
-    if (pret?.id) {
-      const { data, error } = await supabaseAdmin
-        .from("remboursements")
-        .select(
-          "id, date_remboursement, montant_rembourse"
-        )
-        .eq("pret_id", pret.id)
-        .order("date_remboursement", {
-          ascending: true,
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      remboursements = (data ?? []) as RemboursementRow[];
+    if (!pret) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Le prêt comptable associé à cette demande est introuvable.",
+        },
+        { status: 404 }
+      );
     }
 
-    const { data: financementsData, error: financementsError } =
-      await supabaseAdmin
-        .from("pret_financements")
-        .select(
-          "id, rubrique_id, caisse_id, montant_finance"
-        )
-        .eq("demande_pret_id", demandeId)
-        .order("created_at", {
-          ascending: true,
-        });
+    const dateOctroi = new Date(
+      pret.date_octroi
+    );
+
+    if (Number.isNaN(dateOctroi.getTime())) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "La date d’octroi du prêt est invalide.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // MEMBRE
+    // ========================================================
+
+    const {
+      data: membre,
+      error: membreError,
+    } = await supabaseAdmin
+      .from("membres")
+      .select(
+        "id, nom_complet, numero_membre"
+      )
+      .eq("id", pret.membre_id)
+      .maybeSingle();
+
+    if (membreError) {
+      throw membreError;
+    }
+
+    // ========================================================
+    // FINANCEMENTS
+    // ========================================================
+
+    const {
+      data: financementsData,
+      error: financementsError,
+    } = await supabaseAdmin
+      .from("pret_financements")
+      .select(
+        `
+          id,
+          rubrique_id,
+          caisse_id,
+          montant_finance
+        `
+      )
+      .eq("pret_id", pret.id)
+      .order(
+        "created_at",
+        { ascending: true }
+      );
 
     if (financementsError) {
       throw financementsError;
@@ -330,7 +380,12 @@ export async function GET(
     const rubriqueIds = Array.from(
       new Set(
         financements
-          .map((item) => String(item.rubrique_id ?? ""))
+          .map(
+            (item) =>
+              String(
+                item.rubrique_id ?? ""
+              )
+          )
           .filter(Boolean)
       )
     );
@@ -338,7 +393,10 @@ export async function GET(
     let rubriques: RubriqueRow[] = [];
 
     if (rubriqueIds.length > 0) {
-      const { data, error } = await supabaseAdmin
+      const {
+        data,
+        error,
+      } = await supabaseAdmin
         .from("rubriques")
         .select("*")
         .in("id", rubriqueIds);
@@ -347,140 +405,371 @@ export async function GET(
         throw error;
       }
 
-      rubriques = (data ?? []) as RubriqueRow[];
+      rubriques =
+        (data ?? []) as RubriqueRow[];
     }
 
-    const repartitionFinancement = financements.map((item) => {
-      const rubrique = rubriques.find(
-        (row) => String(row.id) === String(item.rubrique_id)
+    const repartitionFinancement =
+      financements.map((item) => {
+        const rubrique =
+          rubriques.find(
+            (row) =>
+              String(row.id) ===
+              String(item.rubrique_id)
+          );
+
+        return {
+          financement_id: item.id,
+          rubrique_id:
+            item.rubrique_id,
+          rubrique_nom:
+            String(
+              rubrique?.nom ??
+                rubrique?.libelle ??
+                "Rubrique"
+            ).trim() || "Rubrique",
+          caisse_id:
+            item.caisse_id,
+          montant_finance:
+            roundMoney(
+              Number(
+                item.montant_finance || 0
+              )
+            ),
+        };
+      });
+
+    // ========================================================
+    // REMBOURSEMENTS REELS
+    // ========================================================
+
+    const {
+      data: remboursementsData,
+      error: remboursementsError,
+    } = await supabaseAdmin
+      .from("remboursements")
+      .select(
+        `
+          id,
+          date_remboursement,
+          montant_rembourse,
+          mode_paiement,
+          reference_paiement
+        `
+      )
+      .eq("pret_id", pret.id)
+      .order(
+        "date_remboursement",
+        { ascending: true }
       );
 
-      return {
-        financement_id: item.id,
-        rubrique_id: item.rubrique_id,
-        rubrique_nom:
-          String(
-            rubrique?.nom ??
-              rubrique?.libelle ??
-              "Rubrique"
-          ).trim() || "Rubrique",
-        caisse_id: item.caisse_id,
-        montant_finance: roundFcfa(
-          Number(item.montant_finance || 0)
-        ),
-      };
-    });
+    if (remboursementsError) {
+      throw remboursementsError;
+    }
 
-    const remboursementsParMois = new Map<string, number>();
+    const remboursements =
+      (remboursementsData ?? []) as RemboursementRow[];
 
-    remboursements.forEach((remboursement) => {
-      const date = new Date(remboursement.date_remboursement);
+    // ========================================================
+    // INTERETS REELLEMENT CALCULES PAR LE MOTEUR SUPABASE
+    //
+    // Aucun intérêt fictif n'est calculé ici.
+    // ========================================================
+
+    const {
+      data: interetsData,
+      error: interetsError,
+    } = await supabaseAdmin
+      .from("prets_interets_recalculs")
+      .select(
+        `
+          date_recalcul,
+          montant_interet_calcule
+        `
+      )
+      .eq("pret_id", pret.id)
+      .eq(
+        "statut_recalcul",
+        "APPLIQUE"
+      )
+      .order(
+        "date_recalcul",
+        { ascending: true }
+      );
+
+    if (interetsError) {
+      throw interetsError;
+    }
+
+    const interets =
+      (interetsData ?? []) as InteretRow[];
+
+    // ========================================================
+    // REGROUPEMENT MENSUEL
+    // ========================================================
+
+    const remboursementsParMois =
+      new Map<string, number>();
+
+    for (const remboursement of remboursements) {
+      const date = new Date(
+        remboursement.date_remboursement
+      );
 
       if (Number.isNaN(date.getTime())) {
-        return;
+        continue;
       }
 
       const key = monthKey(date);
-      const previous = remboursementsParMois.get(key) ?? 0;
 
       remboursementsParMois.set(
         key,
-        previous +
-          roundFcfa(
-            Number(remboursement.montant_rembourse || 0)
-          )
+        roundMoney(
+          (
+            remboursementsParMois.get(key) ??
+            0
+          ) +
+            Number(
+              remboursement.montant_rembourse ||
+                0
+            )
+        )
       );
-    });
+    }
 
-    const dateDebut = firstDayOfMonth(dateApprobation);
-    const currentYear = new Date().getFullYear();
+    const interetsParMois =
+      new Map<string, number>();
 
-    const endYear = Math.max(
-      currentYear,
-      dateDebut.getUTCFullYear()
-    );
-
-    const dateFin = new Date(Date.UTC(endYear, 11, 1));
-
-    const lignes: LigneAmortissement[] = [];
-
-    let moisCourant = dateDebut;
-    let solde = montantAccorde;
-
-    while (moisCourant.getTime() <= dateFin.getTime()) {
-      const soldeDebut = roundFcfa(solde);
-
-      const interet =
-        soldeDebut > 0
-          ? roundFcfa(soldeDebut * 0.01)
-          : 0;
-
-      const remboursementEnregistre = roundFcfa(
-        remboursementsParMois.get(monthKey(moisCourant)) ?? 0
+    for (const interetRow of interets) {
+      const date = new Date(
+        interetRow.date_recalcul
       );
 
-      const detteAvantRemboursement =
-        soldeDebut + interet;
+      if (Number.isNaN(date.getTime())) {
+        continue;
+      }
 
-      const remboursementRetenu = Math.min(
-        remboursementEnregistre,
-        detteAvantRemboursement
+      const key = monthKey(date);
+
+      interetsParMois.set(
+        key,
+        roundMoney(
+          (
+            interetsParMois.get(key) ??
+            0
+          ) +
+            Number(
+              interetRow.montant_interet_calcule ||
+                0
+            )
+        )
       );
+    }
 
-      const soldeFin = Math.max(
-        0,
-        roundFcfa(
-          detteAvantRemboursement -
-            remboursementRetenu
+    // ========================================================
+    // TABLEAU :
+    //
+    // de la date d'octroi
+    // jusqu'au mois courant uniquement.
+    //
+    // Aucune projection fictive dans le futur.
+    // ========================================================
+
+    const dateDebut =
+      firstDayOfMonth(dateOctroi);
+
+    const maintenant =
+      new Date();
+
+    const dateFin =
+      firstDayOfMonth(maintenant);
+
+    const lignes:
+      LigneAmortissement[] = [];
+
+    let moisCourant =
+      dateDebut;
+
+    let solde =
+      roundMoney(
+        Number(
+          pret.montant_accorde || 0
         )
       );
 
+    while (
+      moisCourant.getTime() <=
+      dateFin.getTime()
+    ) {
+      const key =
+        monthKey(moisCourant);
+
+      const soldeDebut =
+        roundMoney(solde);
+
+      const interet =
+        roundMoney(
+          interetsParMois.get(key) ??
+            0
+        );
+
+      const remboursement =
+        roundMoney(
+          remboursementsParMois.get(key) ??
+            0
+        );
+
+      const soldeFin =
+        Math.max(
+          0,
+          roundMoney(
+            soldeDebut +
+              interet -
+              remboursement
+          )
+        );
+
       lignes.push({
-        annee: moisCourant.getUTCFullYear(),
-        mois: moisCourant.getUTCMonth() + 1,
-        mois_libelle: monthLabel(moisCourant),
-        solde_debut: soldeDebut,
+        annee:
+          moisCourant.getUTCFullYear(),
+
+        mois:
+          moisCourant.getUTCMonth() +
+          1,
+
+        mois_libelle:
+          monthLabel(moisCourant),
+
+        solde_debut:
+          soldeDebut,
+
         interet,
-        remboursement: remboursementRetenu,
-        solde_fin: soldeFin,
+
+        remboursement,
+
+        solde_fin:
+          soldeFin,
       });
 
-      solde = soldeFin;
-      moisCourant = nextMonth(moisCourant);
+      solde =
+        soldeFin;
+
+      moisCourant =
+        nextMonth(moisCourant);
     }
+
+    // ========================================================
+    // REPONSE
+    // ========================================================
 
     return NextResponse.json({
       success: true,
+
       data: {
-        demande_id: demandeId,
-        pret_id: pret?.id ?? null,
+        demande_id:
+          demandeId,
+
+        pret_id:
+          pret.id,
+
+        is_bureau:
+          bureau,
+
         reference:
-          demande.reference_unique || demande.id,
+          demande.reference_unique ||
+          demande.id,
+
         membre: {
-          id: membre?.id ?? demande.membre_id,
+          id:
+            membre?.id ??
+            pret.membre_id,
+
           nom_complet:
             membre?.nom_complet ||
             demande.signature_nom ||
             "-",
+
           numero_membre:
             membre?.numero_membre ||
-            demande.document_json?.numero_membre ||
+            demande.document_json
+              ?.numero_membre ||
             "-",
         },
+
         date_approbation:
-          dateApprobation.toISOString(),
-        montant_demande: montantDemande,
-        montant_accorde: montantAccorde,
-        taux_mensuel: 1,
-        situation_arretee_au: `${endYear}-12-31`,
-        financements: repartitionFinancement,
-        remboursements: remboursements.map((item) => ({
-          id: item.id,
-          date_remboursement: item.date_remboursement,
-          montant_rembourse: roundFcfa(
-            Number(item.montant_rembourse || 0)
+          pret.date_octroi,
+
+        montant_demande:
+          roundMoney(
+            Number(
+              demande.montant_demande ||
+                0
+            )
           ),
-        })),
+
+        montant_accorde:
+          roundMoney(
+            Number(
+              pret.montant_accorde ||
+                0
+            )
+          ),
+
+        taux_mensuel:
+          roundMoney(
+            Number(
+              pret.taux_interet ||
+                0
+            ) * 100
+          ),
+
+        solde_restant:
+          roundMoney(
+            Number(
+              pret.solde_restant ||
+                0
+            )
+          ),
+
+        statut_pret:
+          pret.statut_pret,
+
+        date_prochain_recalcul_interet:
+          pret.date_prochain_recalcul_interet,
+
+        situation_arretee_au:
+          maintenant.toISOString(),
+
+        financements:
+          repartitionFinancement,
+
+        remboursements:
+          remboursements.map(
+            (item) => ({
+              id:
+                item.id,
+
+              date_remboursement:
+                item.date_remboursement,
+
+              montant_rembourse:
+                roundMoney(
+                  Number(
+                    item.montant_rembourse ||
+                      0
+                  )
+                ),
+
+              mode_paiement:
+                item.mode_paiement ??
+                null,
+
+              reference_paiement:
+                item.reference_paiement ??
+                null,
+            })
+          ),
+
         lignes,
       },
     });
@@ -493,9 +782,10 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
+
         message:
           error?.message ||
-          "Erreur lors du calcul du tableau d’amortissement.",
+          "Erreur lors du chargement du tableau d’amortissement.",
       },
       { status: 500 }
     );

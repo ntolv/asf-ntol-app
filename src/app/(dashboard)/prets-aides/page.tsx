@@ -364,7 +364,7 @@ export default function PretsAidesPage() {
             </p>
 
             <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-              Historique global des demandes des membres
+              Suivi des prêts et aides
             </h1>
 
             <p className="mt-3 text-sm text-slate-600 md:text-base">
@@ -556,7 +556,7 @@ export default function PretsAidesPage() {
                 </p>
 
                 <h2 className="mt-2 text-xl font-bold text-slate-900">
-                  Toutes les demandes de tous les membres
+                  Demandes accessibles
                 </h2>
               </div>
 
