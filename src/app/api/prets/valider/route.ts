@@ -540,24 +540,9 @@ export async function POST(request: Request) {
         }
       );
 
-      const rubriqueIds = normalizedFinancements.map(
-        (item) => item.rubriqueId
-      );
-
       const caisseIds = normalizedFinancements.map(
         (item) => item.caisseId
       );
-
-      if (new Set(rubriqueIds).size !== rubriqueIds.length) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Une même rubrique ne peut financer le prêt qu'une seule fois.",
-          },
-          { status: 400 }
-        );
-      }
 
       if (new Set(caisseIds).size !== caisseIds.length) {
         return NextResponse.json(
@@ -1116,3 +1101,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
