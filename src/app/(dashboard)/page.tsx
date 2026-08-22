@@ -41,6 +41,34 @@ type TontineBilanRow = {
   statut: string;
 };
 
+type RedistributionDestination = {
+  id: string;
+  code: string;
+  nom: string;
+};
+
+type RedistributionRow = {
+  id: string;
+  cycle_id: string;
+  membre_id: string;
+  montant_redistribue: number;
+  base_calcul_total_relances: number;
+  nombre_beneficiaires: number;
+  date_redistribution: string | null;
+  statut: string;
+  commentaire: string | null;
+  rubrique_destination_id: string | null;
+  caisse_destination_id: string | null;
+  annee_generation: number;
+  annee_affectation_prevue: number;
+
+  destination: {
+    rubrique_id: string;
+    code: string;
+    nom: string;
+  } | null;
+};
+
 type AideRow = {
   id: string;
   montant_demande: number;
@@ -113,6 +141,12 @@ type DashboardResponse = {
       cycles: any[];
       participations: any[];
       bilan: TontineBilanRow[];
+
+      redistributions?: {
+        lignes: RedistributionRow[];
+
+        destinations: RedistributionDestination[];
+      };
     };
   };
 };
@@ -217,6 +251,16 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [annee, setAnnee] = useState<number | null>(null);
 
+  const [
+    redistributionSavingId,
+    setRedistributionSavingId,
+  ] = useState<string | null>(null);
+
+  const [
+    redistributionError,
+    setRedistributionError,
+  ] = useState("");
+
   async function loadDashboard(anneeChoisie?: number | null) {
     try {
       setLoading(true);
@@ -253,6 +297,123 @@ export default function DashboardPage() {
     }
   }
 
+  async function validerDestinationRedistribution(
+    redistributionId: string,
+    rubriqueDestinationId: string
+  ) {
+    try {
+      setRedistributionSavingId(redistributionId);
+      setRedistributionError("");
+
+      const response = await fetch("/api/dashboard", {
+        method: "POST",
+
+        cache: "no-store",
+
+        credentials: "include",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          redistribution_id:
+            redistributionId,
+
+          rubrique_destination_id:
+            rubriqueDestinationId,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.success) {
+        throw new Error(
+          json?.message ||
+            "Impossible d'enregistrer votre choix."
+        );
+      }
+
+      await loadDashboard(annee);
+    } catch (err: any) {
+      setRedistributionError(
+        err?.message ||
+          "Erreur lors de l'enregistrement de la destination."
+      );
+    } finally {
+      setRedistributionSavingId(null);
+    }
+  }
+
+  async function verserRedistribution(
+    redistributionId: string,
+    montant: number,
+    destinationNom: string
+  ) {
+    const confirme = window.confirm(
+      `Confirmez-vous le versement de ${money(
+        montant
+      )} vers ${destinationNom} ?`
+    );
+
+    if (!confirme) {
+      return;
+    }
+
+    try {
+      setRedistributionSavingId(
+        redistributionId
+      );
+
+      setRedistributionError("");
+
+      const response = await fetch(
+        "/api/dashboard",
+        {
+          method: "POST",
+
+          cache: "no-store",
+
+          credentials: "include",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            action:
+              "VERSER_REDISTRIBUTION",
+
+            redistribution_id:
+              redistributionId,
+          }),
+        }
+      );
+
+      const json = await response.json();
+
+      if (
+        !response.ok ||
+        !json?.success
+      ) {
+        throw new Error(
+          json?.message ||
+            "Impossible d'effectuer le versement."
+        );
+      }
+
+      await loadDashboard(annee);
+    } catch (err: any) {
+      setRedistributionError(
+        err?.message ||
+          "Erreur lors du versement de la redistribution."
+      );
+    } finally {
+      setRedistributionSavingId(null);
+    }
+  }
+
   useEffect(() => {
     loadDashboard();
   }, []);
@@ -265,12 +426,19 @@ export default function DashboardPage() {
     );
   }, [synthese?.statut]);
 
+  const redistributions =
+    data?.tontine.redistributions?.lignes ?? [];
+
+  const destinationsRedistribution =
+    data?.tontine.redistributions?.destinations ?? [];
+
   const pret = data?.prets.lignes?.[0] ?? null;
 
   const tontine = data?.tontine.bilan?.[0] ?? null;
 
   const hasTontine =
     Boolean(tontine) ||
+    redistributions.length > 0 ||
     data?.tontine.est_tontineur_cycle === true ||
     data?.tontine.est_tontineur_defaut === true;
 
@@ -657,6 +825,153 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
+
+          {redistributions.length > 0 ? (
+            <div className="mt-6 border-t border-sky-100 pt-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-700">
+                  Redistribution des enchères
+                </p>
+
+                <p className="mt-1 text-sm text-slate-600">
+                  Affectation prévue pour {data.anneeSelectionnee}.
+                </p>
+              </div>
+
+              {redistributionError ? (
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  {redistributionError}
+                </div>
+              ) : null}
+
+              <div className="mt-4 space-y-4">
+                {redistributions.map((row) => {
+                  const saving =
+                    redistributionSavingId === row.id;
+
+                  const statutLabel =
+                    row.statut === "CALCULEE"
+                      ? "À affecter"
+                      : row.statut === "VALIDEE"
+                      ? "Choix validé"
+                      : row.statut === "VERSEE"
+                      ? "Versée"
+                      : row.statut;
+
+                  return (
+                    <div
+                      key={row.id}
+                      className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                            Enchères {row.annee_generation}
+                          </p>
+
+                          <p className="mt-1 text-2xl font-black text-slate-950">
+                            {money(row.montant_redistribue)}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            Affectation {row.annee_affectation_prevue}
+                          </p>
+                        </div>
+
+                        <span className="w-fit rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-black text-emerald-800">
+                          {statutLabel}
+                        </span>
+                      </div>
+
+                      {row.statut === "CALCULEE" ? (
+                        <div className="mt-4">
+                          <p className="text-sm font-bold text-slate-800">
+                            Choisissez la rubrique à créditer :
+                          </p>
+
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            {destinationsRedistribution.map(
+                              (destination) => (
+                                <button
+                                  key={destination.id}
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() =>
+                                    validerDestinationRedistribution(
+                                      row.id,
+                                      destination.id
+                                    )
+                                  }
+                                  className="rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm font-black text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {saving
+                                    ? "Enregistrement..."
+                                    : destination.nom}
+                                </button>
+                              )
+                            )}
+                          </div>
+
+                          <p className="mt-3 text-xs leading-5 text-slate-500">
+                            Ce choix valide uniquement la destination.
+                            Aucun versement n'est encore effectué dans la caisse.
+                          </p>
+                        </div>
+                      ) : row.destination ? (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                            Destination
+                          </p>
+
+                          <p className="mt-1 font-black text-slate-900">
+                            {row.destination.nom}
+                          </p>
+
+                          {row.statut === "VALIDEE" ? (
+                            <div className="mt-3">
+                              <p className="text-xs font-semibold text-amber-700">
+                                Destination validée. Le versement n'a pas encore été effectué.
+                              </p>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  redistributionSavingId ===
+                                  row.id
+                                }
+                                onClick={() =>
+                                  verserRedistribution(
+                                    row.id,
+                                    Number(
+                                      row.montant_redistribue
+                                    ),
+                                    row.destination?.nom ??
+                                      "la rubrique sélectionnée"
+                                  )
+                                }
+                                className="mt-3 w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {redistributionSavingId ===
+                                row.id
+                                  ? "Versement en cours..."
+                                  : "Verser ma redistribution"}
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {row.statut === "VERSEE" ? (
+                            <p className="mt-2 text-xs font-semibold text-emerald-700">
+                              Redistribution créditée.
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <Link
             href="/tontine"

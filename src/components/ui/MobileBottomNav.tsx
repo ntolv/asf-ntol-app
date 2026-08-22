@@ -30,10 +30,13 @@ import {
   X,
 } from "lucide-react";
 
+import { useAuth } from "@/hooks/useAuth";
+
 type MenuItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  bureauOnly?: boolean;
 };
 
 type MenuSection = {
@@ -72,6 +75,12 @@ const MENU_SECTIONS: MenuSection[] = [
         href: "/",
         label: "Dashboard",
         icon: LayoutDashboard,
+      },
+      {
+        href: "/bureau",
+        label: "Dashboard Bureau",
+        icon: ShieldCheck,
+        bureauOnly: true,
       },
       {
         href: "/bilan",
@@ -221,6 +230,22 @@ const ALL_MENU_ROUTES = MENU_SECTIONS.flatMap((section) =>
   section.items.map((item) => item.href)
 );
 
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
+
 function bottomItemActive(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
@@ -277,6 +302,14 @@ function menuItemActive(pathname: string, href: string) {
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const auth: any = useAuth?.() ?? {};
+
+  const canAccessBureau =
+    isBureauRole(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
+
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -305,13 +338,26 @@ export default function MobileBottomNav() {
     };
   }, [menuOpen]);
 
+  const visibleMenuSections = useMemo(
+    () =>
+      MENU_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter(
+          (item) =>
+            !item.bureauOnly ||
+            canAccessBureau
+        ),
+      })),
+    [canAccessBureau]
+  );
+
   const menuContainsCurrentPage = useMemo(() => {
-    return MENU_SECTIONS.some((section) =>
+    return visibleMenuSections.some((section) =>
       section.items.some((item) =>
         menuItemActive(pathname, item.href)
       )
     );
-  }, [pathname]);
+  }, [pathname, visibleMenuSections]);
 
   return (
     <>
@@ -347,7 +393,7 @@ export default function MobileBottomNav() {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 pb-28">
               <div className="mx-auto max-w-2xl space-y-6">
-                {MENU_SECTIONS.map((section) => (
+                {visibleMenuSections.map((section) => (
                   <section key={section.title}>
                     <h3 className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                       {section.title}

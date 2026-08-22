@@ -210,6 +210,8 @@ export async function GET(request: NextRequest) {
       tontineResult,
       aidesResult,
       cyclesResult,
+      redistributionsResult,
+      destinationsRedistributionResult,
     ] = await Promise.all([
       // ------------------------------------------------------
       // Contributions / reports / intérêts crédités
@@ -268,6 +270,29 @@ export async function GET(request: NextRequest) {
         )
         .eq("annee_reference", anneeSelectionnee)
         .order("date_debut", { ascending: true }),
+
+      // ------------------------------------------------------
+      // Redistribu­tions d'enchères affectables pendant l'exercice
+      // ------------------------------------------------------
+
+      supabase
+        .from("tontine_redistributions")
+        .select(
+          "id, cycle_id, membre_id, montant_redistribue, base_calcul_total_relances, nombre_beneficiaires, date_redistribution, statut_redistribution, commentaire, rubrique_destination_id, caisse_destination_id, annee_generation, annee_affectation_prevue"
+        )
+        .eq("membre_id", membreId)
+        .eq("annee_affectation_prevue", anneeSelectionnee)
+        .order("annee_generation", { ascending: true }),
+
+      // ------------------------------------------------------
+      // Destinations autorisées pour les enchères
+      // ------------------------------------------------------
+
+      supabase
+        .from("rubriques")
+        .select("id, code, nom")
+        .in("code", ["EPARGNE", "INVESTISSEMENT"])
+        .order("nom", { ascending: true }),
     ]);
 
     if (contributionsResult.error) {
@@ -290,6 +315,14 @@ export async function GET(request: NextRequest) {
       throw cyclesResult.error;
     }
 
+    if (redistributionsResult.error) {
+      throw redistributionsResult.error;
+    }
+
+    if (destinationsRedistributionResult.error) {
+      throw destinationsRedistributionResult.error;
+    }
+
     const contributions =
       (contributionsResult.data ?? []) as Row[];
 
@@ -304,6 +337,53 @@ export async function GET(request: NextRequest) {
 
     const cycles =
       (cyclesResult.data ?? []) as Row[];
+
+    const redistributions =
+      (redistributionsResult.data ?? []) as Row[];
+
+    const destinationsRedistribution =
+      (destinationsRedistributionResult.data ?? []) as Row[];
+
+    const destinationsParId = new Map(
+      destinationsRedistribution.map((row) => [
+        String(row.id),
+        row,
+      ])
+    );
+
+    const redistributionsEnrichies =
+      redistributions.map((row) => {
+        const destination =
+          row.rubrique_destination_id
+            ? destinationsParId.get(
+                String(row.rubrique_destination_id)
+              ) ?? null
+            : null;
+
+        return {
+          ...row,
+
+          montant_redistribue:
+            n(row.montant_redistribue),
+
+          statut:
+            row.statut_redistribution,
+
+          destination:
+            destination
+              ? {
+                  rubrique_id:
+                    destination.id,
+
+                  code:
+                    destination.code,
+
+                  nom:
+                    destination.nom,
+                }
+              : null,
+        };
+      });
 
     // ========================================================
     // PARTICIPATION TONTINE
@@ -506,6 +586,14 @@ export async function GET(request: NextRequest) {
             participations,
             bilan:
               tontine,
+
+            redistributions: {
+              lignes:
+                redistributionsEnrichies,
+
+              destinations:
+                destinationsRedistribution,
+            },
           },
         },
       },
@@ -524,6 +612,421 @@ export async function GET(request: NextRequest) {
         message:
           error?.message ||
           "Erreur lors du chargement du Dashboard.",
+
+        data: null,
+      },
+      { status: 500 }
+    );
+  }
+}
+export async function POST(request: NextRequest) {
+  try {
+    // ========================================================
+    // AUTHENTIFICATION
+    // ========================================================
+
+    const user = await getAuthenticatedUser();
+    const context = await getUserContext(user);
+
+    if (!context?.success || !context?.membreId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            context?.message ||
+            "Membre associé à l'utilisateur introuvable.",
+          data: null,
+        },
+        { status: 401 }
+      );
+    }
+
+    const membreId = context.membreId;
+
+    // ========================================================
+    // ACTION DEMANDEE
+    // ========================================================
+
+    const body = await request.json();
+
+    /*
+     * Compatibilité avec le frontend actuel :
+     * sans action explicite, on considère qu'il s'agit
+     * du choix de destination déjà existant.
+     */
+    const action = String(
+      body?.action ?? "VALIDER_DESTINATION"
+    )
+      .trim()
+      .toUpperCase();
+
+    const redistributionId =
+      String(body?.redistribution_id ?? "").trim();
+
+    const rubriqueDestinationId =
+      String(body?.rubrique_destination_id ?? "").trim();
+
+    if (!redistributionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Redistribution obligatoire.",
+          data: null,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      action !== "VALIDER_DESTINATION" &&
+      action !== "VERSER_REDISTRIBUTION"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Action de redistribution non reconnue.",
+          data: null,
+        },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    // ========================================================
+    // REDISTRIBUTION
+    // ========================================================
+
+    const {
+      data: redistribution,
+      error: redistributionError,
+    } = await supabase
+      .from("tontine_redistributions")
+      .select(
+        "id, cycle_id, membre_id, montant_redistribue, statut_redistribution, rubrique_destination_id, caisse_destination_id, annee_generation, annee_affectation_prevue, date_redistribution, commentaire"
+      )
+      .eq("id", redistributionId)
+      .maybeSingle();
+
+    if (redistributionError) {
+      throw redistributionError;
+    }
+
+    if (!redistribution) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Redistribution introuvable.",
+          data: null,
+        },
+        { status: 404 }
+      );
+    }
+
+    /*
+     * Cette route appartient à la page personnelle du membre.
+     * Elle ne permet donc d'agir que sur sa propre redistribution.
+     *
+     * Le contrôle Bureau sera traité séparément.
+     */
+    if (
+      String(redistribution.membre_id) !==
+      String(membreId)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Vous ne pouvez pas modifier cette redistribution.",
+          data: null,
+        },
+        { status: 403 }
+      );
+    }
+
+    // ========================================================
+    // ACTION 1 : CHOIX DE LA DESTINATION
+    // CALCULEE -> VALIDEE
+    // ========================================================
+
+    if (action === "VALIDER_DESTINATION") {
+      if (!rubriqueDestinationId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Rubrique de destination obligatoire.",
+            data: null,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        redistribution.statut_redistribution !==
+        "CALCULEE"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Cette redistribution a déjà été validée ou traitée.",
+            data: null,
+          },
+          { status: 409 }
+        );
+      }
+
+      const {
+        data: rubriqueDestination,
+        error: rubriqueError,
+      } = await supabase
+        .from("rubriques")
+        .select("id, code, nom")
+        .eq("id", rubriqueDestinationId)
+        .in("code", [
+          "EPARGNE",
+          "INVESTISSEMENT",
+        ])
+        .maybeSingle();
+
+      if (rubriqueError) {
+        throw rubriqueError;
+      }
+
+      if (!rubriqueDestination) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "La destination doit être Épargne ou Fonds Développement / Investissement.",
+            data: null,
+          },
+          { status: 400 }
+        );
+      }
+
+      const { error: rpcError } =
+        await supabase.rpc(
+          "fn_tontine_valider_destination_redistribution",
+          {
+            p_redistribution_id:
+              redistributionId,
+
+            p_rubrique_destination_id:
+              rubriqueDestinationId,
+          }
+        );
+
+      if (rpcError) {
+        throw rpcError;
+      }
+
+      const {
+        data: redistributionValidee,
+        error: validationReadError,
+      } = await supabase
+        .from("tontine_redistributions")
+        .select(
+          "id, cycle_id, membre_id, montant_redistribue, statut_redistribution, rubrique_destination_id, caisse_destination_id, annee_generation, annee_affectation_prevue, date_redistribution, commentaire"
+        )
+        .eq("id", redistributionId)
+        .single();
+
+      if (validationReadError) {
+        throw validationReadError;
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+
+          message:
+            "Destination de la redistribution enregistrée.",
+
+          data: {
+            redistribution:
+              redistributionValidee,
+
+            destination: {
+              rubrique_id:
+                rubriqueDestination.id,
+
+              code:
+                rubriqueDestination.code,
+
+              nom:
+                rubriqueDestination.nom,
+            },
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // ========================================================
+    // ACTION 2 : VERSEMENT
+    // VALIDEE -> VERSEE
+    // ========================================================
+
+    if (
+      redistribution.statut_redistribution !==
+      "VALIDEE"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Seule une redistribution validée peut être versée.",
+          data: null,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (
+      !redistribution.rubrique_destination_id ||
+      !redistribution.caisse_destination_id
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "La redistribution ne possède pas de destination complète.",
+          data: null,
+        },
+        { status: 409 }
+      );
+    }
+
+    /*
+     * Date réelle d'exécution.
+     * Le timestamp détaillé est aussi conservé automatiquement
+     * dans le journal PostgreSQL.
+     */
+    const dateEntree =
+      new Date().toISOString().slice(0, 10);
+
+    const anneeEntree =
+      Number(dateEntree.slice(0, 4));
+
+    if (
+      anneeEntree !==
+      Number(
+        redistribution.annee_affectation_prevue
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            `Cette redistribution doit être affectée en ${redistribution.annee_affectation_prevue}.`,
+          data: null,
+        },
+        { status: 409 }
+      );
+    }
+
+    const roleSnapshot =
+      `${context.role?.code ?? ""} ${
+        context.role?.libelle ?? ""
+      }`.trim() || null;
+
+    /*
+     * Fonction atomique :
+     *
+     * VALIDEE -> VERSEE
+     * + caisse_entrees
+     * + journal d'exécution
+     *
+     * En cas d'erreur, PostgreSQL annule l'ensemble.
+     */
+    const {
+      data: executionResult,
+      error: executionError,
+    } = await supabase.rpc(
+      "fn_tontine_executer_redistribution",
+      {
+        p_redistribution_id:
+          redistributionId,
+
+        p_date_entree:
+          dateEntree,
+
+        p_execute_par_membre_id:
+          membreId,
+
+        p_execute_par_user_id:
+          user.id,
+
+        p_role_snapshot:
+          roleSnapshot,
+      }
+    );
+
+    if (executionError) {
+      throw executionError;
+    }
+
+    // ========================================================
+    // RELIRE L'ETAT FINAL
+    // ========================================================
+
+    const {
+      data: redistributionVersee,
+      error: versementReadError,
+    } = await supabase
+      .from("tontine_redistributions")
+      .select(
+        "id, cycle_id, membre_id, montant_redistribue, statut_redistribution, rubrique_destination_id, caisse_destination_id, annee_generation, annee_affectation_prevue, date_redistribution, commentaire"
+      )
+      .eq("id", redistributionId)
+      .single();
+
+    if (versementReadError) {
+      throw versementReadError;
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+
+        message:
+          "Votre redistribution a été versée.",
+
+        data: {
+          redistribution:
+            redistributionVersee,
+
+          execution:
+            executionResult,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error(
+      "Erreur POST /api/dashboard:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+
+        message:
+          error?.message ||
+          "Erreur lors du traitement de la redistribution.",
 
         data: null,
       },

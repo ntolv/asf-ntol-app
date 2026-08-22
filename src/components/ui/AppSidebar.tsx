@@ -224,6 +224,22 @@ function normalizeRoleLabel(
   return code || null;
 }
 
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
+
 function itemIsActive(
   pathname: string,
   href: string
@@ -270,6 +286,12 @@ export default function AppSidebar() {
 
   const displayedRole =
     normalizeRoleLabel(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
+
+  const canAccessBureau =
+    isBureauRole(
       auth?.member?.role,
       auth?.member?.roleCode
     );
@@ -338,6 +360,9 @@ export default function AppSidebar() {
 
   const dashboardActive =
     pathname === "/";
+
+  const bureauActive =
+    pathname === "/bureau";
 
   const documentsActive =
     pathname === "/documents";
@@ -477,6 +502,42 @@ export default function AppSidebar() {
               <span>Dashboard</span>
             ) : null}
           </Link>
+
+          {canAccessBureau ? (
+            <Link
+              href="/bureau"
+              aria-current={
+                bureauActive
+                  ? "page"
+                  : undefined
+              }
+              aria-label={
+                compact
+                  ? "Dashboard Bureau"
+                  : undefined
+              }
+              title={
+                compact
+                  ? "Dashboard Bureau"
+                  : undefined
+              }
+              className={[
+                "flex items-center rounded-2xl border py-3 text-sm font-semibold transition",
+                compact
+                  ? "justify-center px-0"
+                  : "gap-3 px-4",
+                bureauActive
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-sm"
+                  : "border-transparent text-slate-700 hover:border-emerald-100 hover:bg-emerald-50/50",
+              ].join(" ")}
+            >
+              <ShieldCheck className="h-5 w-5 shrink-0" />
+
+              {!compact ? (
+                <span>Dashboard Bureau</span>
+              ) : null}
+            </Link>
+          ) : null}
 
           <div className="my-3 border-t border-slate-100" />
 
