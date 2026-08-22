@@ -8,6 +8,7 @@ import {
 
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingState from "@/components/ui/LoadingState";
+import BureauInteretsPrets from "@/components/bureau/BureauInteretsPrets";
 
 type Redistribution = {
   id: string;
@@ -797,6 +798,10 @@ export default function BureauPage() {
           </div>
         )}
       </section>
+      <BureauInteretsPrets
+        anneeSelectionnee={anneeSelectionnee}
+        membreSelectionne={membreSelectionne}
+      />
     </div>
   );
 }

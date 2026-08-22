@@ -162,24 +162,6 @@ export async function GET() {
     const executions =
       (executionsResult.data ?? []) as Row[];
 
-    const membreIds = Array.from(
-      new Set(
-        [
-          ...redistributions.map(
-            (row) => row.membre_id
-          ),
-          ...executions.map(
-            (row) =>
-              row.beneficiaire_membre_id
-          ),
-          ...executions.map(
-            (row) =>
-              row.execute_par_membre_id
-          ),
-        ].filter(Boolean)
-      )
-    );
-
     const rubriqueIds = Array.from(
       new Set(
         [
@@ -198,14 +180,17 @@ export async function GET() {
     let membres: Row[] = [];
     let rubriques: Row[] = [];
 
-    if (membreIds.length > 0) {
+    {
       const result =
         await supabase
           .from("membres")
           .select(
             "id, numero_membre, nom_complet"
           )
-          .in("id", membreIds);
+          .order(
+            "nom_complet",
+            { ascending: true }
+          );
 
       if (result.error) {
         throw result.error;

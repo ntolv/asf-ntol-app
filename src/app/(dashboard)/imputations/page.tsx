@@ -39,6 +39,10 @@ type EncaissementContribution = {
   date_contribution: string;
   montant_total: number;
   statut: string;
+  origine?:
+    | "COTISATION"
+    | "REDISTRIBUTION_ENCHERES"
+    | "REDISTRIBUTION_INTERETS";
   lignes: EncaissementLine[];
 };
 
@@ -74,6 +78,28 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("fr-FR").format(date);
+}
+
+function formatOrigine(
+  origine:
+    | EncaissementContribution["origine"]
+    | undefined
+) {
+  if (
+    origine ===
+    "REDISTRIBUTION_ENCHERES"
+  ) {
+    return "Redistribution enchères";
+  }
+
+  if (
+    origine ===
+    "REDISTRIBUTION_INTERETS"
+  ) {
+    return "Crédit intérêts prêts";
+  }
+
+  return "Cotisation";
 }
 
 function getCurrentYear() {
@@ -390,6 +416,11 @@ export default function ImputationsPage() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="space-y-1">
                     <p className="text-lg font-semibold text-slate-900">{item.membre_nom}</p>
+
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+                      {formatOrigine(item.origine)}
+                    </p>
+
                     <p className="text-sm text-slate-500">
                       Encaissement du {formatDate(item.date_contribution)}
                     </p>
