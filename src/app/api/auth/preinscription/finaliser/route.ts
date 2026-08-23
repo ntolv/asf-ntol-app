@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type LookupRow = {
+  membre_trouve?: boolean | null;
   nom_complet?: string | null;
-  compte_active?: boolean | null;
-  telephone?: string | null;
+  compte_deja_active?: boolean | null;
+  telephone_normalise?: string | null;
 };
 
 function getAdminClient() {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     const member = ((lookupData ?? []) as LookupRow[])[0] ?? null;
 
-    if (!member) {
+    if (!member || member.membre_trouve !== true) {
       return NextResponse.json(
         {
           success: false,
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (member.compte_active === true) {
+    if (member.compte_deja_active === true) {
       return NextResponse.json(
         {
           success: false,
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       email_confirm: true,
       user_metadata: {
         nom_complet: member.nom_complet ?? null,
-        telephone: member.telephone ?? telephone,
+        telephone: member.telephone_normalise ?? telephone,
       },
     });
 
