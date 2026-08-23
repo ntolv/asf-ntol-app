@@ -1,8 +1,23 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { getUserContext } from "@/lib/server/getUserContext";
+
+function isBureauRole(
+  role: { code?: string | null; libelle?: string | null } | null | undefined
+) {
+  const raw =
+    `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
 
 type SaveBody = {
   membre_id?: string;
@@ -91,6 +106,17 @@ export async function POST(request: NextRequest) {
           message: userContext?.message || "Utilisateur non authentifié.",
         },
         { status: 401 }
+      );
+    }
+
+    if (!isBureauRole(userContext.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Accès refusé. Modification des montants attendus réservée au Bureau.",
+        },
+        { status: 403 }
       );
     }
 
