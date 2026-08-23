@@ -191,18 +191,13 @@ export default function CaissePage() {
               <div className="rounded-2xl bg-rose-50 p-4"><p className="text-xs uppercase text-rose-700">Total décaissé</p><p className="mt-1 text-lg font-black text-rose-800">{money(data.decaissements.total_general)}</p></div>
             </div>
 
-            <div className="mt-5 grid gap-3">
-              {data.decaissements.mouvements.map((m: any) => (
-                <div key={m.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-bold text-slate-900">{m.beneficiaire || "Bénéficiaire non renseigné"}</p>
-                      <p className="text-sm text-slate-600">{dateFr(m.date)} — {m.rubrique || m.caisse || "-"} — {m.motif || "-"}</p>
-                    </div>
-                    <p className="font-black text-rose-700">{money(m.montant)}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="mt-5">
+              <a
+                href="/admin/audit?module=DECAISSEMENTS"
+                className="inline-flex rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Voir les décaissements dans le Journal général
+              </a>
             </div>
           </section>
 

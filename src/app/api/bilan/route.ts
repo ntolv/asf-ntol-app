@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
@@ -159,8 +159,6 @@ export async function GET(request: Request) {
 
             tontine: [],
 
-            details: [],
-            importsHistoriques: [],
 
             controleRubriques: [],
           },
@@ -180,7 +178,6 @@ export async function GET(request: Request) {
       rubriquesResult,
       membresResult,
       membresRubriquesResult,
-      detailsResult,
       patrimoineResult,
       patrimoineRubriquesResult,
       tontineResult,
@@ -227,16 +224,6 @@ export async function GET(request: Request) {
         .eq("annee", anneeSelectionnee)
         .order("rubrique_nom", { ascending: true })
         .order("nom_complet", { ascending: true }),
-
-      // ======================================================
-      // GRAND LIVRE
-      // ======================================================
-
-      supabaseAdmin
-        .from("v_bilan_details_exercice")
-        .select("*")
-        .eq("annee", anneeSelectionnee)
-        .order("date_operation", { ascending: false }),
 
       // ======================================================
       // PATRIMOINE INDIVIDUEL - SYNTHESE
@@ -286,10 +273,6 @@ export async function GET(request: Request) {
       throw membresRubriquesResult.error;
     }
 
-    if (detailsResult.error) {
-      throw detailsResult.error;
-    }
-
     if (patrimoineResult.error) {
       throw patrimoineResult.error;
     }
@@ -324,15 +307,6 @@ export async function GET(request: Request) {
 
       bilanPrecedent = data ?? null;
     }
-
-    const details =
-      detailsResult.data ?? [];
-
-    const importsHistoriques =
-      details.filter(
-        (row: any) =>
-          row.import_historique === true
-      );
 
     const rubriques =
       rubriquesResult.data ?? [];
@@ -532,11 +506,6 @@ export async function GET(request: Request) {
 
           // Contributions / fonds collectifs
           membresRubriques,
-
-          // Grand Livre
-          details,
-
-          importsHistoriques,
 
           // Patrimoine individuel
           patrimoine:

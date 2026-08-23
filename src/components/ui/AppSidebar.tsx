@@ -155,6 +155,11 @@ const MEMBRES_ITEMS: NavItem[] = [
 
 const ADMIN_ITEMS: NavItem[] = [
   {
+    href: "/admin/audit",
+    label: "Journal général",
+    icon: History,
+  },
+  {
     href: "/admin/roles",
     label: "Administration des r\u00F4les",
     icon: ShieldCheck,

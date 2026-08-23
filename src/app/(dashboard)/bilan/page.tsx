@@ -81,23 +81,6 @@ type MembreRubriqueRow = {
   solde_fin_exercice: number | string | null;
 };
 
-type DetailRow = {
-  origine: string;
-  source_id: string;
-  annee: number;
-  date_operation: string | null;
-  date_creation: string | null;
-  type_flux: string;
-  membre_id: string | null;
-  nom_complet: string | null;
-  rubrique_id: string | null;
-  rubrique_nom: string | null;
-  reference: string | null;
-  commentaire: string | null;
-  montant: number | string | null;
-  import_historique: boolean;
-};
-
 type TontineRow = {
   annee: number;
   membre_id: string;
@@ -121,8 +104,7 @@ type SectionKey =
   | "reports-membres"
   | "tontine"
   | "prets"
-  | "controle"
-  | "mouvements";
+  | "controle";
 
 type ApiResponse = {
   success: boolean;
@@ -137,8 +119,6 @@ type ApiResponse = {
     patrimoine?: PatrimoineRow[];
     patrimoineRubriques?: PatrimoineRubriqueRow[];
     membresRubriques?: MembreRubriqueRow[];
-    details?: DetailRow[];
-    importsHistoriques?: DetailRow[];
     tontine?: TontineRow[];
     controleRubriques?: ControleRubrique[];
   };
@@ -259,16 +239,11 @@ export default function BilanPage() {
     useState<PatrimoineRubriqueRow[]>([]);
   const [membresRubriques, setMembresRubriques] =
     useState<MembreRubriqueRow[]>([]);
-  const [details, setDetails] = useState<DetailRow[]>([]);
-  const [imports, setImports] = useState<DetailRow[]>([]);
   const [tontine, setTontine] = useState<TontineRow[]>([]);
   const [membreTontineSelectionne, setMembreTontineSelectionne] = useState("");
   const [controles, setControles] =
     useState<ControleRubrique[]>([]);
 
-  const [filtreMembre, setFiltreMembre] = useState("");
-  const [filtreRubrique, setFiltreRubrique] = useState("");
-  const [filtreOrigine, setFiltreOrigine] = useState("");
   const [sectionActive, setSectionActive] = useState<SectionKey | null>(null);
   const [membreSelectionne, setMembreSelectionne] = useState("");
 
@@ -357,18 +332,6 @@ export default function BilanPage() {
           : []
       );
 
-      setDetails(
-        Array.isArray(json.data?.details)
-          ? json.data!.details!
-          : []
-      );
-
-      setImports(
-        Array.isArray(json.data?.importsHistoriques)
-          ? json.data!.importsHistoriques!
-          : []
-      );
-
       setTontine(
         Array.isArray(json.data?.tontine)
           ? json.data!.tontine!
@@ -392,66 +355,6 @@ export default function BilanPage() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const detailsFiltres = useMemo(() => {
-    return details.filter((row) => {
-      if (
-        filtreMembre &&
-        !String(row.nom_complet ?? "")
-          .toLowerCase()
-          .includes(filtreMembre.toLowerCase())
-      ) {
-        return false;
-      }
-
-      if (
-        filtreRubrique &&
-        row.rubrique_nom !== filtreRubrique
-      ) {
-        return false;
-      }
-
-      if (
-        filtreOrigine &&
-        row.origine !== filtreOrigine
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    details,
-    filtreMembre,
-    filtreRubrique,
-    filtreOrigine,
-  ]);
-
-  const origines = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          details
-            .map((row) => row.origine)
-            .filter(Boolean)
-        )
-      ).sort(),
-    [details]
-  );
-
-  const rubriquesDetails = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          details
-            .map((row) => row.rubrique_nom)
-            .filter(
-              (value): value is string => Boolean(value)
-            )
-        )
-      ).sort(),
-    [details]
-  );
 
   const membresDisponibles = useMemo(() => {
     return patrimoine
@@ -664,12 +567,6 @@ export default function BilanPage() {
               icon: "✅",
               title: "Contrôle de cohérence",
               description: "Vérification des rubriques et des comptes membres.",
-            },
-            {
-              key: "mouvements" as SectionKey,
-              icon: "📒",
-              title: "Détail des mouvements",
-              description: "Grand Livre et traçabilité des opérations.",
             },
           ].map((item) => {
             const active = sectionActive === item.key;
@@ -1398,196 +1295,6 @@ export default function BilanPage() {
         </Panel>
         ) : null}
 
-        {sectionActive === "mouvements" ? (
-          <>
-        <Panel
-          id="mouvements"
-          title="Grand Livre des mouvements"
-          subtitle="Toutes les opérations ayant alimenté le bilan de l'exercice."
-        >
-          <div className="mb-5 grid gap-3 md:grid-cols-3">
-            <input
-              value={filtreMembre}
-              onChange={(event) =>
-                setFiltreMembre(event.target.value)
-              }
-              placeholder="Filtrer par membre..."
-              className="rounded-2xl border border-slate-200 px-4 py-3"
-            />
-
-            <select
-              value={filtreRubrique}
-              onChange={(event) =>
-                setFiltreRubrique(event.target.value)
-              }
-              className="rounded-2xl border border-slate-200 px-4 py-3"
-            >
-              <option value="">
-                Toutes les rubriques
-              </option>
-
-              {rubriquesDetails.map((rubrique) => (
-                <option
-                  key={rubrique}
-                  value={rubrique}
-                >
-                  {rubrique}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filtreOrigine}
-              onChange={(event) =>
-                setFiltreOrigine(event.target.value)
-              }
-              className="rounded-2xl border border-slate-200 px-4 py-3"
-            >
-              <option value="">
-                Toutes les origines
-              </option>
-
-              {origines.map((origine) => (
-                <option
-                  key={origine}
-                  value={origine}
-                >
-                  {origine}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-[1200px] w-full text-sm">
-              <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
-                <tr>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Origine</th>
-                  <th className="p-3">Membre</th>
-                  <th className="p-3">Rubrique</th>
-                  <th className="p-3">Référence</th>
-                  <th className="p-3">Type</th>
-                  <th className="p-3 text-right">
-                    Montant
-                  </th>
-                  <th className="p-3">Import</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {detailsFiltres.map((row) => (
-                  <tr
-                    key={`${row.origine}-${row.source_id}-${row.rubrique_id ?? "x"}`}
-                    className="border-b border-slate-100"
-                  >
-                    <td className="p-3">
-                      {dateFr(row.date_operation)}
-                    </td>
-
-                    <td className="p-3 font-semibold">
-                      {row.origine}
-                    </td>
-
-                    <td className="p-3">
-                      {row.nom_complet ?? "-"}
-                    </td>
-
-                    <td className="p-3">
-                      {row.rubrique_nom ?? "-"}
-                    </td>
-
-                    <td className="p-3 text-xs">
-                      {row.reference ?? "-"}
-                    </td>
-
-                    <td className="p-3">
-                      {row.type_flux}
-                    </td>
-
-                    <td
-                      className={`p-3 text-right font-black ${
-                        row.type_flux === "SORTIE"
-                          ? "text-red-700"
-                          : row.type_flux === "ENTREE"
-                          ? "text-emerald-700"
-                          : "text-slate-900"
-                      }`}
-                    >
-                      {money(row.montant)}
-                    </td>
-
-                    <td className="p-3">
-                      {row.import_historique
-                        ? "📥 Historique"
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        <Panel
-          id="imports"
-          title="Mouvements issus d'imports historiques"
-          subtitle="Les opérations importées restent rattachées à leur véritable exercice métier."
-        >
-          {imports.length === 0 ? (
-            <p className="text-sm text-slate-600">
-              Aucun mouvement historique importé pour cet
-              exercice.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-sm">
-                <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
-                  <tr>
-                    <th className="p-3">Date métier</th>
-                    <th className="p-3">Origine</th>
-                    <th className="p-3">Membre</th>
-                    <th className="p-3">Rubrique</th>
-                    <th className="p-3 text-right">
-                      Montant
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {imports.map((row) => (
-                    <tr
-                      key={`${row.origine}-${row.source_id}-${row.rubrique_id ?? "x"}`}
-                      className="border-b border-slate-100"
-                    >
-                      <td className="p-3">
-                        {dateFr(row.date_operation)}
-                      </td>
-
-                      <td className="p-3">
-                        {row.origine}
-                      </td>
-
-                      <td className="p-3">
-                        {row.nom_complet ?? "-"}
-                      </td>
-
-                      <td className="p-3">
-                        {row.rubrique_nom ?? "-"}
-                      </td>
-
-                      <td className="p-3 text-right font-black">
-                        {money(row.montant)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
-          </>
-        ) : null}
       </div>
     </main>
   );
