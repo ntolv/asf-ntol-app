@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import MobileStatusBadge from "./MobileStatusBadge";
 
 export type MobileCaisseSummary = {
@@ -48,6 +49,22 @@ const ACTIONS = [
   { key: "encheres", label: "Enchères", text: "Montant total lié à la caisse" },
 ] as const;
 
+
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
 function EmptyBlock({
   title,
   text,
@@ -73,6 +90,14 @@ export default function MobileCaisseBanking({
   montantsAttendusHref = "/montants-attendus",
   encheresHref = "/encheres",
 }: MobileCaisseBankingProps) {
+  const auth: any = useAuth?.() ?? {};
+
+  const canAccessBureau =
+    isBureauRole(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
+
   const hrefByKey = {
     contributions: contributionsHref,
     imputations: imputationsHref,
@@ -140,7 +165,7 @@ export default function MobileCaisseBanking({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {ACTIONS.map((item) => (
+          {ACTIONS.filter((item) => item.key !== "montantsAttendus" || canAccessBureau).map((item) => (
             <Link
               key={item.key}
               href={hrefByKey[item.key]}

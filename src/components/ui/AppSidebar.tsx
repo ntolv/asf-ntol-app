@@ -37,6 +37,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  bureauOnly?: boolean;
 };
 
 type GroupKey =
@@ -81,6 +82,7 @@ const FINANCES_ITEMS: NavItem[] = [
     href: "/montants-attendus",
     label: "Montants attendus",
     icon: Calculator,
+    bureauOnly: true,
   },
   {
     href: "/decaissements",
@@ -635,7 +637,7 @@ export default function AppSidebar() {
                   {!compact &&
                   isOpen ? (
                     <div className="ml-5 mt-1 space-y-1 border-l border-emerald-100 pl-3">
-                      {group.items.map(
+                      {group.items.filter((item) => !item.bureauOnly || canAccessBureau).map(
                         (item) => {
                           const ItemIcon =
                             item.icon;
@@ -808,7 +810,7 @@ export default function AppSidebar() {
                   {!compact &&
                   isOpen ? (
                     <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 pl-3">
-                      {group.items.map(
+                      {group.items.filter((item) => !item.bureauOnly || canAccessBureau).map(
                         (item) => {
                           const ItemIcon =
                             item.icon;

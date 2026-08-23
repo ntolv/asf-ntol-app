@@ -1,6 +1,7 @@
 "use client";
 
 import DomainQuickNav from "@/components/navigation/DomainQuickNav";
+import { useAuth } from "@/hooks/useAuth";
 
 const ITEMS = [
   {
@@ -22,6 +23,7 @@ const ITEMS = [
   {
     href: "/montants-attendus",
     label: "Attendus",
+    bureauOnly: true,
   },
   {
     href: "/decaissements",
@@ -29,11 +31,44 @@ const ITEMS = [
   },
 ];
 
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
+
 export default function FinanceQuickNav() {
+  const auth: any = useAuth?.() ?? {};
+
+  const canAccessBureau =
+    isBureauRole(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
+
+  const visibleItems =
+    ITEMS
+      .filter(
+        (item) =>
+          !item.bureauOnly ||
+          canAccessBureau
+      )
+      .map(({ bureauOnly, ...item }) => item);
+
   return (
     <DomainQuickNav
       title="Finances"
-      items={ITEMS}
+      items={visibleItems}
       columns={3}
     />
   );

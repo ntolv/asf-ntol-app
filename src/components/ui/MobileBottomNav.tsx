@@ -122,6 +122,7 @@ const MENU_SECTIONS: MenuSection[] = [
         href: "/montants-attendus",
         label: "Montants attendus",
         icon: Calculator,
+        bureauOnly: true,
       },
       {
         href: "/decaissements",
