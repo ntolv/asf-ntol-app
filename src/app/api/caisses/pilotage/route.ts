@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
+import { getUserContext } from "@/lib/server/getUserContext";
 
 type Row = Record<string, any>;
 
@@ -56,6 +58,56 @@ function classifyDecaissement(row: Row): "AIDE" | "PRET" | "AUTRE" {
 
 export async function GET() {
   try {
+    // ========================================================
+    // 1. AUTHENTIFICATION
+    // La Caisse est accessible à tout membre connecté.
+    // ========================================================
+
+    const supabaseAuth =
+      await createSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } =
+      await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          error:
+            authError?.message ||
+            "Utilisateur non connecté.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const context =
+      await getUserContext(user);
+
+    if (
+      !context?.success ||
+      !context?.membreId
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            context?.message ||
+            "Contexte utilisateur introuvable.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    // ========================================================
+    // 2. LECTURE SERVEUR DES DONNEES DE CAISSE
+    // ========================================================
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -232,15 +284,9 @@ export async function GET() {
         total_prets: totalPrets,
         total_autres: totalAutres,
         total_general: totalDecaissements,
-        mouvements: decaissementRows.map((row) => ({
-          id: row.id,
-          date: row.date_decaissement,
-          caisse: row.caisse_libelle,
-          rubrique: row.rubrique_nom,
-          beneficiaire: row.membre_nom_complet,
-          montant: row.montant,
-          motif: row.motif,
-        })),
+        // Les mouvements détaillés de décaissement ne sont pas exposés
+        // par l'API publique de consultation de la Caisse.
+        mouvements: [],
       },
       retards: {
         montant_total_retards: membresRetard.reduce((sum, row) => sum + n(row.retard_total), 0),
