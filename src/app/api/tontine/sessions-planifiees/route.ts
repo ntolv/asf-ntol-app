@@ -1,31 +1,105 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
+import { getUserContext } from "@/lib/server/getUserContext";
+
+function isBureauRole(
+  role: { code?: string | null; libelle?: string | null } | null | undefined
+) {
+  const raw =
+    `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
 
 function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRole) {
-    throw new Error("Variables Supabase manquantes.");
-  }
-
-  return createClient(url, serviceRole, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 }
 
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabaseAuth =
+      await createSupabaseServerClient();
 
-    const { data, error } = await supabase
-      .from("v_tontine_sessions_planifiees_activation")
-      .select("*")
-      .order("ordre_session", { ascending: true });
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Utilisateur non authentifié.",
+          data: [],
+        },
+        { status: 401 }
+      );
+    }
+
+    const context =
+      await getUserContext(user);
+
+    if (!context?.success || !context.membreId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            context?.message ||
+            "Contexte membre introuvable.",
+          data: [],
+        },
+        { status: 401 }
+      );
+    }
+
+    if (!isBureauRole(context.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Accès réservé au Bureau.",
+          data: [],
+        },
+        { status: 403 }
+      );
+    }
+
+    const supabase =
+      getSupabaseAdmin();
+
+    const { data, error } =
+      await supabase
+        .from(
+          "v_tontine_sessions_planifiees_activation"
+        )
+        .select("*")
+        .order("ordre_session", {
+          ascending: true,
+        });
 
     if (error) {
       return NextResponse.json(
-        { success: false, error: error.message, data: [] },
+        {
+          success: false,
+          error: error.message,
+          data: [],
+        },
         { status: 500 }
       );
     }
@@ -38,7 +112,10 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Erreur interne",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur interne",
         data: [],
       },
       { status: 500 }
