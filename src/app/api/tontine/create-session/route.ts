@@ -1,8 +1,64 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
+import { getUserContext } from "@/lib/server/getUserContext";
+
+function isBureauRole(
+  role: { code?: string | null; libelle?: string | null } | null | undefined
+) {
+  const raw =
+    `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
 
 export async function POST(req: Request) {
   try {
+    const supabaseAuth =
+      await createSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Utilisateur non authentifié." },
+        { status: 401 }
+      );
+    }
+
+    const context =
+      await getUserContext(user);
+
+    if (!context?.success || !context.membreId) {
+      return NextResponse.json(
+        {
+          error:
+            context?.message ||
+            "Contexte utilisateur introuvable.",
+        },
+        { status: 401 }
+      );
+    }
+
+    if (!isBureauRole(context.role)) {
+      return NextResponse.json(
+        {
+          error:
+            "Création de session réservée au Bureau.",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const supabase = createClient(
@@ -10,11 +66,12 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: cycle, error: cycleError } = await supabase
-      .from("tontine_cycles")
-      .select("id")
-      .eq("actif", true)
-      .single();
+    const { data: cycle, error: cycleError } =
+      await supabase
+        .from("tontine_cycles")
+        .select("id")
+        .eq("actif", true)
+        .single();
 
     if (cycleError || !cycle) {
       return NextResponse.json(
@@ -23,9 +80,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const montantDepartEnchere = Number(body.montant_depart_enchere || 0);
+    const montantDepartEnchere =
+      Number(
+        body.montant_depart_enchere || 0
+      );
 
-    const { data: session, error: sessionError } = await supabase
+    const {
+      data: session,
+      error: sessionError,
+    } = await supabase
       .from("tontine_sessions")
       .insert({
         cycle_id: cycle.id,
@@ -35,36 +98,49 @@ export async function POST(req: Request) {
         statut_session: "PLANIFIEE",
         mise_brute_session: body.mise,
         nb_lots_effectif: body.nb_lots,
-        montant_depart_enchere_session: montantDepartEnchere
+        montant_depart_enchere_session:
+          montantDepartEnchere,
       })
       .select()
       .single();
 
     if (sessionError || !session) {
       return NextResponse.json(
-        { error: sessionError?.message || "Erreur création session" },
+        {
+          error:
+            sessionError?.message ||
+            "Erreur création session",
+        },
         { status: 500 }
       );
     }
 
-    const nbLots = Number(body.nb_lots || 0);
-    const mise = Number(body.mise || 0);
+    const nbLots =
+      Number(body.nb_lots || 0);
 
-    const lots = Array.from({ length: nbLots }, (_, index) => ({
-      session_id: session.id,
-      numero_lot: index + 1,
-      libelle: `Lot ${index + 1}`,
-      montant_depart_enchere: montantDepartEnchere,
-      mise_brute_lot: mise,
-      statut_lot: "OUVERT",
-      montant_total_relances: 0,
-      gain_reel: mise
-    }));
+    const mise =
+      Number(body.mise || 0);
+
+    const lots = Array.from(
+      { length: nbLots },
+      (_, index) => ({
+        session_id: session.id,
+        numero_lot: index + 1,
+        libelle: `Lot ${index + 1}`,
+        montant_depart_enchere:
+          montantDepartEnchere,
+        mise_brute_lot: mise,
+        statut_lot: "OUVERT",
+        montant_total_relances: 0,
+        gain_reel: mise,
+      })
+    );
 
     if (lots.length > 0) {
-      const { error: lotsError } = await supabase
-        .from("tontine_lots")
-        .insert(lots);
+      const { error: lotsError } =
+        await supabase
+          .from("tontine_lots")
+          .insert(lots);
 
       if (lotsError) {
         return NextResponse.json(
@@ -77,11 +153,15 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       session_id: session.id,
-      nb_lots: nbLots
+      nb_lots: nbLots,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Erreur serveur" },
+      {
+        error:
+          error?.message ||
+          "Erreur serveur",
+      },
       { status: 500 }
     );
   }

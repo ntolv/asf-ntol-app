@@ -1,10 +1,40 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getUserContext } from "@/lib/server/getUserContext";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
 
 export async function GET(req: Request) {
+  const supabaseAuth =
+    await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAuth.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: "Utilisateur non authentifié" },
+      { status: 401 }
+    );
+  }
+
+  const context =
+    await getUserContext(user);
+
+  if (!context?.success || !context.membreId) {
+    return NextResponse.json(
+      {
+        error:
+          context?.message ||
+          "Contexte membre introuvable",
+      },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const lot_id = searchParams.get("lot_id");
 
