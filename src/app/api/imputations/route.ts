@@ -1,19 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
+import { getUserContext } from "@/lib/server/getUserContext";
 
 type ImputationRow = {
   contribution_id: string;
   membre_id: string;
   membre_nom: string;
   date_contribution: string;
-  montant_total: number;
+  montant_total: number | string;
   statut: string;
+
   ligne_id: string;
   rubrique_id: string;
   rubrique_nom: string;
-  montant_ligne: number;
+  montant_ligne: number | string;
   ordre_affichage: number;
+
   contribution_created_at?: string;
+
+  ligne_statut?: string;
+  annule_at?: string | null;
+  annule_par_user_id?: string | null;
+  motif_annulation?: string | null;
+
+  periode_reference?: string;
 };
 
 type CaisseEntreeRow = {
@@ -32,25 +43,39 @@ type CaisseEntreeRow = {
   created_at: string;
 };
 
+type HistoriqueLigne = {
+  ligne_id: string;
+  rubrique_id: string;
+  rubrique_nom: string;
+  montant_ligne: number;
+  ordre_affichage: number;
+
+  ligne_statut: string;
+  annule_at?: string | null;
+  motif_annulation?: string | null;
+
+  modifiable: boolean;
+  retour_arriere_disponible: boolean;
+};
+
 type EncaissementHistorique = {
   contribution_id: string;
   membre_id: string;
   membre_nom: string;
   date_contribution: string;
   contribution_created_at?: string;
+
+  periode_reference?: string;
+
   montant_total: number;
   statut: string;
+
   origine:
     | "COTISATION"
     | "REDISTRIBUTION_ENCHERES"
     | "REDISTRIBUTION_INTERETS";
-  lignes: Array<{
-    ligne_id: string;
-    rubrique_id: string;
-    rubrique_nom: string;
-    montant_ligne: number;
-    ordre_affichage: number;
-  }>;
+
+  lignes: HistoriqueLigne[];
 };
 
 function getAdminClient() {
@@ -78,6 +103,66 @@ function getAdminClient() {
   );
 }
 
+function isAuthorizedRole(
+  roleCode: string | null | undefined
+) {
+  const code =
+    String(roleCode ?? "")
+      .trim()
+      .toUpperCase();
+
+  return [
+    "ADMIN",
+    "PRESIDENT",
+    "TRESORIER",
+  ].includes(code);
+}
+
+async function getRequestAccess() {
+  const auth =
+    await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error,
+  } = await auth.auth.getUser();
+
+  if (error || !user) {
+    return {
+      ok: false as const,
+      status: 401,
+      message:
+        error?.message ||
+        "Utilisateur non connecté.",
+      context: null,
+    };
+  }
+
+  const context =
+    await getUserContext(user);
+
+  if (
+    !context?.success ||
+    !context?.membreId
+  ) {
+    return {
+      ok: false as const,
+      status: 401,
+      message:
+        context?.message ||
+        "Contexte utilisateur introuvable.",
+      context,
+    };
+  }
+
+  return {
+    ok: true as const,
+    status: 200,
+    message: "OK",
+    context,
+  };
+}
+
 function parseYear(yearValue: string) {
   const match =
     /^(\d{4})$/.exec(yearValue);
@@ -101,9 +186,12 @@ function getDateRange(
   yearValue: string,
   monthValue: string
 ) {
-  const year = parseYear(yearValue);
+  const year =
+    parseYear(yearValue);
 
-  if (!year) return null;
+  if (!year) {
+    return null;
+  }
 
   if (!monthValue) {
     return {
@@ -124,7 +212,10 @@ function getDateRange(
   }
 
   const startMonth =
-    String(month).padStart(2, "0");
+    String(month).padStart(
+      2,
+      "0"
+    );
 
   if (month === 12) {
     return {
@@ -155,6 +246,30 @@ export async function GET(
   request: NextRequest
 ) {
   try {
+    // ========================================================
+    // 1. AUTHENTIFICATION
+    // ========================================================
+
+    const access =
+      await getRequestAccess();
+
+    if (!access.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: access.message,
+        },
+        {
+          status: access.status,
+        }
+      );
+    }
+
+    const canManage =
+      isAuthorizedRole(
+        access.context?.role?.code
+      );
+
     const supabase =
       getAdminClient();
 
@@ -188,7 +303,9 @@ export async function GET(
           message:
             "Une année doit être sélectionnée pour filtrer par mois",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
@@ -210,33 +327,43 @@ export async function GET(
               ? "Année ou mois invalide"
               : "Année invalide. Format attendu : YYYY",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    /*
-     * --------------------------------------------------------
-     * 1. COTISATIONS EXISTANTES
-     * --------------------------------------------------------
-     */
+    // ========================================================
+    // 2. CONTRIBUTIONS
+    //
+    // IMPORTANT :
+    // on utilise la vue TOUS STATUTS afin que les corrections
+    // et annulations restent visibles dans l'Historique.
+    // ========================================================
 
     let contributionsQuery =
       supabase
         .from(
-          "v_contributions_imputations"
+          "v_contributions_imputations_tous_statuts"
         )
         .select("*")
         .order(
           "date_contribution",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         )
         .order(
           "contribution_created_at",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         )
         .order(
           "ordre_affichage",
-          { ascending: true }
+          {
+            ascending: true,
+          }
         );
 
     if (membreId) {
@@ -273,7 +400,7 @@ export async function GET(
       error: contributionsError,
     } =
       await contributionsQuery.limit(
-        2000
+        3000
       );
 
     if (contributionsError) {
@@ -283,6 +410,106 @@ export async function GET(
     const rows =
       (contributionsData ??
         []) as ImputationRow[];
+
+    /*
+     * --------------------------------------------------------
+     * IDENTIFIER LES LIGNES CREEES PAR UNE CORRECTION
+     *
+     * Une ligne peut revenir en arrière uniquement si elle
+     * possède dans le journal une CREATION dont l'origine
+     * est CORRECTION.
+     *
+     * On interroge par petits lots pour éviter une URL
+     * PostgREST trop longue sur un historique important.
+     * --------------------------------------------------------
+     */
+
+    const lignesIssuesCorrection =
+      new Set<string>();
+
+    const ligneIds =
+      Array.from(
+        new Set(
+          rows
+            .map(
+              (row) =>
+                row.ligne_id
+            )
+            .filter(Boolean)
+        )
+      );
+
+    const auditChunkSize =
+      200;
+
+    for (
+      let index = 0;
+      index < ligneIds.length;
+      index += auditChunkSize
+    ) {
+      const chunk =
+        ligneIds.slice(
+          index,
+          index + auditChunkSize
+        );
+
+      const {
+        data: auditCorrections,
+        error: auditCorrectionsError,
+      } =
+        await supabase
+          .from(
+            "journal_modifications"
+          )
+          .select(
+            "entite_id, metadata"
+          )
+          .eq(
+            "entite",
+            "CONTRIBUTION_IMPUTATION"
+          )
+          .eq(
+            "action",
+            "CREATION"
+          )
+          .in(
+            "entite_id",
+            chunk
+          );
+
+      if (
+        auditCorrectionsError
+      ) {
+        throw auditCorrectionsError;
+      }
+
+      for (
+        const audit of
+        auditCorrections ?? []
+      ) {
+        const metadata =
+          (audit.metadata ??
+            {}) as Record<
+              string,
+              unknown
+            >;
+
+        if (
+          audit.entite_id &&
+          String(
+            metadata.origine ??
+              ""
+          ) ===
+            "CORRECTION"
+        ) {
+          lignesIssuesCorrection.add(
+            String(
+              audit.entite_id
+            )
+          );
+        }
+      }
+    }
 
     const groupedMap =
       new Map<
@@ -314,7 +541,11 @@ export async function GET(
             contribution_created_at:
               row.contribution_created_at,
 
-            montant_total: 0,
+            periode_reference:
+              row.periode_reference,
+
+            montant_total:
+              0,
 
             statut:
               row.statut,
@@ -331,6 +562,12 @@ export async function GET(
         groupedMap.get(
           row.contribution_id
         )!;
+
+      const ligneStatut =
+        String(
+          row.ligne_statut ??
+            "VALIDE"
+        ).toUpperCase();
 
       group.lignes.push({
         ligne_id:
@@ -353,6 +590,34 @@ export async function GET(
             row.ordre_affichage ??
               0
           ),
+
+        ligne_statut:
+          ligneStatut,
+
+        annule_at:
+          row.annule_at ??
+          null,
+
+        motif_annulation:
+          row.motif_annulation ??
+          null,
+
+        modifiable:
+          canManage &&
+          row.statut ===
+            "VALIDE" &&
+          ligneStatut ===
+            "VALIDE",
+
+        retour_arriere_disponible:
+          canManage &&
+          row.statut ===
+            "VALIDE" &&
+          ligneStatut ===
+            "VALIDE" &&
+          lignesIssuesCorrection.has(
+            row.ligne_id
+          ),
       });
     }
 
@@ -367,30 +632,47 @@ export async function GET(
               b.ordre_affichage
           );
 
-        const totalFiltre =
-          lignes.reduce(
-            (sum, ligne) =>
-              sum +
-              Number(
-                ligne.montant_ligne ??
+        /*
+         * Le montant financier de l'historique doit exclure
+         * les lignes annulées.
+         *
+         * Leur montant initial reste toutefois visible sur
+         * chaque ligne pour la traçabilité.
+         */
+        const totalActif =
+          item.statut ===
+          "VALIDE"
+            ? lignes
+                .filter(
+                  (ligne) =>
+                    ligne.ligne_statut ===
+                    "VALIDE"
+                )
+                .reduce(
+                  (
+                    sum,
+                    ligne
+                  ) =>
+                    sum +
+                    Number(
+                      ligne.montant_ligne ??
+                        0
+                    ),
                   0
-              ),
-            0
-          );
+                )
+            : 0;
 
         return {
           ...item,
           montant_total:
-            totalFiltre,
+            totalActif,
           lignes,
         };
       });
 
-    /*
-     * --------------------------------------------------------
-     * 2. REDISTRIBUTIONS REELLEMENT CREDITÉES
-     * --------------------------------------------------------
-     */
+    // ========================================================
+    // 3. REDISTRIBUTIONS REELLEMENT CREDITEES
+    // ========================================================
 
     let entreesQuery =
       supabase
@@ -404,11 +686,15 @@ export async function GET(
         ])
         .order(
           "date_entree",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         )
         .order(
           "created_at",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         );
 
     if (membreId) {
@@ -456,11 +742,9 @@ export async function GET(
       (entreesData ??
         []) as CaisseEntreeRow[];
 
-    /*
-     * --------------------------------------------------------
-     * 3. NOMS MEMBRES / RUBRIQUES
-     * --------------------------------------------------------
-     */
+    // ========================================================
+    // 4. LIBELLES MEMBRES / RUBRIQUES
+    // ========================================================
 
     const membreIds =
       Array.from(
@@ -474,7 +758,7 @@ export async function GET(
               (
                 id
               ): id is string =>
-                !!id
+                Boolean(id)
             )
         )
       );
@@ -530,7 +814,9 @@ export async function GET(
         membres ?? []
       ) {
         membresMap.set(
-          String(membre.id),
+          String(
+            membre.id
+          ),
           String(
             membre.nom_complet ??
               "Membre inconnu"
@@ -566,7 +852,9 @@ export async function GET(
         rubriques ?? []
       ) {
         rubriquesMap.set(
-          String(rubrique.id),
+          String(
+            rubrique.id
+          ),
           {
             nom:
               String(
@@ -607,7 +895,8 @@ export async function GET(
               `caisse-entree-${row.id}`,
 
             membre_id:
-              row.membre_id ?? "",
+              row.membre_id ??
+              "",
 
             membre_nom:
               row.membre_id
@@ -625,7 +914,8 @@ export async function GET(
 
             montant_total:
               Number(
-                row.montant ?? 0
+                row.montant ??
+                  0
               ),
 
             statut:
@@ -658,17 +948,35 @@ export async function GET(
                   rubrique
                     ?.ordre_affichage ??
                   0,
+
+                ligne_statut:
+                  "VALIDE",
+
+                annule_at:
+                  null,
+
+                motif_annulation:
+                  null,
+
+                /*
+                 * Une redistribution n'est pas une cotisation
+                 * manuelle et ne doit pas être corrigée depuis
+                 * les actions d'encaissement.
+                 */
+                modifiable:
+                  false,
+
+                retour_arriere_disponible:
+                  false,
               },
             ],
           };
         }
       );
 
-    /*
-     * --------------------------------------------------------
-     * 4. HISTORIQUE UNIQUE
-     * --------------------------------------------------------
-     */
+    // ========================================================
+    // 5. HISTORIQUE UNIQUE
+    // ========================================================
 
     const historique =
       [
@@ -690,7 +998,8 @@ export async function GET(
             dateA !== dateB
           ) {
             return (
-              dateB - dateA
+              dateB -
+              dateA
             );
           }
 
@@ -718,18 +1027,31 @@ export async function GET(
     return NextResponse.json({
       success: true,
 
+      permissions: {
+        can_manage_encaissements:
+          canManage,
+      },
+
+      role_code:
+        access.context?.role?.code ??
+        null,
+
       filters: {
         membre_id:
-          membreId || null,
+          membreId ||
+          null,
 
         annee:
-          annee || null,
+          annee ||
+          null,
 
         mois:
-          mois || null,
+          mois ||
+          null,
 
         rubrique_id:
-          rubriqueId || null,
+          rubriqueId ||
+          null,
       },
 
       count:
@@ -747,7 +1069,11 @@ export async function GET(
           error?.message ||
           "Impossible de charger l'historique des encaissements",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
+
+
