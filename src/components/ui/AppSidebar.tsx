@@ -94,8 +94,9 @@ const FINANCES_ITEMS: NavItem[] = [
 const TONTINE_ITEMS: NavItem[] = [
   {
     href: "/tontine",
-    label: "Tontine",
+    label: "Gestion Tontine",
     icon: HandCoins,
+    bureauOnly: true,
   },
   {
     href: "/encheres",

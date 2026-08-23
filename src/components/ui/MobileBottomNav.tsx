@@ -137,8 +137,9 @@ const MENU_SECTIONS: MenuSection[] = [
     items: [
       {
         href: "/tontine",
-        label: "Tontine",
+        label: "Gestion Tontine",
         icon: HandCoins,
+        bureauOnly: true,
       },
       {
         href: "/encheres",

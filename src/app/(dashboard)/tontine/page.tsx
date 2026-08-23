@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useMemo, useState } from "react";
 
 type CycleParams = {
@@ -63,6 +65,22 @@ const STATUS_LABELS: Record<string, string> = {
   TERMINEE: "Terminée",
 };
 
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
+
 function normalizeStatus(value: unknown): "PLANIFIEE" | "EN_COURS" | "TERMINEE" | "AUTRE" {
   const raw = String(value ?? "").trim().toUpperCase();
   if (raw === "PLANIFIEE") return "PLANIFIEE";
@@ -120,6 +138,15 @@ function normalizeSuiviCycleRow(row: any) {
   };
 }
 export default function TontinePage() {
+  const router = useRouter();
+  const auth: any = useAuth?.() ?? {};
+
+  const canAccessBureau =
+    isBureauRole(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
+
   const [loading, setLoading] = useState(true);
   const [savingCycle, setSavingCycle] = useState(false);
   const [activatingSession, setActivatingSession] = useState(false);
@@ -251,12 +278,43 @@ export default function TontinePage() {
   }
 
   useEffect(() => {
+    if (
+      auth?.loading === true ||
+      !canAccessBureau
+    ) {
+      return;
+    }
+
     void reloadAll();
-  }, [refreshKey]);
+  }, [refreshKey, auth?.loading, canAccessBureau]);
 
   useEffect(() => {
+    if (
+      auth?.loading === true ||
+      !canAccessBureau
+    ) {
+      return;
+    }
+
     void loadGagnants(selectedResultSessionId);
-  }, [selectedResultSessionId]);
+  }, [
+    selectedResultSessionId,
+    auth?.loading,
+    canAccessBureau,
+  ]);
+
+  useEffect(() => {
+    if (
+      auth?.loading === false &&
+      !canAccessBureau
+    ) {
+      router.replace("/encheres");
+    }
+  }, [
+    auth?.loading,
+    canAccessBureau,
+    router,
+  ]);
 
   useEffect(() => {
     if (selectedResultSessionId || sessions.length === 0) return;
@@ -344,6 +402,12 @@ export default function TontinePage() {
     }
   }
 
+  if (
+    auth?.loading === true ||
+    !canAccessBureau
+  ) {
+    return null;
+  }
   return (
     <div className="w-full bg-slate-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 pb-28 md:px-6 md:pb-12 xl:px-8">
