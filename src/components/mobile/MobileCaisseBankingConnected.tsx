@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import MobileCaisseBanking, {
   type MobileCaisseMovementItem,
   type MobileCaisseRubriqueItem,
@@ -183,66 +182,62 @@ export default function MobileCaisseBankingConnected() {
       try {
         setState((prev) => ({ ...prev, loading: true, error: null }));
 
-        const authContextResponse = await fetch("/api/auth/context", {
-          credentials: "include",
-          cache: "no-store",
-        });
+        const response =
+          await fetch(
+            "/api/mobile/caisse",
+            {
+              credentials:
+                "include",
 
-        const authContext = await authContextResponse.json().catch(() => null);
+              cache:
+                "no-store",
+            }
+          );
 
-        const membreId =
-          authContext?.membreId ??
-          authContext?.member?.id ??
-          authContext?.memberId ??
-          authContext?.user?.membreId ??
-          null;
+        const json =
+          await response
+            .json()
+            .catch(
+              () => null
+            );
 
-        if (!membreId) {
-          if (!cancelled) {
-            setState({
-              loading: false,
-              error: "Contexte membre indisponible",
-              summary: EMPTY_SUMMARY,
-              rubriques: [],
-              mouvements: [],
-            });
-          }
-          return;
+        if (
+          !response.ok ||
+          !json?.success ||
+          !json?.data
+        ) {
+          throw new Error(
+            json?.message ||
+              "Impossible de charger la situation de caisse."
+          );
         }
 
-        const [
-          caissesResponse,
-          contributionsResponse,
-          decaissementsResponse,
-        ] = await Promise.all([
-          supabase
-            .from("v_caisses")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("rubrique", { ascending: true }),
+        const caissesRows =
+          Array.isArray(
+            json.data.caisses
+          )
+            ? (
+                json.data.caisses as GenericRow[]
+              )
+            : [];
 
-          supabase
-            .from("v_contributions")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_paiement", { ascending: false })
-            .limit(5),
+        const contributionsRows =
+          Array.isArray(
+            json.data.contributions
+          )
+            ? (
+                json.data.contributions as GenericRow[]
+              )
+            : [];
 
-          supabase
-            .from("v_decaissements")
-            .select("*")
-            .eq("membre_id", membreId)
-            .order("date_decaissement", { ascending: false })
-            .limit(5),
-        ]);
-
-        if (caissesResponse.error) throw caissesResponse.error;
-        if (contributionsResponse.error) throw contributionsResponse.error;
-        if (decaissementsResponse.error) throw decaissementsResponse.error;
-
-        const caissesRows = Array.isArray(caissesResponse.data) ? (caissesResponse.data as GenericRow[]) : [];
-        const contributionsRows = Array.isArray(contributionsResponse.data) ? (contributionsResponse.data as GenericRow[]) : [];
-        const decaissementsRows = Array.isArray(decaissementsResponse.data) ? (decaissementsResponse.data as GenericRow[]) : [];
+        const decaissementsRows =
+          Array.isArray(
+            json.data.decaissements
+          )
+            ? (
+                json.data.decaissements as GenericRow[]
+              )
+            : [];
 
         const rubriques = caissesRows.map(buildRubrique);
         const firstCaisse = caissesRows[0] ?? {};
