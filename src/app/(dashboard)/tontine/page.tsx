@@ -101,7 +101,7 @@ function formatStatus(value: unknown) {
 function formatMoney(value: unknown) {
   const num = Number(value ?? 0);
   if (!Number.isFinite(num)) return "-";
-  return new Intl.NumberFormat("fr-FR").format(num) + " FCFA";
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num) + " FCFA";
 }
 
 function formatDateInput(value: string | null | undefined) {

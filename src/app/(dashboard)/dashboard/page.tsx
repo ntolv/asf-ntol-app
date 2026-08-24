@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -47,7 +47,7 @@ type DashboardResponse = {
 };
 
 function formatFcfa(value: number) {
-  return new Intl.NumberFormat("fr-FR").format(Number(value || 0)) + " FCFA";
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(value || 0)) + " FCFA";
 }
 
 function formatStatut(value: LigneDashboard["statut"]) {

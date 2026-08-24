@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -63,7 +63,7 @@ type DuplicateWarningState = {
 };
 
 function formatFcfa(value: number) {
-  return new Intl.NumberFormat("fr-FR").format(value) + " FCFA";
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value) + " FCFA";
 }
 
 function getTodayIsoDate() {

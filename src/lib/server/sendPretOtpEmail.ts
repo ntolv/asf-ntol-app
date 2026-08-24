@@ -1,4 +1,4 @@
-﻿export async function sendPretOtpEmail(args: {
+export async function sendPretOtpEmail(args: {
   to: string;
   code: string;
   memberName: string;
@@ -26,7 +26,7 @@
       <div style="font-size:32px;font-weight:700;letter-spacing:6px;padding:16px 0;color:#047857">
         ${args.code}
       </div>
-      <p><strong>Montant demandé :</strong> ${new Intl.NumberFormat("fr-FR").format(Number(args.montant || 0))} FCFA</p>
+      <p><strong>Montant demandé :</strong> ${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(args.montant || 0))} FCFA</p>
       <p><strong>Motif :</strong> ${args.motif}</p>
       <p>Ce code expire dans 10 minutes.</p>
       <p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>

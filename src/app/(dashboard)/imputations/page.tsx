@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -132,7 +132,7 @@ const MOIS_OPTIONS = [
 ];
 
 function formatFcfa(value: number) {
-  return `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} FCFA`;
 }
 
 function formatDate(value: string) {

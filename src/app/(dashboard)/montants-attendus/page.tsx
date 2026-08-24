@@ -41,7 +41,7 @@ type SaveResponse = {
 };
 
 function formatFcfa(value: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR").format(Number(value || 0)) + " FCFA";
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(value || 0)) + " FCFA";
 }
 
 export default function MontantsAttendusPage() {

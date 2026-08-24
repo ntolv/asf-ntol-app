@@ -79,7 +79,8 @@ function money(value: unknown) {
     Number(value ?? 0);
 
   return `${new Intl.NumberFormat(
-    "fr-FR"
+    "fr-FR",
+    { maximumFractionDigits: 0 }
   ).format(
     Number.isFinite(number)
       ? number

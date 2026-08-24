@@ -85,7 +85,7 @@ type DecisionApiResponse = {
 function formatMoney(value: number | string | null | undefined) {
   return (
     new Intl.NumberFormat("fr-FR", {
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(Number(value || 0)) + " FCFA"
   );
 }

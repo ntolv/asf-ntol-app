@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -56,7 +56,7 @@ type ApiResponse = {
 function formatMoney(value: number | null | undefined) {
   return (
     new Intl.NumberFormat("fr-FR", {
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(Number(value || 0)) + " FCFA"
   );
 }

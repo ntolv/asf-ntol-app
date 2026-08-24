@@ -129,7 +129,7 @@ function n(value: number | string | null | undefined) {
 }
 
 function money(value: number | string | null | undefined) {
-  return `${new Intl.NumberFormat("fr-FR").format(n(value))} FCFA`;
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(n(value))} FCFA`;
 }
 
 function dateFr(value: string | null | undefined) {

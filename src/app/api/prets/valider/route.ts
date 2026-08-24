@@ -1,4 +1,4 @@
-﻿import crypto from "crypto";
+import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -64,7 +64,7 @@ function toPositiveNumber(value: unknown) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("fr-FR", {
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
