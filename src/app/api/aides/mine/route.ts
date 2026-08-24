@@ -47,7 +47,7 @@ export async function GET() {
     );
 
     const { data, error } = await supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .select("*")
       .eq("membre_id", context.membreId)
       .order("created_at", { ascending: false });

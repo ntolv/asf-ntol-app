@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
       // ------------------------------------------------------
 
       supabase
-        .from("demandes_aide")
+        .from("demandes_aides")
         .select(
           "id, membre_id, montant_demande, montant_accorde, motif, statut, created_at, date_traitement, commentaire_decision"
         )

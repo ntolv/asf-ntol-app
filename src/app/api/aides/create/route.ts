@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     );
 
     const { error } = await supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .insert({
         membre_id: context.membreId,
         montant_demande: montant,

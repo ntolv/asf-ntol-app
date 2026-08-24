@@ -158,7 +158,7 @@ export async function GET() {
      */
 
     let aidesQuery = supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .select("*");
 
     if (!bureau) {

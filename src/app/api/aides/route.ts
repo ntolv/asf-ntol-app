@@ -59,7 +59,7 @@ export async function GET() {
     );
 
     const { data, error } = await supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .select("*")
       .eq("statut", "EN_ATTENTE")
       .order("created_at", { ascending: false });

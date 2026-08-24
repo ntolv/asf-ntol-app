@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     );
 
     const { data: demande, error: demandeError } = await supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .select("*")
       .eq("id", demandeId)
       .maybeSingle();
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from("demandes_aide")
+      .from("demandes_aides")
       .update({
         statut: decision,
         montant_accorde: montantFinal,
