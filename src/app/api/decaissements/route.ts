@@ -152,10 +152,84 @@ export async function GET(
         "membre_id"
       );
 
+    const anneeParam =
+      searchParams.get(
+        "annee"
+      );
+
+    const moisParam =
+      searchParams.get(
+        "mois"
+      );
+
     const limitParam =
       searchParams.get(
         "limit"
       );
+
+    const annee =
+      anneeParam
+        ? Number(anneeParam)
+        : null;
+
+    const mois =
+      moisParam
+        ? Number(moisParam)
+        : null;
+
+    if (
+      anneeParam &&
+      (
+        !Number.isInteger(annee) ||
+        Number(annee) < 2000 ||
+        Number(annee) > 2100
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Année invalide.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      moisParam &&
+      (
+        !Number.isInteger(mois) ||
+        Number(mois) < 1 ||
+        Number(mois) > 12
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Mois invalide.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      moisParam &&
+      !anneeParam
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Une année doit être sélectionnée avec le mois.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     let query =
       supabase
@@ -188,6 +262,53 @@ export async function GET(
           "membre_id",
           membreId
         );
+    }
+
+    if (annee) {
+      const debut =
+        mois
+          ? new Date(
+              Date.UTC(
+                annee,
+                mois - 1,
+                1
+              )
+            )
+          : new Date(
+              Date.UTC(
+                annee,
+                0,
+                1
+              )
+            );
+
+      const fin =
+        mois
+          ? new Date(
+              Date.UTC(
+                annee,
+                mois,
+                1
+              )
+            )
+          : new Date(
+              Date.UTC(
+                annee + 1,
+                0,
+                1
+              )
+            );
+
+      query =
+        query
+          .gte(
+            "date_decaissement",
+            debut.toISOString()
+          )
+          .lt(
+            "date_decaissement",
+            fin.toISOString()
+          );
     }
 
     if (limitParam) {
@@ -234,8 +355,68 @@ export async function GET(
       );
     }
 
+    const {
+      data: anneesRows,
+      error: anneesError,
+    } =
+      await supabase
+        .from("v_decaissements")
+        .select(
+          "date_decaissement"
+        )
+        .order(
+          "date_decaissement",
+          { ascending: false }
+        );
+
+    if (anneesError) {
+      throw anneesError;
+    }
+
+    const annees =
+      Array.from(
+        new Set(
+          (anneesRows ?? [])
+            .map((row: any) => {
+              const value =
+                row?.date_decaissement;
+
+              if (!value) {
+                return null;
+              }
+
+              const date =
+                new Date(value);
+
+              if (
+                Number.isNaN(
+                  date.getTime()
+                )
+              ) {
+                return null;
+              }
+
+              return String(
+                date.getUTCFullYear()
+              );
+            })
+            .filter(
+              (
+                value
+              ): value is string =>
+                Boolean(value)
+            )
+        )
+      ).sort(
+        (a, b) =>
+          Number(b) -
+          Number(a)
+      );
+
     return NextResponse.json({
       success: true,
+      count: (data ?? []).length,
+      annees,
       data: data ?? [],
     });
   } catch (error: any) {

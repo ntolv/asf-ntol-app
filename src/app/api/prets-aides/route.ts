@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -158,7 +158,7 @@ export async function GET() {
      */
 
     let aidesQuery = supabaseAdmin
-      .from("demandes_aides")
+      .from("demandes_aide")
       .select("*");
 
     if (!bureau) {

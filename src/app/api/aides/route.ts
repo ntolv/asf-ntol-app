@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -59,7 +59,7 @@ export async function GET() {
     );
 
     const { data, error } = await supabaseAdmin
-      .from("demandes_aides")
+      .from("demandes_aide")
       .select("*")
       .eq("statut", "EN_ATTENTE")
       .order("created_at", { ascending: false });

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     );
 
     const { data: demande, error: demandeError } = await supabaseAdmin
-      .from("demandes_aides")
+      .from("demandes_aide")
       .select("*")
       .eq("id", demandeId)
       .maybeSingle();
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from("demandes_aides")
+      .from("demandes_aide")
       .update({
         statut: decision,
         montant_accorde: montantFinal,

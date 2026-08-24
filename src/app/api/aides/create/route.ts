@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     );
 
     const { error } = await supabaseAdmin
-      .from("demandes_aides")
+      .from("demandes_aide")
       .insert({
         membre_id: context.membreId,
         montant_demande: montant,
