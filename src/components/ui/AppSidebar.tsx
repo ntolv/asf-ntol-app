@@ -88,7 +88,8 @@ const FINANCES_ITEMS: NavItem[] = [
     href: "/decaissements",
     label: "D\u00E9caissements",
     icon: ReceiptText,
-  },
+  bureauOnly: true,
+    },
 ];
 
 const TONTINE_ITEMS: NavItem[] = [

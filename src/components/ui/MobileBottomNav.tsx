@@ -128,7 +128,8 @@ const MENU_SECTIONS: MenuSection[] = [
         href: "/decaissements",
         label: "D\u00E9caissements",
         icon: ReceiptText,
-      },
+      bureauOnly: true,
+    },
     ],
   },
 

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import PageHeader from "@/components/ui/PageHeader";
 import SectionCard from "@/components/ui/SectionCard";
 import ActionButton from "@/components/ui/ActionButton";
@@ -9,6 +10,22 @@ type Rubrique = {
   id: string;
   nom: string;
 };
+
+function isBureauRole(
+  role: unknown,
+  roleCode: unknown
+) {
+  const raw =
+    `${String(roleCode || "")} ${String(role || "")}`.toLowerCase();
+
+  return (
+    raw.includes("admin") ||
+    raw.includes("président") ||
+    raw.includes("president") ||
+    raw.includes("trésorier") ||
+    raw.includes("tresorier")
+  );
+}
 
 export default function DecaissementPage() {
   const [rubriques, setRubriques] = useState<Rubrique[]>([]);
@@ -24,6 +41,14 @@ export default function DecaissementPage() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const auth: any = useAuth?.() ?? {};
+
+  const canAccessBureau =
+    isBureauRole(
+      auth?.member?.role,
+      auth?.member?.roleCode
+    );
 
   async function loadRubriques() {
     try {
@@ -88,6 +113,34 @@ export default function DecaissementPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (auth?.loading === true) {
+    return (
+      <div className="p-6 text-sm text-slate-500">
+        Chargement...
+      </div>
+    );
+  }
+
+  if (!canAccessBureau) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Accès refusé"
+          subtitle="Cette page est réservée au Bureau."
+        />
+
+        <SectionCard
+          title="Accès non autorisé"
+          padding="md"
+        >
+          <p className="text-sm text-slate-600">
+            Seuls le Président, le Trésorier et l'Administrateur peuvent effectuer des décaissements.
+          </p>
+        </SectionCard>
+      </div>
+    );
   }
 
   return (
