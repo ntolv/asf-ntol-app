@@ -90,6 +90,12 @@ const FINANCES_ITEMS: NavItem[] = [
     icon: ReceiptText,
   bureauOnly: true,
     },
+{
+  href: "/historique-decaissements",
+  label: "Historique des décaissements",
+  icon: ReceiptText,
+  bureauOnly: true,
+},
 ];
 
 const TONTINE_ITEMS: NavItem[] = [

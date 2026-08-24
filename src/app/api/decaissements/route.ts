@@ -44,6 +44,50 @@ function isAuthorizedRole(
   ].includes(code);
 }
 
+type OrigineDecaissement =
+  | "MANUEL"
+  | "PRET"
+  | "TONTINE"
+  | "AIDE";
+
+function detectOrigine(
+  row: any,
+  pretIds: Set<string>
+): OrigineDecaissement {
+  if (row?.tontine_lot_id) {
+    return "TONTINE";
+  }
+
+  if (
+    row?.id &&
+    pretIds.has(
+      String(row.id)
+    )
+  ) {
+    return "PRET";
+  }
+
+  const motif =
+    String(
+      row?.motif ?? ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    motif.startsWith(
+      "AIDE / SECOURS APPROUVÉ - DEMANDE "
+    ) ||
+    motif.startsWith(
+      "AIDE / SECOURS APPROUVE - DEMANDE "
+    )
+  ) {
+    return "AIDE";
+  }
+
+  return "MANUEL";
+}
+
 export async function GET(
   request: NextRequest
 ) {
@@ -124,7 +168,7 @@ export async function GET(
     }
 
     // ========================================================
-    // 4. LECTURE DES DECAISSEMENTS
+    // 4. PARAMETRES
     // ========================================================
 
     const supabase =
@@ -162,6 +206,15 @@ export async function GET(
         "mois"
       );
 
+    const statutParam =
+      String(
+        searchParams.get(
+          "statut"
+        ) ?? ""
+      )
+        .trim()
+        .toUpperCase();
+
     const limitParam =
       searchParams.get(
         "limit"
@@ -188,7 +241,8 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Année invalide.",
+          message:
+            "Année invalide.",
         },
         {
           status: 400,
@@ -207,7 +261,8 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Mois invalide.",
+          message:
+            "Mois invalide.",
         },
         {
           status: 400,
@@ -231,13 +286,43 @@ export async function GET(
       );
     }
 
+    if (
+      statutParam &&
+      ![
+        "VALIDE",
+        "ANNULE",
+        "TOUS",
+      ].includes(
+        statutParam
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Statut invalide.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // ========================================================
+    // 5. DECAISSEMENTS
+    // ========================================================
+
     let query =
       supabase
-        .from("v_decaissements")
+        .from(
+          "v_decaissements"
+        )
         .select("*")
         .order(
           "date_decaissement",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         );
 
     if (caisseId) {
@@ -261,6 +346,17 @@ export async function GET(
         query.eq(
           "membre_id",
           membreId
+        );
+    }
+
+    if (
+      statutParam &&
+      statutParam !== "TOUS"
+    ) {
+      query =
+        query.eq(
+          "statut",
+          statutParam
         );
     }
 
@@ -337,36 +433,316 @@ export async function GET(
       await query;
 
     if (error) {
-      console.error(
-        "Erreur GET /api/decaissements:",
-        error
-      );
+      throw error;
+    }
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            error.message ||
-            "Erreur lors du chargement des décaissements.",
-        },
-        {
-          status: 500,
+    const rows =
+      data ?? [];
+
+    const ids =
+      rows
+        .map(
+          (row: any) =>
+            String(
+              row?.id ?? ""
+            ).trim()
+        )
+        .filter(Boolean);
+
+    // ========================================================
+    // 6. IDENTIFICATION DES PRETS
+    // ========================================================
+
+    const pretIds =
+      new Set<string>();
+
+    if (ids.length > 0) {
+      const {
+        data: financements,
+        error:
+          financementsError,
+      } =
+        await supabase
+          .from(
+            "pret_financements"
+          )
+          .select(
+            "decaissement_id"
+          )
+          .in(
+            "decaissement_id",
+            ids
+          );
+
+      if (
+        financementsError
+      ) {
+        throw financementsError;
+      }
+
+      for (
+        const financement of
+        financements ?? []
+      ) {
+        if (
+          financement
+            ?.decaissement_id
+        ) {
+          pretIds.add(
+            String(
+              financement
+                .decaissement_id
+            )
+          );
+        }
+      }
+    }
+
+    // ========================================================
+    // 7. RETOURS ARRIERE DISPONIBLES
+    // ========================================================
+
+    const sourceJournals =
+      new Map<
+        string,
+        Array<{
+          id: string;
+          action: string;
+          created_at: string;
+        }>
+      >();
+
+    const journauxAnnules =
+      new Set<string>();
+
+    if (ids.length > 0) {
+      const {
+        data: journaux,
+        error:
+          journauxError,
+      } =
+        await supabase
+          .from(
+            "journal_modifications"
+          )
+          .select(
+            "id, entite_id, action, metadata, created_at"
+          )
+          .eq(
+            "entite",
+            "DECAISSEMENT"
+          )
+          .in(
+            "entite_id",
+            ids
+          )
+          .in(
+            "action",
+            [
+              "CORRECTION",
+              "ANNULATION",
+              "RETOUR_ARRIERE",
+            ]
+          )
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            }
+          );
+
+      if (journauxError) {
+        throw journauxError;
+      }
+
+      for (
+        const journal of
+        journaux ?? []
+      ) {
+        const action =
+          String(
+            journal?.action ??
+            ""
+          ).toUpperCase();
+
+        const entiteId =
+          String(
+            journal?.entite_id ??
+            ""
+          );
+
+        if (
+          action ===
+          "RETOUR_ARRIERE"
+        ) {
+          const metadata =
+            (
+              journal?.metadata ??
+              {}
+            ) as Record<
+              string,
+              unknown
+            >;
+
+          const sourceId =
+            String(
+              metadata
+                ?.journal_source_id ??
+              ""
+            ).trim();
+
+          if (sourceId) {
+            journauxAnnules.add(
+              sourceId
+            );
+          }
+
+          continue;
+        }
+
+        if (
+          action !==
+            "CORRECTION" &&
+          action !==
+            "ANNULATION"
+        ) {
+          continue;
+        }
+
+        if (
+          !sourceJournals.has(
+            entiteId
+          )
+        ) {
+          sourceJournals.set(
+            entiteId,
+            []
+          );
+        }
+
+        sourceJournals
+          .get(entiteId)!
+          .push({
+            id:
+              String(
+                journal.id
+              ),
+            action,
+            created_at:
+              String(
+                journal
+                  .created_at ??
+                ""
+              ),
+          });
+      }
+    }
+
+    const enrichedRows =
+      rows.map(
+        (row: any) => {
+          const id =
+            String(
+              row?.id ?? ""
+            );
+
+          const origine =
+            detectOrigine(
+              row,
+              pretIds
+            );
+
+          const statut =
+            String(
+              row?.statut ??
+              "VALIDE"
+            )
+              .trim()
+              .toUpperCase();
+
+          const historique =
+            sourceJournals.get(
+              id
+            ) ?? [];
+
+          const journalRestaurable =
+            historique.find(
+              (journal) =>
+                !journauxAnnules.has(
+                  journal.id
+                )
+            );
+
+          const canCorriger =
+            statut ===
+            "VALIDE";
+
+          const canAnnuler =
+            statut ===
+              "VALIDE" &&
+            ![
+              "PRET",
+              "AIDE",
+            ].includes(
+              origine
+            );
+
+          const canRevenirArriere =
+            Boolean(
+              journalRestaurable
+            );
+
+          return {
+            ...row,
+
+            origine,
+
+            can_corriger:
+              canCorriger,
+
+            can_annuler:
+              canAnnuler,
+
+            can_revenir_arriere:
+              canRevenirArriere,
+
+            derniere_action_restaurable:
+              journalRestaurable
+                ?.action ??
+              null,
+
+            protection_source:
+              [
+                "PRET",
+                "TONTINE",
+                "AIDE",
+              ].includes(
+                origine
+              ),
+          };
         }
       );
-    }
+
+    // ========================================================
+    // 8. ANNEES DISPONIBLES
+    // ========================================================
 
     const {
       data: anneesRows,
       error: anneesError,
     } =
       await supabase
-        .from("v_decaissements")
+        .from(
+          "v_decaissements"
+        )
         .select(
           "date_decaissement"
         )
         .order(
           "date_decaissement",
-          { ascending: false }
+          {
+            ascending: false,
+          }
         );
 
     if (anneesError) {
@@ -376,49 +752,153 @@ export async function GET(
     const annees =
       Array.from(
         new Set(
-          (anneesRows ?? [])
-            .map((row: any) => {
-              const value =
-                row?.date_decaissement;
+          (
+            anneesRows ??
+            []
+          )
+            .map(
+              (row: any) => {
+                const value =
+                  row
+                    ?.date_decaissement;
 
-              if (!value) {
-                return null;
+                if (!value) {
+                  return null;
+                }
+
+                const date =
+                  new Date(
+                    value
+                  );
+
+                if (
+                  Number.isNaN(
+                    date.getTime()
+                  )
+                ) {
+                  return null;
+                }
+
+                return String(
+                  date
+                    .getUTCFullYear()
+                );
               }
-
-              const date =
-                new Date(value);
-
-              if (
-                Number.isNaN(
-                  date.getTime()
-                )
-              ) {
-                return null;
-              }
-
-              return String(
-                date.getUTCFullYear()
-              );
-            })
+            )
             .filter(
               (
                 value
               ): value is string =>
-                Boolean(value)
+                Boolean(
+                  value
+                )
             )
         )
       ).sort(
-        (a, b) =>
+        (
+          a,
+          b
+        ) =>
           Number(b) -
           Number(a)
       );
 
-    return NextResponse.json({
-      success: true,
-      count: (data ?? []).length,
-      annees,
-      data: data ?? [],
-    });
+    // ========================================================
+    // 9. RESUME
+    // ========================================================
+
+    const totalValide =
+      enrichedRows.reduce(
+        (
+          total,
+          row: any
+        ) =>
+          total +
+          (
+            String(
+              row?.statut ??
+              ""
+            ).toUpperCase() ===
+            "VALIDE"
+              ? Number(
+                  row?.montant ??
+                  0
+                )
+              : 0
+          ),
+        0
+      );
+
+    const totalAnnule =
+      enrichedRows.reduce(
+        (
+          total,
+          row: any
+        ) =>
+          total +
+          (
+            String(
+              row?.statut ??
+              ""
+            ).toUpperCase() ===
+            "ANNULE"
+              ? Number(
+                  row?.montant ??
+                  0
+                )
+              : 0
+          ),
+        0
+      );
+
+    return NextResponse.json(
+      {
+        success: true,
+
+        count:
+          enrichedRows.length,
+
+        permissions: {
+          can_manage: true,
+        },
+
+        annees,
+
+        resume: {
+          total_valide:
+            totalValide,
+
+          total_annule:
+            totalAnnule,
+
+          nombre_valides:
+            enrichedRows.filter(
+              (row: any) =>
+                String(
+                  row?.statut ??
+                  ""
+                ).toUpperCase() ===
+                "VALIDE"
+            ).length,
+
+          nombre_annules:
+            enrichedRows.filter(
+              (row: any) =>
+                String(
+                  row?.statut ??
+                  ""
+                ).toUpperCase() ===
+                "ANNULE"
+            ).length,
+        },
+
+        data:
+          enrichedRows,
+      },
+      {
+        status: 200,
+      }
+    );
   } catch (error: any) {
     console.error(
       "Erreur serveur GET /api/decaissements:",

@@ -130,6 +130,12 @@ const MENU_SECTIONS: MenuSection[] = [
         icon: ReceiptText,
       bureauOnly: true,
     },
+{
+  href: "/historique-decaissements",
+  label: "Historique des décaissements",
+  icon: ReceiptText,
+  bureauOnly: true,
+},
     ],
   },
 

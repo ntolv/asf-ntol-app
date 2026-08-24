@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/caisse": "Caisse",
   "/montants-attendus": "Montants attendus",
   "/decaissements": "D\u00E9caissements",
+  "/historique-decaissements": "Historique des décaissements",
   "/tontine": "Tontine",
   "/tontine/suivi-cycle": "Suivi cycle tontine",
   "/tontine/historique": "Historique Tontine",
