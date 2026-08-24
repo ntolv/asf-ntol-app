@@ -118,6 +118,9 @@ export async function POST(request: Request) {
         ? String(body.membre_id).trim()
         : null;
 
+    const date_decaissement =
+      String(body?.date_decaissement || "").trim();
+
     // ============================================================
     // VALIDATIONS
     // ============================================================
@@ -140,6 +143,16 @@ export async function POST(request: Request) {
         {
           success: false,
           message: "Montant invalide.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!date_decaissement) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Date du décaissement obligatoire.",
         },
         { status: 400 }
       );
@@ -208,6 +221,7 @@ export async function POST(request: Request) {
         membre_id,
         montant,
         motif,
+        date_decaissement: `${date_decaissement}T00:00:00.000Z`,
         created_by: context.authUserId,
       })
       .select()

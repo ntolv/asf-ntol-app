@@ -15,6 +15,13 @@ export default function DecaissementPage() {
   const [rubriqueId, setRubriqueId] = useState("");
   const [montant, setMontant] = useState(0);
   const [motif, setMotif] = useState("");
+  const [dateDecaissement, setDateDecaissement] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -63,6 +70,7 @@ export default function DecaissementPage() {
           rubrique_id: rubriqueId,
           montant,
           motif,
+          date_decaissement: dateDecaissement,
         }),
       });
 
@@ -161,6 +169,18 @@ export default function DecaissementPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
+              Date du décaissement
+            </label>
+            <input
+              type="date"
+              value={dateDecaissement}
+              onChange={(e) => setDateDecaissement(e.target.value)}
+              className="w-full rounded-[12px] border border-slate-300 px-4 py-3"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Motif
             </label>
             <input
@@ -173,7 +193,7 @@ export default function DecaissementPage() {
 
           <ActionButton
             onClick={handleSubmit}
-            disabled={loading || !rubriqueId || montant <= 0}
+            disabled={loading || !rubriqueId || montant <= 0 || !dateDecaissement}
             variant="primary"
             size="md"
             fullWidth
