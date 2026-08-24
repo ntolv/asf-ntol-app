@@ -405,14 +405,15 @@ export default function AmortissementPretPage({
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            {demandeId ? (
+                        {data?.demande_id ? (
               <Link
-                href={`/prets/demande/${demandeId}`}
+                href={`/prets/demande/${data.demande_id}`}
                 className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
               >
                 Ouvrir la demande signée
               </Link>
             ) : null}
+
 
             <Link
               href="/prets-aides"

@@ -24,6 +24,12 @@ type DemandeAide = {
 
 type DemandePret = {
   id: string;
+  pret_id?: string | null;
+  demande_id?: string | null;
+  membre_id?: string | null;
+  a_un_pret_reel?: boolean;
+  historique?: boolean;
+  origine_pret?: string | null;
   montant_demande?: number | null;
   montant_accorde?: number | null;
   objet_pret?: string | null;
@@ -90,10 +96,57 @@ function normalizePretStatus(item: DemandePret) {
   return item.statut || item.statut_demande || "-";
 }
 
+function isStatutAccorde(statut: string) {
+  const value = String(statut || "").toUpperCase();
+
+  return (
+    value.includes("APPROUV") ||
+    value.includes("ACCORD") ||
+    value === "ACTIF" ||
+    value === "SOLDE"
+  );
+}
+
+function matchesStatusFilter(
+  statut: string,
+  filter: string
+) {
+  const value = String(statut || "").toUpperCase();
+  const filterValue = String(filter || "").toUpperCase();
+
+  if (filterValue === "TOUS") {
+    return true;
+  }
+
+  if (filterValue.includes("APPROUV")) {
+    return isStatutAccorde(value);
+  }
+
+  if (filterValue.includes("REMBOURS")) {
+    return (
+      value.includes("REMBOURS") ||
+      value === "SOLDE"
+    );
+  }
+
+  return value.includes(filterValue);
+}
+
 function getStatutClasses(statut: string) {
   const value = String(statut || "").toUpperCase();
 
-  if (value.includes("APPROUV")) {
+  if (
+    value === "SOLDE" ||
+    value.includes("REMBOURS")
+  ) {
+    return "border border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (
+    value === "ACTIF" ||
+    value.includes("APPROUV") ||
+    value.includes("ACCORD")
+  ) {
     return "border border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 
@@ -103,10 +156,6 @@ function getStatutClasses(statut: string) {
 
   if (value.includes("ATTENTE")) {
     return "border border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  if (value.includes("REMBOURS")) {
-    return "border border-sky-200 bg-sky-50 text-sky-700";
   }
 
   return "border border-slate-200 bg-slate-50 text-slate-700";
@@ -216,9 +265,7 @@ export default function PretsAidesPage() {
       (item) => {
         const statut = normalizePretStatus(item);
 
-        const pretApprouve = String(statut)
-          .toUpperCase()
-          .includes("APPROUV");
+        const aUnPretReel = Boolean(item.pret_id);
 
         return {
           id: item.id,
@@ -242,9 +289,9 @@ export default function PretsAidesPage() {
             item.reference_unique || item.id,
           created_at: item.created_at,
           date_traitement: item.date_traitement,
-          document_link: `/prets/demande/${item.id}`,
-          amortissement_link: pretApprouve
-            ? `/prets/amortissement/${item.id}`
+          document_link: item.demande_id ? `/prets/demande/${item.demande_id}` : null,
+          amortissement_link: aUnPretReel
+            ? `/prets/amortissement/${item.pret_id}`
             : null,
         };
       }
@@ -277,11 +324,10 @@ export default function PretsAidesPage() {
           : item.type === appliedTypeFilter;
 
       const matchesStatus =
-        appliedStatusFilter === "TOUS"
-          ? true
-          : String(item.statut || "")
-              .toUpperCase()
-              .includes(appliedStatusFilter);
+        matchesStatusFilter(
+          item.statut,
+          appliedStatusFilter
+        );
 
       const haystack = [
         item.membre_nom,
@@ -340,9 +386,7 @@ export default function PretsAidesPage() {
       ).length,
 
       approuves: historique.filter((item) =>
-        String(item.statut)
-          .toUpperCase()
-          .includes("APPROUV")
+        isStatutAccorde(item.statut)
       ).length,
 
       enAttente: historique.filter((item) =>
@@ -368,10 +412,7 @@ export default function PretsAidesPage() {
             </h1>
 
             <p className="mt-3 text-sm text-slate-600 md:text-base">
-              Cette page est réservée au bureau. Elle
-              centralise l&apos;historique complet des
-              demandes d&apos;aides et de prêts de tous les
-              membres.
+              Le Bureau consulte la situation de tous les membres. Chaque membre consulte uniquement ses propres prêts et aides.
             </p>
           </div>
 

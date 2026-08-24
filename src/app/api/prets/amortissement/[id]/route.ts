@@ -205,42 +205,89 @@ export async function GET(
     );
 
     // ========================================================
-    // DEMANDE
+    // RESOLUTION DU PRET REEL
+    //
+    // Nouveau format :
+    //   URL = prets.id
+    //
+    // Compatibilité :
+    //   les anciens liens utilisant demandes_prets.id
+    //   restent acceptés.
     // ========================================================
 
-    const {
-      data: demande,
-      error: demandeError,
-    } = await supabaseAdmin
-      .from("demandes_prets")
-      .select("*")
+    const pretSelect = `
+      id,
+      demande_pret_id,
+      membre_id,
+      date_octroi,
+      montant_accorde,
+      taux_interet,
+      mode_interet,
+      capitalisation_interets,
+      solde_restant,
+      statut_pret,
+      date_prochain_recalcul_interet,
+      date_fin_prevue,
+      origine_pret,
+      reference_import_historique
+    `;
+
+    let pret: any = null;
+
+    // 1. Format canonique : l'identifiant reçu est prets.id
+    const pretByIdResult = await supabaseAdmin
+      .from("prets")
+      .select(pretSelect)
       .eq("id", demandeId)
       .maybeSingle();
 
-    if (demandeError) {
-      throw demandeError;
+    if (pretByIdResult.error) {
+      throw pretByIdResult.error;
     }
 
-    if (!demande) {
+    pret = pretByIdResult.data;
+
+    // 2. Compatibilité avec les anciens liens :
+    //    l'identifiant reçu est demandes_prets.id
+    if (!pret) {
+      const pretByDemandeResult = await supabaseAdmin
+        .from("prets")
+        .select(pretSelect)
+        .eq("demande_pret_id", demandeId)
+        .maybeSingle();
+
+      if (pretByDemandeResult.error) {
+        throw pretByDemandeResult.error;
+      }
+
+      pret = pretByDemandeResult.data;
+    }
+
+    if (!pret) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Demande de prêt introuvable.",
+          message: "Prêt introuvable.",
         },
         { status: 404 }
       );
     }
 
     // ========================================================
-    // SECURITE :
+    // SECURITE
     //
-    // Bureau => tous les prêts
-    // Membre => son propre prêt uniquement
+    // Bureau :
+    //   ADMIN / PRESIDENT / TRESORIER => tous les prêts
+    //
+    // Membre :
+    //   uniquement si prets.membre_id = membre connecté
+    //
+    // Cette vérification est faite sur le prêt réel et non
+    // sur une éventuelle demande de prêt.
     // ========================================================
 
     const proprietaire =
-      String(demande.membre_id ?? "") ===
+      String(pret.membre_id ?? "") ===
       String(userContext.membreId);
 
     if (!bureau && !proprietaire) {
@@ -254,65 +301,28 @@ export async function GET(
       );
     }
 
-    const statutDemande = String(
-      demande.statut ??
-        demande.statut_demande ??
-        ""
-    ).toUpperCase();
-
-    if (!statutDemande.includes("APPROUV")) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Le tableau d’amortissement est disponible uniquement pour un prêt approuvé.",
-        },
-        { status: 400 }
-      );
-    }
-
     // ========================================================
-    // PRET COMPTABLE REEL
+    // DEMANDE EVENTUELLE
+    //
+    // Un prêt historique peut légitimement ne posséder
+    // aucune demande de prêt.
     // ========================================================
 
-    const {
-      data: pret,
-      error: pretError,
-    } = await supabaseAdmin
-      .from("prets")
-      .select(
-        `
-          id,
-          demande_pret_id,
-          membre_id,
-          date_octroi,
-          montant_accorde,
-          taux_interet,
-          mode_interet,
-          capitalisation_interets,
-          solde_restant,
-          statut_pret,
-          date_prochain_recalcul_interet
-        `
-      )
-      .eq("demande_pret_id", demandeId)
-      .maybeSingle();
+    let demande: any = null;
 
-    if (pretError) {
-      throw pretError;
+    if (pret.demande_pret_id) {
+      const demandeResult = await supabaseAdmin
+        .from("demandes_prets")
+        .select("*")
+        .eq("id", pret.demande_pret_id)
+        .maybeSingle();
+
+      if (demandeResult.error) {
+        throw demandeResult.error;
+      }
+
+      demande = demandeResult.data;
     }
-
-    if (!pret) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Le prêt comptable associé à cette demande est introuvable.",
-        },
-        { status: 404 }
-      );
-    }
-
     const dateOctroi = new Date(
       pret.date_octroi
     );
@@ -667,7 +677,7 @@ export async function GET(
 
       data: {
         demande_id:
-          demandeId,
+          pret.demande_pret_id ?? null,
 
         pret_id:
           pret.id,
@@ -676,8 +686,9 @@ export async function GET(
           bureau,
 
         reference:
-          demande.reference_unique ||
-          demande.id,
+          demande?.reference_unique ||
+          pret.reference_import_historique ||
+          pret.id,
 
         membre: {
           id:
@@ -686,12 +697,12 @@ export async function GET(
 
           nom_complet:
             membre?.nom_complet ||
-            demande.signature_nom ||
+            demande?.signature_nom ||
             "-",
 
           numero_membre:
             membre?.numero_membre ||
-            demande.document_json
+            demande?.document_json
               ?.numero_membre ||
             "-",
         },
@@ -702,11 +713,11 @@ export async function GET(
         montant_demande:
           roundMoney(
             Number(
-              demande.montant_demande ||
+              demande?.montant_demande ??
+                pret.montant_accorde ??
                 0
             )
           ),
-
         montant_accorde:
           roundMoney(
             Number(
