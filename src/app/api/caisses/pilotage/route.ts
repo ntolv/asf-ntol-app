@@ -137,113 +137,67 @@ export async function GET() {
 
     const perfViewsStart = performance.now();
 
-    const perfViewDetail: Record<string, number> = {};
+    const bundleResult = await supabase
+      .rpc("fn_pilotage_caisse_bundle")
+      .maybeSingle();
 
-    const [
-      caisses,
-      tontineCaisse,
-      tontineDetails,
-      retards,
-      caissesSoldes,
-      interetsPrets,
-    ] = await Promise.all([
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_caisses_pilotage_contributions")
-          .select("*");
-
-        perfViewDetail.v_caisses_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_tontine_caisse_encheres")
-          .select("*");
-
-        perfViewDetail.v_tontine_caisse_encheres_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_tontine_caisse_encheres_details")
-          .select("*")
-          .order(
-            "date_attribution",
-            { ascending: false }
-          )
-          .limit(10);
-
-        perfViewDetail.v_tontine_details_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_retards")
-          .select("*");
-
-        perfViewDetail.v_retards_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_caisses_soldes")
-          .select("*")
-          .order(
-            "rubrique_nom",
-            { ascending: true }
-          );
-
-        perfViewDetail.v_caisses_soldes_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
-          .from("v_caisse_interets_prets")
-          .select(
-            "total_caisse_interets_prets"
-          )
-          .maybeSingle();
-
-        perfViewDetail.v_caisse_interets_prets_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-    ]);
+    const perfViewsMs =
+      performance.now() - perfViewsStart;
 
     console.info(
-      "[PILOTAGE VIEWS PERF]",
-      JSON.stringify(perfViewDetail)
+      "[PILOTAGE BUNDLE PERF]",
+      JSON.stringify({
+        bundle_ms: Math.round(perfViewsMs),
+      })
     );
 
-    const perfViewsMs = performance.now() - perfViewsStart;
+    if (bundleResult.error) {
+      throw bundleResult.error;
+    }
+
+    const bundleRow = bundleResult.data as {
+      payload?: {
+        caisses?: Row[];
+        tontine_caisse?: Row[];
+        tontine_details?: Row[];
+        retards?: Row[];
+        caisses_soldes?: Row[];
+        interets_prets?: Row | null;
+      };
+    } | null;
+
+    const bundle =
+      bundleRow?.payload ?? {};
+
+    const caisses = {
+      data: bundle.caisses ?? [],
+      error: null,
+    };
+
+    const tontineCaisse = {
+      data: bundle.tontine_caisse ?? [],
+      error: null,
+    };
+
+    const tontineDetails = {
+      data: bundle.tontine_details ?? [],
+      error: null,
+    };
+
+    const retards = {
+      data: bundle.retards ?? [],
+      error: null,
+    };
+
+    const caissesSoldes = {
+      data: bundle.caisses_soldes ?? [],
+      error: null,
+    };
+
+    const interetsPrets = {
+      data: bundle.interets_prets ?? {},
+      error: null,
+    };
 
     if (caisses.error)
       throw caisses.error;
