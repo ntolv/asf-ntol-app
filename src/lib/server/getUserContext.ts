@@ -209,6 +209,83 @@ export async function getUserContext(
 
   const supabase = createSupabaseAdminClient();
 
+  // Chemin rapide : utilisateur + membre + rôle + activité
+  // sont récupérés en un seul aller-retour Supabase.
+  // Le chemin historique reste disponible en fallback.
+  const fastContext = await supabase
+    .rpc("fn_get_user_context_by_auth", {
+      p_auth_user_id: user.id,
+    })
+    .maybeSingle();
+
+  const fastContextData = fastContext.data as {
+    utilisateur?: any;
+    membre?: any | null;
+    role?: any | null;
+  } | null;
+
+  if (
+    !fastContext.error &&
+    fastContextData?.utilisateur
+  ) {
+    const utilisateur =
+      fastContextData.utilisateur as any;
+
+    const memberData =
+      (fastContextData.membre ?? null) as any | null;
+
+    const roleData =
+      (fastContextData.role ?? null) as any | null;
+
+    if (!memberData) {
+      return {
+        success: false,
+        message: "Membre introuvable pour l'utilisateur connecté",
+        authUserId: user.id,
+        email: user.email ?? null,
+        membreId: utilisateur.membre_id ?? null,
+        user,
+        utilisateur,
+        member: null,
+        role: null,
+      };
+    }
+
+    const role = roleData
+      ? {
+          id: roleData.id ?? null,
+          code: roleData.code ?? null,
+          libelle: roleData.libelle ?? null,
+        }
+      : null;
+
+    const member = {
+      ...memberData,
+      role: role?.libelle ?? null,
+      role_code: role?.code ?? null,
+    };
+
+    return {
+      success: true,
+      message: "Contexte utilisateur chargé",
+      authUserId: user.id,
+      email: user.email ?? null,
+      membreId: utilisateur.membre_id ?? null,
+      user,
+      utilisateur,
+      member,
+      role,
+    };
+  }
+
+  if (fastContext.error) {
+    console.warn(
+      "[USERCTX] RPC rapide indisponible, fallback historique:",
+      fastContext.error.message
+    );
+  }
+
+
   let utilisateur: any = null;
   let utilisateurError: any = null;
 
@@ -286,11 +363,23 @@ export async function getUserContext(
     };
   }
 
-  const memberResult = await supabase
+  const memberPromise = supabase
     .from("membres")
     .select("*")
     .eq("id", utilisateur.membre_id)
     .maybeSingle();
+
+  const rolePromise = supabase
+    .from("v_utilisateurs_roles_principaux")
+    .select("*")
+    .eq("utilisateur_id", utilisateur.id)
+    .eq("principal", true)
+    .maybeSingle();
+
+  const [memberResult, roleResult] = await Promise.all([
+    memberPromise,
+    rolePromise,
+  ]);
 
   if (memberResult.error || !memberResult.data) {
     return {
@@ -305,13 +394,6 @@ export async function getUserContext(
       role: null,
     };
   }
-
-  const roleResult = await supabase
-    .from("v_utilisateurs_roles_principaux")
-    .select("*")
-    .eq("utilisateur_id", utilisateur.id)
-    .eq("principal", true)
-    .maybeSingle();
 
   const role = roleResult.data
     ? {

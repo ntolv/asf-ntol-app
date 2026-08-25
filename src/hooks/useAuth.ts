@@ -53,6 +53,11 @@ type UseAuthReturn = {
   refresh: () => Promise<void>;
 };
 
+type SharedAuthFetchResult = {
+  ok: boolean;
+  data: AuthContextResponse | null;
+};
+
 const DEFAULT_USER: AuthUser = {
   id: null,
   email: null,
@@ -65,6 +70,50 @@ const DEFAULT_MEMBER: AuthMember = {
   role: null,
   roleCode: null,
 };
+
+let authContextRequest: Promise<SharedAuthFetchResult> | null = null;
+
+function fetchAuthContextShared(): Promise<SharedAuthFetchResult> {
+  if (authContextRequest) {
+    return authContextRequest;
+  }
+
+  const request = (async (): Promise<SharedAuthFetchResult> => {
+    const response = await fetch("/api/auth/context", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-store",
+        Pragma: "no-cache",
+      },
+    });
+
+    const data = (await response.json().catch(() => null)) as AuthContextResponse | null;
+
+    return {
+      ok: response.ok,
+      data,
+    };
+  })();
+
+  authContextRequest = request;
+
+  request.then(
+    () => {
+      if (authContextRequest === request) {
+        authContextRequest = null;
+      }
+    },
+    () => {
+      if (authContextRequest === request) {
+        authContextRequest = null;
+      }
+    }
+  );
+
+  return request;
+}
 
 function useAuthInternal(): UseAuthReturn {
   const [loading, setLoading] = useState(true);
@@ -86,19 +135,9 @@ function useAuthInternal(): UseAuthReturn {
 
       const currentPending = syncPending();
 
-      const response = await fetch("/api/auth/context", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-store",
-          Pragma: "no-cache",
-        },
-      });
+      const { ok, data } = await fetchAuthContextShared();
 
-      const data = (await response.json().catch(() => null)) as AuthContextResponse | null;
-
-      if (!response.ok || !data?.success || !data?.authUserId || !data?.membreId) {
+      if (!ok || !data?.success || !data?.authUserId || !data?.membreId) {
         setUser(null);
         setMember(null);
         setMessage(data?.message || "Contexte utilisateur indisponible.");
