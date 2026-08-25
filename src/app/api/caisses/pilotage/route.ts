@@ -145,14 +145,13 @@ export async function GET() {
       tontineDetails,
       retards,
       caissesSoldes,
-      tresorerie,
       interetsPrets,
     ] = await Promise.all([
       (async () => {
         const start = performance.now();
 
         const result = await supabase
-          .from("v_caisses")
+          .from("v_caisses_pilotage_contributions")
           .select("*");
 
         perfViewDetail.v_caisses_ms =
@@ -226,20 +225,6 @@ export async function GET() {
         const start = performance.now();
 
         const result = await supabase
-          .from("v_tresorerie_reelle")
-          .select("caisse_disponible")
-          .maybeSingle();
-
-        perfViewDetail.v_tresorerie_reelle_ms =
-          Math.round(performance.now() - start);
-
-        return result;
-      })(),
-
-      (async () => {
-        const start = performance.now();
-
-        const result = await supabase
           .from("v_caisse_interets_prets")
           .select(
             "total_caisse_interets_prets"
@@ -274,9 +259,6 @@ export async function GET() {
 
     if (caissesSoldes.error)
       throw caissesSoldes.error;
-
-    if (tresorerie.error)
-      throw tresorerie.error;
 
     if (interetsPrets.error)
       throw interetsPrets.error;
@@ -416,10 +398,6 @@ export async function GET() {
 
     const retardRows =
       (retards.data ?? []) as Row[];
-
-    const tresorerieRow =
-      (tresorerie.data ?? {}) as Row;
-
     const interetsPretsRow =
       (interetsPrets.data ?? {}) as Row;
 
@@ -718,8 +696,9 @@ export async function GET() {
     return NextResponse.json({
       tresorerie: {
         caisse_disponible:
-          n(
-            tresorerieRow.caisse_disponible
+          bySum(
+            caissesSoldesRows,
+            "solde_disponible"
           ),
 
         total_entrees_caisses_rubriques:
