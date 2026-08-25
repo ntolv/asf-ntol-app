@@ -68,7 +68,6 @@ function classifyNonLoanDecaissement(
 
 export async function GET() {
   try {
-    const perfTotalStart = performance.now();
     // ========================================================
     // 1. AUTHENTIFICATION
     // La Caisse est accessible à tout membre connecté.
@@ -76,16 +75,10 @@ export async function GET() {
 
     const supabaseAuth =
       await createSupabaseServerClient();
-
-    const perfAuthStart = performance.now();
-
     const {
       data: { user },
       error: authError,
     } = await supabaseAuth.auth.getUser();
-
-    const perfAuthMs = performance.now() - perfAuthStart;
-
     if (authError || !user) {
       return NextResponse.json(
         {
@@ -98,14 +91,8 @@ export async function GET() {
         }
       );
     }
-
-    const perfContextStart = performance.now();
-
     const context =
       await getUserContext(user);
-
-    const perfContextMs = performance.now() - perfContextStart;
-
     if (
       !context?.success ||
       !context?.membreId
@@ -134,23 +121,9 @@ export async function GET() {
     // ========================================================
     // 3. LECTURES PRINCIPALES
     // ========================================================
-
-    const perfViewsStart = performance.now();
-
     const bundleResult = await supabase
       .rpc("fn_pilotage_caisse_bundle")
       .maybeSingle();
-
-    const perfViewsMs =
-      performance.now() - perfViewsStart;
-
-    console.info(
-      "[PILOTAGE BUNDLE PERF]",
-      JSON.stringify({
-        bundle_ms: Math.round(perfViewsMs),
-      })
-    );
-
     if (bundleResult.error) {
       throw bundleResult.error;
     }
@@ -321,9 +294,6 @@ export async function GET() {
 
       return rows;
     }
-
-    const perfMovementsStart = performance.now();
-
     const [
       decaissementRows,
       pretMovementRows,
@@ -331,12 +301,6 @@ export async function GET() {
       fetchAllDecaissements(),
       fetchAllPretMovements(),
     ]);
-
-    const perfMovementsMs =
-      performance.now() - perfMovementsStart;
-
-    const perfCalculationsStart = performance.now();
-
     // ========================================================
     // 6. PREPARATION DES DONNEES
     // ========================================================
@@ -628,25 +592,6 @@ export async function GET() {
     // ========================================================
     // 11. REPONSE
     // ========================================================
-
-    const perfCalculationsMs =
-      performance.now() - perfCalculationsStart;
-
-    const perfTotalMs =
-      performance.now() - perfTotalStart;
-
-    console.info(
-      "[PILOTAGE PROD PERF]",
-      JSON.stringify({
-        auth_ms: Math.round(perfAuthMs),
-        context_ms: Math.round(perfContextMs),
-        views_ms: Math.round(perfViewsMs),
-        movements_ms: Math.round(perfMovementsMs),
-        calculations_ms: Math.round(perfCalculationsMs),
-        total_ms: Math.round(perfTotalMs),
-      })
-    );
-
     return NextResponse.json({
       tresorerie: {
         caisse_disponible:
