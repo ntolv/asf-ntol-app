@@ -137,6 +137,8 @@ export async function GET() {
 
     const perfViewsStart = performance.now();
 
+    const perfViewDetail: Record<string, number> = {};
+
     const [
       caisses,
       tontineCaisse,
@@ -146,47 +148,115 @@ export async function GET() {
       tresorerie,
       interetsPrets,
     ] = await Promise.all([
-      supabase
-        .from("v_caisses")
-        .select("*"),
+      (async () => {
+        const start = performance.now();
 
-      supabase
-        .from("v_tontine_caisse_encheres")
-        .select("*"),
+        const result = await supabase
+          .from("v_caisses")
+          .select("*");
 
-      supabase
-        .from("v_tontine_caisse_encheres_details")
-        .select("*")
-        .order(
-          "date_attribution",
-          { ascending: false }
-        )
-        .limit(10),
+        perfViewDetail.v_caisses_ms =
+          Math.round(performance.now() - start);
 
-      supabase
-        .from("v_retards")
-        .select("*"),
+        return result;
+      })(),
 
-      supabase
-        .from("v_caisses_soldes")
-        .select("*")
-        .order(
-          "rubrique_nom",
-          { ascending: true }
-        ),
+      (async () => {
+        const start = performance.now();
 
-      supabase
-        .from("v_tresorerie_reelle")
-        .select("caisse_disponible")
-        .maybeSingle(),
+        const result = await supabase
+          .from("v_tontine_caisse_encheres")
+          .select("*");
 
-      supabase
-        .from("v_caisse_interets_prets")
-        .select(
-          "total_caisse_interets_prets"
-        )
-        .maybeSingle(),
+        perfViewDetail.v_tontine_caisse_encheres_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
+
+      (async () => {
+        const start = performance.now();
+
+        const result = await supabase
+          .from("v_tontine_caisse_encheres_details")
+          .select("*")
+          .order(
+            "date_attribution",
+            { ascending: false }
+          )
+          .limit(10);
+
+        perfViewDetail.v_tontine_details_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
+
+      (async () => {
+        const start = performance.now();
+
+        const result = await supabase
+          .from("v_retards")
+          .select("*");
+
+        perfViewDetail.v_retards_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
+
+      (async () => {
+        const start = performance.now();
+
+        const result = await supabase
+          .from("v_caisses_soldes")
+          .select("*")
+          .order(
+            "rubrique_nom",
+            { ascending: true }
+          );
+
+        perfViewDetail.v_caisses_soldes_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
+
+      (async () => {
+        const start = performance.now();
+
+        const result = await supabase
+          .from("v_tresorerie_reelle")
+          .select("caisse_disponible")
+          .maybeSingle();
+
+        perfViewDetail.v_tresorerie_reelle_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
+
+      (async () => {
+        const start = performance.now();
+
+        const result = await supabase
+          .from("v_caisse_interets_prets")
+          .select(
+            "total_caisse_interets_prets"
+          )
+          .maybeSingle();
+
+        perfViewDetail.v_caisse_interets_prets_ms =
+          Math.round(performance.now() - start);
+
+        return result;
+      })(),
     ]);
+
+    console.info(
+      "[PILOTAGE VIEWS PERF]",
+      JSON.stringify(perfViewDetail)
+    );
 
     const perfViewsMs = performance.now() - perfViewsStart;
 
