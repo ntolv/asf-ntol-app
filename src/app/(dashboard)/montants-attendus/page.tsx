@@ -328,7 +328,7 @@ export default function MontantsAttendusPage() {
             <input
               type="number"
               min="0"
-              step="100"
+              step="1"
               value={montant}
               onChange={(e) => handleMontantChange(e.target.value)}
               disabled={saving || !rubriqueId}
