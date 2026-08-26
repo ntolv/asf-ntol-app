@@ -285,6 +285,39 @@ export async function GET(request: Request) {
       throw tontineResult.error;
     }
 
+    // ========================================================
+    // INDICATEURS FINANCIERS ANNUELS
+    // ========================================================
+
+    const {
+      data: indicateurs,
+      error: indicateursError,
+    } = await supabaseAdmin
+      .from("v_bilan_indicateurs_exercice")
+      .select("*")
+      .eq("annee", anneeSelectionnee)
+      .maybeSingle();
+
+    if (indicateursError) {
+      throw indicateursError;
+    }
+
+    // ========================================================
+    // CAPITAL RESTANT A REMBOURSER AU 31/12/N
+    // ========================================================
+
+    const {
+      data: capitalRestant,
+      error: capitalRestantError,
+    } = await supabaseAdmin
+      .from("v_bilan_capital_restant_exercice")
+      .select("*")
+      .eq("annee", anneeSelectionnee)
+      .maybeSingle();
+
+    if (capitalRestantError) {
+      throw capitalRestantError;
+    }
     const bilanPro: any =
       bilanResult.data ?? null;
 
@@ -515,6 +548,11 @@ export async function GET(request: Request) {
 
           // Tontine
           tontine,
+          // Indicateurs financiers annuels
+          indicateurs: indicateurs ?? null,
+
+          // Encours de capital des prêts au 31/12/N
+          capitalRestant: capitalRestant ?? null,
 
           // Contrôles
           controleRubriques,

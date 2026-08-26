@@ -13,6 +13,10 @@ type BilanPro = {
   total_sorties: number | string | null;
   solde_final: number | string | null;
   situation_globale: string | null;
+
+  reserve_encheres_exercice: number | string | null;
+  reserve_interets_exercice: number | string | null;
+  reserves_constituees_exercice: number | string | null;
 };
 
 type RubriqueRow = {
@@ -25,6 +29,10 @@ type RubriqueRow = {
   total_entrees: number | string | null;
   total_sorties: number | string | null;
   solde_final: number | string | null;
+
+  reserve_encheres_exercice: number | string | null;
+  reserve_interets_exercice: number | string | null;
+  reserves_constituees_exercice: number | string | null;
 };
 
 type MembreRow = {
@@ -90,6 +98,29 @@ type TontineRow = {
   statut: string;
 };
 
+type BilanIndicateurs = {
+  annee: number;
+
+  capital_rembourse_exercice: number | string | null;
+  interets_encaisses_exercice: number | string | null;
+
+  encheres_generees_exercice: number | string | null;
+  encheres_generation_deja_reaffectees: number | string | null;
+  encheres_non_reaffectees_exercice: number | string | null;
+  encheres_reaffectees_exercice: number | string | null;
+
+  encheres_reserve_report_precedent: number | string | null;
+  encheres_reserve_fin_exercice: number | string | null;
+
+  interets_reaffectes_exercice: number | string | null;
+  interets_reserve_report_precedent: number | string | null;
+  interets_reserve_fin_exercice: number | string | null;
+};
+
+type CapitalRestantRow = {
+  annee: number;
+  capital_restant_fin_exercice: number | string | null;
+};
 type ControleRubrique = {
   rubrique_id: string;
   rubrique_nom: string;
@@ -120,6 +151,8 @@ type ApiResponse = {
     patrimoineRubriques?: PatrimoineRubriqueRow[];
     membresRubriques?: MembreRubriqueRow[];
     tontine?: TontineRow[];
+    indicateurs?: BilanIndicateurs | null;
+    capitalRestant?: CapitalRestantRow | null;
     controleRubriques?: ControleRubrique[];
   };
 };
@@ -240,6 +273,11 @@ export default function BilanPage() {
   const [membresRubriques, setMembresRubriques] =
     useState<MembreRubriqueRow[]>([]);
   const [tontine, setTontine] = useState<TontineRow[]>([]);
+  const [indicateurs, setIndicateurs] =
+    useState<BilanIndicateurs | null>(null);
+
+  const [capitalRestant, setCapitalRestant] =
+    useState<CapitalRestantRow | null>(null);
   const [membreTontineSelectionne, setMembreTontineSelectionne] = useState("");
   const [controles, setControles] =
     useState<ControleRubrique[]>([]);
@@ -301,6 +339,13 @@ export default function BilanPage() {
 
       setBilan(json.data?.bilanPro ?? null);
       setBilanPrecedent(json.data?.bilanPrecedent ?? null);
+      setIndicateurs(
+        json.data?.indicateurs ?? null
+      );
+
+      setCapitalRestant(
+        json.data?.capitalRestant ?? null
+      );
 
       setRubriques(
         Array.isArray(json.data?.rubriques)
@@ -667,6 +712,116 @@ export default function BilanPage() {
           />
         </section>
 
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-800">
+                Réserves constituées pendant {anneeSelectionnee ?? ""}
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-amber-950">
+                {money(bilan?.reserves_constituees_exercice)}
+              </p>
+
+              <p className="mt-2 max-w-3xl text-sm font-semibold text-amber-900">
+                Les entrées et les sorties restent les flux réellement constatés.
+                Les réserves constituées pendant l'exercice sont exclues du solde disponible.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-bold text-amber-950">
+                Enchères : {money(bilan?.reserve_encheres_exercice)}
+              </div>
+
+              <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-bold text-amber-950">
+                Intérêts : {money(bilan?.reserve_interets_exercice)}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+          <KpiCard
+            title={`Capital remboursé ${anneeSelectionnee ?? ""}`}
+            value={money(indicateurs?.capital_rembourse_exercice)}
+            subtitle="Capital déjà comptabilisé dans le solde."
+            tone="blue"
+          />
+
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-800">
+              Intérêts encaissés {anneeSelectionnee ?? ""}
+            </p>
+
+            <p className="mt-2 text-2xl font-black text-amber-950">
+              {money(indicateurs?.interets_encaisses_exercice)}
+            </p>
+
+            <p className="mt-2 text-xs font-semibold text-amber-800">
+              Ces intérêts seront redistribués N+1.
+            </p>
+
+            <div className="mt-4 border-t border-amber-200 pt-3 text-xs font-bold text-amber-950">
+              Réserve au 31/12 :{" "}
+              {money(indicateurs?.interets_reserve_fin_exercice)}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-violet-800">
+              Enchères {anneeSelectionnee ?? ""}
+            </p>
+
+            <div className="mt-4 space-y-2 text-sm text-violet-950">
+
+              <div className="flex justify-between gap-4">
+                <span>Réserve au 01/01</span>
+                <strong>
+                  {money(indicateurs?.encheres_reserve_report_precedent)}
+                </strong>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span>Générées pendant N</span>
+                <strong>
+                  {money(indicateurs?.encheres_generees_exercice)}
+                </strong>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span>Réaffectées pendant N</span>
+                <strong>
+                  {money(indicateurs?.encheres_reaffectees_exercice)}
+                </strong>
+              </div>
+
+              <div className="flex justify-between gap-4 border-t border-violet-200 pt-3">
+                <span className="font-black">
+                  Réserve au 31/12
+                </span>
+
+                <strong className="text-lg">
+                  {money(indicateurs?.encheres_reserve_fin_exercice)}
+                </strong>
+              </div>
+
+            </div>
+
+            <p className="mt-3 text-xs font-semibold text-violet-800">
+              Réserve non réaffectée : hors solde.
+            </p>
+          </div>
+
+          <KpiCard
+            title={`Capital restant au 31/12/${anneeSelectionnee ?? ""}`}
+            value={money(capitalRestant?.capital_restant_fin_exercice)}
+            subtitle="Encours de capital restant à rembourser."
+            tone="slate"
+          />
+
+        </section>
         {sectionActive === "rubriques" ? (
         <Panel
           id="rubriques"
@@ -693,6 +848,10 @@ export default function BilanPage() {
                     Sorties {anneeSelectionnee}
                   </th>
                   <th className="p-3 text-right">
+                    Réserves {anneeSelectionnee}
+                  </th>
+
+                  <th className="p-3 text-right">
                     Solde {anneeSelectionnee}
                   </th>
                 </tr>
@@ -718,6 +877,10 @@ export default function BilanPage() {
 
                     <td className="p-3 text-right font-semibold text-red-700">
                       {money(row.total_sorties)}
+                    </td>
+
+                    <td className="p-3 text-right font-semibold text-amber-700">
+                      {money(row.reserves_constituees_exercice)}
                     </td>
 
                     <td className="p-3 text-right font-black text-slate-950">
