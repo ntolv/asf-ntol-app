@@ -1,74 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "@/lib/server/supabaseServer";
-import { getUserContext } from "@/lib/server/getUserContext";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = "force-dynamic";
 
-function isBureauRole(
-  role: { code?: string | null; libelle?: string | null } | null | undefined
-) {
-  const raw =
-    `${role?.code ?? ""} ${role?.libelle ?? ""}`.toLowerCase();
-
-  return (
-    raw.includes("admin") ||
-    raw.includes("président") ||
-    raw.includes("president") ||
-    raw.includes("trésorier") ||
-    raw.includes("tresorier")
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
   );
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabaseAuth =
-      await createSupabaseServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAuth.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Utilisateur non authentifié.",
-        },
-        { status: 401 }
-      );
-    }
-
-    const context =
-      await getUserContext(user);
-
-    if (!context?.success || !context.membreId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            context?.message ||
-            "Contexte utilisateur introuvable.",
-        },
-        { status: 401 }
-      );
-    }
-
-    if (!isBureauRole(context.role)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Activation de session réservée au Bureau.",
-        },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const sessionId = body?.session_id;
 
@@ -82,6 +31,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = getSupabaseAdmin();
+
+    // ========================================================
+    // CYCLE APPLICATION COURANT
+    // ========================================================
+
+    const {
+      data: cycleRows,
+      error: cycleError,
+    } = await supabase.rpc(
+      "fn_tontine_get_cycle_application_courant"
+    );
+
+    if (cycleError) {
+      throw cycleError;
+    }
+
+    const cycleCourant = Array.isArray(cycleRows)
+      ? cycleRows[0]
+      : cycleRows;
+
+    if (!cycleCourant?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Aucun cycle Tontine APPLICATION en cours.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // VERIFIER QUE LA SESSION APPARTIENT AU CYCLE COURANT
+    // ========================================================
+
+    const {
+      data: session,
+      error: sessionError,
+    } = await supabase
+      .from("tontine_sessions")
+      .select(
+        "id, cycle_id, statut_session, statut_encheres, periode_reference"
+      )
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    if (!session) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Session introuvable.",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (session.cycle_id !== cycleCourant.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Cette session n'appartient pas au cycle Tontine en cours.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // ACTIVATION METIER
+    // ========================================================
+
     const { data, error } = await supabase.rpc(
       "fn_tontine_activer_session_planifiee",
       {
@@ -89,10 +114,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
-    const result =
-      Array.isArray(data) ? data[0] : data;
+    const result = Array.isArray(data)
+      ? data[0]
+      : data;
 
     if (!result?.success) {
       return NextResponse.json(
@@ -111,7 +139,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       result,
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error: any) {
     return NextResponse.json(

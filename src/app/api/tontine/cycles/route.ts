@@ -21,26 +21,34 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
-      .from("v_tontine_page_sessions_cycle_courant")
+      .from("v_tontine_cycles_catalogue")
       .select("*")
-      .order("ordre_session", { ascending: true });
+      .order("annee_reference", { ascending: false })
+      .order("date_debut", { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return NextResponse.json(data ?? [], {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate",
+    return NextResponse.json(
+      {
+        success: true,
+        cycles: data ?? [],
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       {
         success: false,
         error:
           error?.message ??
-          "Impossible de charger les sessions du cycle Tontine courant.",
+          "Impossible de charger les cycles Tontine.",
+        cycles: [],
       },
       {
         status: 500,
