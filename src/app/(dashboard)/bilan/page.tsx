@@ -26,6 +26,10 @@ type RubriqueRow = {
   rubrique_nom: string;
   ordre_affichage: number;
   report_precedent: number | string | null;
+
+  encaissements_exercice: number | string | null;
+  remboursements_prets_exercice: number | string | null;
+  autres_entrees_exercice: number | string | null;
   total_entrees: number | string | null;
   total_sorties: number | string | null;
   solde_final: number | string | null;
@@ -823,75 +827,105 @@ export default function BilanPage() {
 
         </section>
         {sectionActive === "rubriques" ? (
-        <Panel
-          id="rubriques"
-          title="Situation des caisses par rubrique"
-          subtitle={`Report ${
-            bilan?.annee_precedente ?? "initial"
-          }, entrées, sorties et solde de l'exercice ${
-            anneeSelectionnee ?? ""
-          }.`}
-        >
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
-                <tr>
-                  <th className="p-3">Rubrique</th>
-                  <th className="p-3 text-right">
-                    Report (
-                    {bilan?.annee_precedente ?? "Initial"})
-                  </th>
-                  <th className="p-3 text-right">
-                    Entrées {anneeSelectionnee}
-                  </th>
-                  <th className="p-3 text-right">
-                    Sorties {anneeSelectionnee}
-                  </th>
-                  <th className="p-3 text-right">
-                    Réserves {anneeSelectionnee}
-                  </th>
+          <Panel
+            id="rubriques"
+            title="Situation des caisses par rubrique"
+            subtitle={`Report ${
+              bilan?.annee_precedente ?? "initial"
+            }, détail des entrées, sorties, réserves et solde de l'exercice ${
+              anneeSelectionnee ?? ""
+            }.`}
+          >
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
+                  <tr>
+                    <th className="p-3">
+                      Rubrique
+                    </th>
 
-                  <th className="p-3 text-right">
-                    Solde {anneeSelectionnee}
-                  </th>
-                </tr>
-              </thead>
+                    <th className="p-3 text-right">
+                      Report (
+                      {bilan?.annee_precedente ?? "Initial"})
+                    </th>
 
-              <tbody>
-                {rubriques.map((row) => (
-                  <tr
-                    key={row.rubrique_id}
-                    className="border-b border-slate-100"
-                  >
-                    <td className="p-3 font-bold text-slate-900">
-                      {row.rubrique_nom}
-                    </td>
+                    <th className="p-3 text-right">
+                      Encaissements {anneeSelectionnee}
+                    </th>
 
-                    <td className="p-3 text-right">
-                      {money(row.report_precedent)}
-                    </td>
+                    <th className="p-3 text-right">
+                      Remb. prêts {anneeSelectionnee}
+                    </th>
 
-                    <td className="p-3 text-right font-semibold text-emerald-700">
-                      {money(row.total_entrees)}
-                    </td>
+                    <th className="p-3 text-right">
+                      Autres entrées {anneeSelectionnee}
+                    </th>
 
-                    <td className="p-3 text-right font-semibold text-red-700">
-                      {money(row.total_sorties)}
-                    </td>
+                    <th className="p-3 text-right">
+                      Total entrées {anneeSelectionnee}
+                    </th>
 
-                    <td className="p-3 text-right font-semibold text-amber-700">
-                      {money(row.reserves_constituees_exercice)}
-                    </td>
+                    <th className="p-3 text-right">
+                      Sorties {anneeSelectionnee}
+                    </th>
 
-                    <td className="p-3 text-right font-black text-slate-950">
-                      {money(row.solde_final)}
-                    </td>
+                    <th className="p-3 text-right">
+                      Réserves {anneeSelectionnee}
+                    </th>
+
+                    <th className="p-3 text-right">
+                      Solde {anneeSelectionnee}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+                </thead>
+
+                <tbody>
+                  {rubriques.map((row) => (
+                    <tr
+                      key={row.rubrique_id}
+                      className="border-b border-slate-100"
+                    >
+                      <td className="p-3 font-bold text-slate-900">
+                        {row.rubrique_nom}
+                      </td>
+
+                      <td className="p-3 text-right">
+                        {money(row.report_precedent)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-emerald-700">
+                        {money(row.encaissements_exercice)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-blue-700">
+                        {money(row.remboursements_prets_exercice)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-violet-700">
+                        {money(row.autres_entrees_exercice)}
+                      </td>
+
+                      <td className="p-3 text-right font-black text-emerald-800">
+                        {money(row.total_entrees)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-red-700">
+                        {money(row.total_sorties)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-amber-700">
+                        {money(row.reserves_constituees_exercice)}
+                      </td>
+
+                      <td className="p-3 text-right font-black text-slate-950">
+                        {money(row.solde_final)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
         ) : null}
 
         {sectionActive === "reports-membres" ? (
