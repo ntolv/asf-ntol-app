@@ -506,7 +506,7 @@ export default function ContributionsPage() {
                               <input
                                 type="number"
                                 min="0"
-                                step="100"
+                                step="1"
                                 value={
                                   ligne.montant
                                 }
