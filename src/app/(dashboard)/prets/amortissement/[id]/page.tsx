@@ -419,7 +419,7 @@ export default function AmortissementPretPage({
               href="/prets-aides"
               className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
-              ← Retour au suivi
+              ← Retour au suivi financier
             </Link>
           </div>
         </div>

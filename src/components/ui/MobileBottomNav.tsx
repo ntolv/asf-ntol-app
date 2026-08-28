@@ -301,12 +301,7 @@ function menuItemActive(pathname: string, href: string) {
   if (exactRouteExists) {
     return false;
   }
-
-  if (href === "/prets" && pathname.startsWith("/prets/")) {
-    return true;
-  }
-
-  return false;
+return false;
 }
 
 export default function MobileBottomNav() {

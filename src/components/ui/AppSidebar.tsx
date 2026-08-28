@@ -262,15 +262,7 @@ function itemIsActive(
   if (pathname === href) {
     return true;
   }
-
-  if (
-    href === "/prets" &&
-    pathname.startsWith("/prets/")
-  ) {
-    return true;
-  }
-
-  return false;
+return false;
 }
 
 function findActiveGroup(

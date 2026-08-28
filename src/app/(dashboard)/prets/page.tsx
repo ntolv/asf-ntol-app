@@ -1,338 +1,772 @@
 "use client";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-type DemandePretData = {
+type MembreInfo = {
+  id?: string;
+  nom_complet?: string | null;
+  numero_membre?: string | null;
+  telephone?: string | null;
+  email?: string | null;
+};
+
+type DemandeAide = {
   id: string;
-  membre_id: string;
-  date_demande: string;
-  objet: string;
+  montant_demande?: number | null;
+  montant_accorde?: number | null;
+  motif?: string | null;
+  statut?: string | null;
+  commentaire_decision?: string | null;
+  created_at?: string | null;
+  date_traitement?: string | null;
+  membres?: MembreInfo | null;
+};
+
+type DemandePret = {
+  id: string;
+  pret_id?: string | null;
+  demande_id?: string | null;
+  membre_id?: string | null;
+  a_un_pret_reel?: boolean;
+  historique?: boolean;
+  origine_pret?: string | null;
+  montant_demande?: number | null;
+  montant_accorde?: number | null;
+  objet_pret?: string | null;
+  motif?: string | null;
+  statut?: string | null;
+  statut_demande?: string | null;
+  commentaire_decision?: string | null;
+  reference_unique?: string | null;
+  document_texte?: string | null;
+  created_at?: string | null;
+  date_traitement?: string | null;
+  membres?: MembreInfo | null;
+};
+
+type ApiResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    aides: DemandeAide[];
+    prets: DemandePret[];
+  };
+};
+
+type HistoriqueItem = {
+  id: string;
+  type: "AIDE" | "PRET";
+  membre_nom: string;
+  numero_membre: string;
   montant_demande: number;
-  duree_souhaitee: number | null;
-  statut: string;
-  avis_tresorier: string | null;
-};
-
-type PretData = {
-  id: string;
-  membre_id: string;
-  date_octroi: string;
   montant_accorde: number;
-  taux_interet: number;
-  solde_restant: number;
-  date_prochain_recalcul: string | null;
-  date_fin_prevue: string | null;
+  motif: string;
   statut: string;
+  reference: string;
+  created_at: string | null | undefined;
+  date_traitement: string | null | undefined;
+  document_link: string | null;
+  amortissement_link: string | null;
 };
 
-type RemboursementData = {
-  id: string;
-  pret_id: string;
-  date_remboursement: string;
-  montant_rembourse: number;
-  mode_paiement: string | null;
-  reference_paiement: string | null;
-};
-
-type ResumeData = {
-  totalPrets: number;
-  soldeRestantCumule: number;
-  totalRembourse: number;
-  totalDemandesPret: number;
-};
-
-type PretsApiResponse = {
-  demandesPret: DemandePretData[];
-  prets: PretData[];
-  remboursements: RemboursementData[];
-  resume: ResumeData;
-};
-
-export default function PretsPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [demandesPret, setDemandesPret] = useState<DemandePretData[]>([]);
-  const [prets, setPrets] = useState<PretData[]>([]);
-  const [remboursements, setRemboursements] = useState<RemboursementData[]>([]);
-  const [resume, setResume] = useState<ResumeData>({
-    totalPrets: 0,
-    soldeRestantCumule: 0,
-    totalRembourse: 0,
-    totalDemandesPret: 0
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadPretsData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch("/api/prets", {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "Erreur lors du chargement des prêts");
-        }
-
-        if (!cancelled) {
-          const typedPayload = payload as PretsApiResponse;
-          setDemandesPret(typedPayload.demandesPret || []);
-          setPrets(typedPayload.prets || []);
-          setRemboursements(typedPayload.remboursements || []);
-          setResume(
-            typedPayload.resume || {
-              totalPrets: 0,
-              soldeRestantCumule: 0,
-              totalRembourse: 0,
-              totalDemandesPret: 0
-            }
-          );
-        }
-      } catch (err: any) {
-        console.error("Erreur prêts:", err);
-
-        if (!cancelled) {
-          setError(err?.message || "Erreur lors du chargement des données");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadPretsData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const formatMontant = (montant: number) =>
+function formatMoney(value: number | null | undefined) {
+  return (
     new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "XOF",
-    }).format(montant || 0);
+      maximumFractionDigits: 0,
+    }).format(Math.round(Number(value || 0))) + " FCFA"
+  );
+}
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Non définie";
-    return new Date(dateString).toLocaleDateString("fr-FR");
-  };
+function formatDate(value: string | null | undefined) {
+  if (!value) return "-";
 
-  const getStatutColor = (statut: string) => {
-    switch ((statut || "").toLowerCase()) {
-      case "validee":
-      case "validée":
-      case "accorde":
-      case "accordé":
-      case "actif":
-      case "en_retard":
-      case "en retard":
-        return "text-green-700 bg-green-50";
-      case "soumise":
-      case "en_etude":
-      case "en étude":
-      case "suspendu":
-        return "text-yellow-700 bg-yellow-50";
-      case "refusee":
-      case "refusée":
-      case "annule":
-      case "annulé":
-      case "solde":
-        return "text-red-700 bg-red-50";
-      default:
-        return "text-slate-700 bg-slate-100";
-    }
-  };
+  const date = new Date(value);
 
-  if (loading) {
-    return (
-      <main className="p-6">
-      
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          Chargement des prêts...
-        </div>
-      </main>
-    );
+  if (Number.isNaN(date.getTime())) {
+    return value;
   }
 
-  if (error) {
-    return (
-      <main className="p-6">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-          <p className="font-semibold">Erreur lors du chargement des données</p>
-          <p className="mt-2 text-sm">{error}</p>
-        </div>
-      </main>
-    );
-  }
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function normalizePretStatus(item: DemandePret) {
+  return item.statut || item.statut_demande || "-";
+}
+
+function isStatutAccorde(statut: string) {
+  const value = String(statut || "").toUpperCase();
 
   return (
-    <main className="bg-green-50/20 p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section>
-          <h1 className="text-3xl font-bold text-slate-900">Prêts</h1>
-          <p className="mt-2 text-slate-600">
-            Consultez vos demandes de prêts, les prêts accordés et les remboursements.
-          </p>
-        </section>
+    value.includes("APPROUV") ||
+    value.includes("ACCORD") ||
+    value === "ACTIF" ||
+    value === "SOLDE"
+  );
+}
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Total prêts</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{resume.totalPrets}</p>
+function matchesStatusFilter(
+  statut: string,
+  filter: string
+) {
+  const value = String(statut || "").toUpperCase();
+  const filterValue = String(filter || "").toUpperCase();
+
+  if (filterValue === "TOUS") {
+    return true;
+  }
+
+  if (filterValue.includes("APPROUV")) {
+    return isStatutAccorde(value);
+  }
+
+  if (filterValue.includes("REMBOURS")) {
+    return (
+      value.includes("REMBOURS") ||
+      value === "SOLDE"
+    );
+  }
+
+  return value.includes(filterValue);
+}
+
+function getStatutClasses(statut: string) {
+  const value = String(statut || "").toUpperCase();
+
+  if (
+    value === "SOLDE" ||
+    value.includes("REMBOURS")
+  ) {
+    return "border border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (
+    value === "ACTIF" ||
+    value.includes("APPROUV") ||
+    value.includes("ACCORD")
+  ) {
+    return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (value.includes("REFUS")) {
+    return "border border-red-200 bg-red-50 text-red-700";
+  }
+
+  if (value.includes("ATTENTE")) {
+    return "border border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border border-slate-200 bg-slate-50 text-slate-700";
+}
+
+export default function PretsAidesPage() {
+  const [aides, setAides] = useState<DemandeAide[]>([]);
+  const [prets, setPrets] = useState<DemandePret[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("TOUS");
+  const [statusFilter, setStatusFilter] = useState("TOUS");
+
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedTypeFilter, setAppliedTypeFilter] = useState("TOUS");
+  const [appliedStatusFilter, setAppliedStatusFilter] =
+    useState("TOUS");
+
+  async function loadData() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("/api/prets-aides", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const rawText = await response.text();
+
+      let json: ApiResponse | null = null;
+
+      try {
+        json = rawText
+          ? (JSON.parse(rawText) as ApiResponse)
+          : null;
+      } catch {
+        throw new Error(
+          "L'API /api/prets-aides ne renvoie pas du JSON."
+        );
+      }
+
+      if (!response.ok || !json?.success) {
+        throw new Error(
+          json?.message ||
+            "Erreur lors du chargement des demandes."
+        );
+      }
+
+      setAides(
+        Array.isArray(json.data?.aides)
+          ? json.data.aides
+          : []
+      );
+
+      setPrets(
+        Array.isArray(json.data?.prets)
+          ? json.data.prets
+          : []
+      );
+    } catch (err: any) {
+      setAides([]);
+      setPrets([]);
+      setError(
+        err?.message ||
+          "Erreur lors du chargement des demandes."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const historique = useMemo<HistoriqueItem[]>(() => {
+    const aidesMapped: HistoriqueItem[] = aides.map(
+      (item) => ({
+        id: item.id,
+        type: "AIDE",
+        membre_nom: item.membres?.nom_complet || "-",
+        numero_membre:
+          item.membres?.numero_membre || "-",
+        montant_demande: Number(
+          item.montant_demande || 0
+        ),
+        montant_accorde: Number(
+          item.montant_accorde || 0
+        ),
+        motif: item.motif || "-",
+        statut: item.statut || "-",
+        reference: item.id,
+        created_at: item.created_at,
+        date_traitement: item.date_traitement,
+        document_link: null,
+        amortissement_link: null,
+      })
+    );
+
+    const pretsMapped: HistoriqueItem[] = prets.map(
+      (item) => {
+        const statut = normalizePretStatus(item);
+
+        const aUnPretReel = Boolean(item.pret_id);
+
+        return {
+          id: item.id,
+          type: "PRET",
+          membre_nom:
+            item.membres?.nom_complet || "-",
+          numero_membre:
+            item.membres?.numero_membre || "-",
+          montant_demande: Number(
+            item.montant_demande || 0
+          ),
+          montant_accorde: Number(
+            item.montant_accorde || 0
+          ),
+          motif:
+            item.objet_pret ||
+            item.motif ||
+            "-",
+          statut,
+          reference:
+            item.reference_unique || item.id,
+          created_at: item.created_at,
+          date_traitement: item.date_traitement,
+          document_link: item.demande_id ? `/prets/demande/${item.demande_id}` : null,
+          amortissement_link: aUnPretReel
+            ? `/prets/amortissement/${item.pret_id}`
+            : null,
+        };
+      }
+    );
+
+    return [...aidesMapped, ...pretsMapped].sort(
+      (a, b) => {
+        const dateA = a.created_at
+          ? new Date(a.created_at).getTime()
+          : 0;
+
+        const dateB = b.created_at
+          ? new Date(b.created_at).getTime()
+          : 0;
+
+        return dateB - dateA;
+      }
+    );
+  }, [aides, prets]);
+
+  const filteredHistorique = useMemo(() => {
+    const searchValue = appliedSearch
+      .trim()
+      .toLowerCase();
+
+    return historique.filter((item) => {
+      const matchesType =
+        appliedTypeFilter === "TOUS"
+          ? true
+          : item.type === appliedTypeFilter;
+
+      const matchesStatus =
+        matchesStatusFilter(
+          item.statut,
+          appliedStatusFilter
+        );
+
+      const haystack = [
+        item.membre_nom,
+        item.numero_membre,
+        item.motif,
+        item.reference,
+        item.statut,
+        item.type,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const matchesSearch = searchValue
+        ? haystack.includes(searchValue)
+        : true;
+
+      return (
+        matchesType &&
+        matchesStatus &&
+        matchesSearch
+      );
+    });
+  }, [
+    historique,
+    appliedSearch,
+    appliedTypeFilter,
+    appliedStatusFilter,
+  ]);
+
+  function applyFilters() {
+    setAppliedSearch(search);
+    setAppliedTypeFilter(typeFilter);
+    setAppliedStatusFilter(statusFilter);
+  }
+
+  function resetFilters() {
+    setSearch("");
+    setTypeFilter("TOUS");
+    setStatusFilter("TOUS");
+
+    setAppliedSearch("");
+    setAppliedTypeFilter("TOUS");
+    setAppliedStatusFilter("TOUS");
+  }
+
+  const stats = useMemo(() => {
+    return {
+      total: historique.length,
+
+      aides: historique.filter(
+        (item) => item.type === "AIDE"
+      ).length,
+
+      prets: historique.filter(
+        (item) => item.type === "PRET"
+      ).length,
+
+      approuves: historique.filter((item) =>
+        isStatutAccorde(item.statut)
+      ).length,
+
+      enAttente: historique.filter((item) =>
+        String(item.statut)
+          .toUpperCase()
+          .includes("ATTENTE")
+      ).length,
+    };
+  }, [historique]);
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+<section className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-4xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Prêts
+            </p>
+
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+              Suivi administratif des prêts et aides
+            </h1>
+
+            <p className="mt-3 text-sm text-slate-600 md:text-base">
+              Suivi des demandes de prêts et d’aides, de leur statut et de leur historique administratif.
+            </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Solde restant</p>
-            <p className="mt-2 text-2xl font-bold text-orange-700">{formatMontant(resume.soldeRestantCumule)}</p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/caisse"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              ← Retour à Caisse
+            </Link>
+
+            <button
+              type="button"
+              onClick={loadData}
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Actualiser
+            </button>
           </div>
+        </div>
+      </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Total remboursé</p>
-            <p className="mt-2 text-2xl font-bold text-green-700">{formatMontant(resume.totalRembourse)}</p>
-          </div>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Demandes de prêt</p>
-            <p className="mt-2 text-2xl font-bold text-purple-700">{resume.totalDemandesPret}</p>
-          </div>
-        </section>
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
+          Chargement de l&apos;historique...
+        </div>
+      ) : (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Total demandes
+              </p>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Demandes de prêts</h2>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.total}
+              </p>
+            </article>
 
-          {demandesPret.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucune demande de prêt enregistrée.
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Aides
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.aides}
+              </p>
+            </article>
+
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Prêts
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stats.prets}
+              </p>
+            </article>
+
+            <article className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Approuvées
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-emerald-700">
+                {stats.approuves}
+              </p>
+            </article>
+
+            <article className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                En attente
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-amber-700">
+                {stats.enAttente}
+              </p>
+            </article>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_220px_220px_180px]">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Rechercher un membre, un motif, une
+                  référence
+                </label>
+
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      applyFilters();
+                    }
+                  }}
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                  placeholder="Ex: NTOL, maladie, PRET-..."
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Type
+                </label>
+
+                <select
+                  value={typeFilter}
+                  onChange={(event) =>
+                    setTypeFilter(event.target.value)
+                  }
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                >
+                  <option value="TOUS">Tous</option>
+                  <option value="AIDE">Aides</option>
+                  <option value="PRET">Prêts</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Statut
+                </label>
+
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value)
+                  }
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                >
+                  <option value="TOUS">Tous</option>
+                  <option value="ATTENTE">
+                    En attente
+                  </option>
+                  <option value="APPROUV">
+                    Approuvées
+                  </option>
+                  <option value="REFUS">
+                    Refusées
+                  </option>
+                  <option value="REMBOURS">
+                    Remboursées
+                  </option>
+                </select>
+              </div>
+
+              <div className="flex flex-col justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={applyFilters}
+                  className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Rechercher
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                >
+                  Réinitialiser
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Date demande</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Objet</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Montant demandé</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Durée souhaitée</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Statut</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Avis trésorier</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {demandesPret.map((demande) => (
-                    <tr key={demande.id} className="transition-colors hover:bg-slate-50">
-                      <td className="py-4 text-sm text-slate-900">{formatDate(demande.date_demande)}</td>
-                      <td className="py-4 text-sm font-medium text-slate-900">{demande.objet}</td>
-                      <td className="py-4 text-sm font-semibold text-slate-900">
-                        {formatMontant(demande.montant_demande)}
-                      </td>
-                      <td className="py-4 text-sm text-slate-900">
-                        {demande.duree_souhaitee ? `${demande.duree_souhaitee} mois` : "-"}
-                      </td>
-                      <td className="py-4">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(demande.statut)}`}>
-                          {demande.statut}
-                        </span>
-                      </td>
-                      <td className="py-4 text-sm text-slate-600">{demande.avis_tresorier || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+          </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Prêts accordés</h2>
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Historique
+                </p>
 
-          {prets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucun prêt accordé.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Date octroi</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Montant accordé</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Taux intérêt</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Solde restant</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Prochain recalcul</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Fin prévue</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {prets.map((pret) => (
-                    <tr key={pret.id} className="transition-colors hover:bg-slate-50">
-                      <td className="py-4 text-sm text-slate-900">{formatDate(pret.date_octroi)}</td>
-                      <td className="py-4 text-sm font-semibold text-slate-900">
-                        {formatMontant(pret.montant_accorde)}
-                      </td>
-                      <td className="py-4 text-sm text-slate-900">{pret.taux_interet}%</td>
-                      <td className="py-4 text-sm font-semibold text-orange-700">
-                        {formatMontant(pret.solde_restant)}
-                      </td>
-                      <td className="py-4 text-sm text-slate-600">{formatDate(pret.date_prochain_recalcul)}</td>
-                      <td className="py-4 text-sm text-slate-600">{formatDate(pret.date_fin_prevue)}</td>
-                      <td className="py-4">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatutColor(pret.statut)}`}>
-                          {pret.statut}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                  Demandes accessibles
+                </h2>
+              </div>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Remboursements</h2>
+              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                {filteredHistorique.length} résultat(s)
+              </div>
+            </div>
 
-          {remboursements.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              Aucun remboursement enregistré.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Date remboursement</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Montant remboursé</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Mode paiement</th>
-                    <th className="pb-3 text-left text-sm font-medium text-slate-500">Référence paiement</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {remboursements.map((remboursement) => (
-                    <tr key={remboursement.id} className="transition-colors hover:bg-slate-50">
-                      <td className="py-4 text-sm text-slate-900">{formatDate(remboursement.date_remboursement)}</td>
-                      <td className="py-4 text-sm font-semibold text-green-700">
-                        {formatMontant(remboursement.montant_rembourse)}
-                      </td>
-                      <td className="py-4 text-sm text-slate-900">{remboursement.mode_paiement || "-"}</td>
-                      <td className="py-4 text-sm text-slate-600">
-                        {remboursement.reference_paiement || "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+            {!filteredHistorique.length ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                Aucun élément trouvé pour le filtre actuel.
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                {filteredHistorique.map((item) => (
+                  <article
+                    key={`${item.type}-${item.id}`}
+                    className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"
+                  >
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Type
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {item.type === "AIDE"
+                              ? "Aide / Secours"
+                              : "Prêt"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Membre
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {item.membre_nom}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            {item.numero_membre}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Statut
+                          </p>
+
+                          <div className="mt-2">
+                            <span
+                              className={[
+                                "inline-flex rounded-full px-3 py-1 text-xs font-bold",
+                                getStatutClasses(
+                                  item.statut
+                                ),
+                              ].join(" ")}
+                            >
+                              {item.statut || "-"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Montant demandé
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {formatMoney(
+                              item.montant_demande
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-emerald-700">
+                            Montant accordé
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-emerald-700">
+                            {formatMoney(
+                              item.montant_accorde
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Référence
+                          </p>
+
+                          <p className="mt-1 break-all text-sm text-slate-700">
+                            {item.reference}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 md:col-span-2 xl:col-span-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Motif / Objet
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-700">
+                            {item.motif}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Date demande
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-700">
+                            {formatDate(item.created_at)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            Date traitement
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-700">
+                            {formatDate(
+                              item.date_traitement
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm font-semibold text-slate-900">
+                          Action
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                          {item.document_link ? (
+                            <Link
+                              href={item.document_link}
+                              className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                            >
+                              Ouvrir la demande complète signée
+                            </Link>
+                          ) : (
+                            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                              Pas de document à ouvrir pour cette aide.
+                            </div>
+                          )}
+
+                          {item.amortissement_link ? (
+                            <Link
+                              href={item.amortissement_link}
+                              className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-700"
+                            >
+                              Tableau d&apos;amortissement
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
   );
 }
